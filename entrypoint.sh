@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🚀 Starting Django app on Azure..."
+echo "ðŸš€ Starting Django app on Azure..."
 
 # Extract database host from DATABASE_URL if provided
 if [ -n "$DATABASE_URL" ]; then
@@ -11,13 +11,13 @@ if [ -n "$DATABASE_URL" ]; then
     DB_PORT=5432
     
     if [ -n "$DB_HOST" ]; then
-        echo "⏳ Waiting for PostgreSQL at $DB_HOST:$DB_PORT..."
+        echo "â³ Waiting for PostgreSQL at $DB_HOST:$DB_PORT..."
         
         # Wait for database to be ready (with timeout)
         timeout=60
         while [ $timeout -gt 0 ]; do
             if nc -z "$DB_HOST" "$DB_PORT"; then
-                echo "✅ PostgreSQL is ready!"
+                echo "âœ… PostgreSQL is ready!"
                 break
             fi
             echo "   Waiting for database... ($timeout seconds left)"
@@ -26,29 +26,29 @@ if [ -n "$DATABASE_URL" ]; then
         done
         
         if [ $timeout -le 0 ]; then
-            echo "⚠️  Database connection timeout, but continuing anyway..."
+            echo "âš ï¸  Database connection timeout, but continuing anyway..."
         fi
     fi
 else
-    echo "ℹ️  No DATABASE_URL provided, skipping database check"
+    echo "â„¹ï¸  No DATABASE_URL provided, skipping database check"
 fi
 
-echo "🔄 Running database migrations..."
+echo "ðŸ”„ Running database migrations..."
 python manage.py migrate --noinput
 
-echo "👤 Creating superuser if needed..."
+echo "ðŸ‘¤ Creating superuser if needed..."
 python manage.py shell << 'PYEOF'
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
     User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
-    print('✅ Superuser created: admin/admin123')
+    print('âœ… Superuser created: admin/admin123')
 else:
-    print('ℹ️  Superuser already exists')
+    print('â„¹ï¸  Superuser already exists')
 PYEOF
 
-echo "📁 Collecting static files..."
+echo "ðŸ“ Collecting static files..."
 python manage.py collectstatic --noinput
 
-echo "🌟 Starting Django server..."
+echo "ðŸŒŸ Starting Django server..."
 exec python manage.py runserver 0.0.0.0:8000
