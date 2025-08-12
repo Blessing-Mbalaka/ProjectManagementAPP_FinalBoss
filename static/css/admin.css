@@ -227,3 +227,23 @@
                 display: block;
             }
         }
+
+        .sidebar-footer {
+    padding: 15px;
+    border-top: 1px solid var(--sidebar-border);
+    margin-top: auto;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background-color: rgb(75, 3, 81);
+    color: white;
+    text-align: center;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+    font-weight: 500;
+}
