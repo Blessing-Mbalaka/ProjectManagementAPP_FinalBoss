@@ -69,33 +69,46 @@ def overview(request):
     User = get_user_model()
     users = User.objects.all()
 
-    # Fetch projects with related tasks and team assignments
     projects = Project.objects.prefetch_related(
         'tasks',
         'assignments__team_member__user'
     ).select_related('created_by', 'assigned_user')
 
-    for project in projects:
-        tasks = project.tasks.all()
+    progress_list, status_list, type_list = [], [], []
+
+    for p in projects:
+        tasks = p.tasks.all()
         total = tasks.count()
-        completed = tasks.filter(status='done').count()
+        done = tasks.filter(status='done').count()
+        p.progress = int((done / total) * 100) if total else 0
 
-        # Calculate progress percentage
-        project.progress = int((completed / total) * 100) if total else 0
+        status_list.append(p.status)         # 'planning' / 'in-progress' / 'on-hold' / 'completed'
+        type_list.append(p.project_type)     # 'software' / 'paper' / 'book'
+        progress_list.append(p.progress)
 
-        # Assign an assigned_user if it's not set
-        if not project.assigned_user:
-            if project.assignments.exists():
-                assigned = project.assignments.first().team_member.user
-                project.assigned_user = assigned
-            else:
-                project.assigned_user = project.created_by
-            project.save(update_fields=['assigned_user'])
+    status_counts = Counter(status_list)
+    type_counts = Counter(type_list)
+
+    bins = {'0–25%': 0, '26–50%': 0, '51–75%': 0, '76–100%': 0}
+    for val in progress_list:
+        if val <= 25:   bins['0–25%'] += 1
+        elif val <= 50: bins['26–50%'] += 1
+        elif val <= 75: bins['51–75%'] += 1
+        else:           bins['76–100%'] += 1
+
+    insights = {
+        'by_status': status_counts,
+        'by_type': type_counts,
+        'progress_hist': bins,
+    }
 
     return render(request, 'adminpanel/overview.html', {
         'projects': projects,
-        'users': users
+        'users': users,
+        'insights_json': json.dumps(insights),
     })
+
+
 
 def is_admin(user):
     return user.is_authenticated and user.role == 'admin'
@@ -140,7 +153,7 @@ def create_user(request):
             user.set_password(password)
             user.save()
             # Send email to new user
-            subject = "🎉 You've been registered on the Project Management System"
+            subject = "You've been registered on the Project Management System"
             message = f"""
             Hello {user.username},
 

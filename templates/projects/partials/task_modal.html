@@ -7,16 +7,24 @@
           <h5 class="modal-title" id="addTaskModalLabel">Add New Task</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
+
         <div class="modal-body">
+          <!-- ✅ Only allow projects the staff belongs to -->
           <div class="mb-3">
-            <label for="projectName" class="form-label">Project Name</label>
-            <input type="text" name="project_name" id="projectName" class="form-control" placeholder="Enter project name">
+            <label for="project_id" class="form-label">Project</label>
+            <select name="project_id" id="project_id" class="form-select" required>
+              <option value="">-- Select project --</option>
+              {% for p in projects %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+            </select>
           </div>
+
           <div class="mb-3">
             <label for="taskTitle" class="form-label">Title</label>
             <input type="text" name="title" id="taskTitle" class="form-control" required>
           </div>
-       
+
           <div class="mb-3">
             <label for="taskStatus" class="form-label">Status</label>
             <select name="status" id="taskStatus" class="form-select">
@@ -26,6 +34,7 @@
               <option value="done">Done</option>
             </select>
           </div>
+
           <div class="mb-3">
             <label for="taskType" class="form-label">Type</label>
             <select name="task_type" id="taskType" class="form-select">
@@ -34,10 +43,12 @@
               {% endfor %}
             </select>
           </div>
+
           <div class="mb-3">
             <label for="dueDate" class="form-label">Due Date</label>
             <input type="date" name="due_date" id="dueDate" class="form-control">
           </div>
+
           <div class="mb-3">
             <label for="priority" class="form-label">Priority</label>
             <select name="priority" id="priority" class="form-select">
@@ -47,6 +58,7 @@
             </select>
           </div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Add Task</button>

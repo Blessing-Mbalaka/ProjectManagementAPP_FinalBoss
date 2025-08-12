@@ -8,6 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Assign Projects</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <link rel="stylesheet" href="{% static 'style.css' %}">
 <link rel="stylesheet" href="{% static 'css/assign.css' %}">
 <link rel="stylesheet" href="{% static 'css/styles.css' %}">
@@ -127,71 +128,29 @@ body {
             </div>
 
             <!-- Task Management Section -->
-            <div class="card">
+                            {% if task_form %}
+                <div class="card">
                 <div class="card-header">
                     <i class="bi bi-list-task me-2"></i> Add Task for "{{ project.name }}"
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{% url 'add_task' project.id %}">
-                        {% csrf_token %}
-                        <div class="mb-2">
-                            <input type="text" name="title" class="form-control" placeholder="Task Title" required>
-                        </div>
-                        <div class="mb-2">
-                            <select name="assigned_to" class="form-select">
-                                <option value="">-- Assign to --</option>
-                                {% for user in eligible_users %}
-                                    <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <select name="priority" class="form-select">
-                                <option value="">-- Priority --</option>
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <select name="status" class="form-select">
-                                <option value="todo">To Do</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="review">Review</option>
-                                <option value="done">Done</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <select name="task_type" class="form-select">
-                                <option value="">-- Task Type --</option>
-                                <option value="UX/UI">UX/UI</option>
-                                <option value="Architecture">Architecture</option>
-                                <option value="Frontend">Frontend</option>
-                                <option value="Backend">Backend</option>
-                                <option value="Testing">Testing</option>
-                                <option value="Deployment">Deployment</option>
-                                <option value="Book">Book</option>
-                                <option value="Paper">Paper</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <input type="date" name="due_date" class="form-control">
-                        </div>
-                        <div class="mb-2">
-                            <select name="parent_task" class="form-select">
-                                <option value="">-- Parent Task (optional) --</option>
-                                {% for task in project.tasks.all %}
-                                    <option value="{{ task.id }}">{{ task.title }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <button type="submit" class="btn btn-success">Add Task</button>
-                        </div>
+                    {% csrf_token %}
+                    <div class="mb-2">{{ task_form.title }}</div>
+                    <div class="mb-2">{{ task_form.assigned_to }}</div>
+                    <div class="mb-2">{{ task_form.priority }}</div>
+                    <div class="mb-2">{{ task_form.status }}</div>
+                    <div class="mb-2">{{ task_form.task_type }}</div>
+                    <div class="mb-2">{{ task_form.due_date }}</div>
+                    <div class="mb-2">{{ task_form.parent_task }}</div>
+                    <div class="mb-2">
+                        <button type="submit" class="btn btn-success">Add Task</button>
+                    </div>
                     </form>
                 </div>
-            </div>
+                </div>
+                {% endif %}
+
             {% else %}
             <div class="card">
                 <div class="card-body">
@@ -204,6 +163,7 @@ body {
 </div>
 
 <!-- ✅ Task Table Section -->
+{% if project %}
 <div class="card mt-4">
     <div class="card-header">
         <i class="bi bi-table"></i> Task Table for "{{ project.name }}"
@@ -264,6 +224,7 @@ body {
         {% endif %}
     </div>
 </div>
+{% endif %}
 
 
 <!-- Create Project Modal -->

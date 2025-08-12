@@ -124,47 +124,63 @@ def manager_kanban(request):
 
 @login_required
 def assign_projects_view(request):
-    # projects = Project.objects.filter(created_by=request.user)
+    User = get_user_model()  # define User
     project_id = request.GET.get('project_id')
-    
+
+    # Projects where the current user is creator or (acting) manager
     projects = Project.objects.filter(
         Q(created_by=request.user) | Q(assigned_user=request.user)
     ).distinct()
-   
+
     selected_project = None
     assignments = None
     assignment_form = None
-    eligible_users = get_user_model().objects.exclude(role='student')
+    project_team_users = User.objects.none()  
+    task_form = None
     project_form = ProjectForm()
-    
-    for user in User.objects.all():
-        # Only create TeamMember if one doesn't exist already
-        if not TeamMember.objects.filter(user=user).exists():
-            TeamMember.objects.create(
-                user=user,
-                full_name=f"{user.first_name} {user.last_name}".strip() or user.username,
-                role="Team Member"  # You can change this role based on your logic
-            )
+
+    # (Optional) ensure TeamMember exists for each user
+    # Better: move to a post_save signal; kept here for now
+    for u in User.objects.all():
+        TeamMember.objects.get_or_create(
+            user=u,
+            defaults={
+                "full_name": (f"{u.first_name} {u.last_name}".strip() or u.username),
+                "role": "Team Member",
+            },
+        )
 
     if project_id:
         selected_project = get_object_or_404(
             Project,
             Q(created_by=request.user) | Q(assigned_user=request.user),
-            id=project_id
+            id=project_id,
         )
-        
-        assignments = selected_project.assignments.all()
+
+        # Prefetch to avoid N+1 when listing assignments
+        assignments = selected_project.assignments.select_related("team_member__user")
+
         assignment_form = AssignmentForm(project=selected_project)
-        
+
+        # users on this project's team
+        team_user_ids = Assignment.objects.filter(project=selected_project)\
+            .values_list("team_member__user_id", flat=True)
+        project_team_users = User.objects.filter(id__in=team_user_ids)
+
+        # task form limited to this project's team + tasks
+        task_form = TaskForm(project=selected_project)
+
     context = {
-        'projects': projects,
-        'project': selected_project,
-        'assignments': assignments,
-        'assignment_form': assignment_form,
-        'eligible_users': eligible_users,
-        'project_form': project_form,  
+        "projects": projects,
+        "project": selected_project,
+        "assignments": assignments,
+        "assignment_form": assignment_form,
+        "project_team_users": project_team_users,  # use this in the template if you keep manual selects
+        "project_form": project_form,
+        "task_form": task_form,
     }
-    return render(request, 'manager/assign.html', context)
+    return render(request, "manager/assign.html", context)
+
 
 @login_required
 def create_project(request):
@@ -235,50 +251,79 @@ def remove_assignment(request, assignment_id):
         assignment.delete()
         messages.success(request, 'Team member removed.')
         return redirect(f"{reverse('assign_projects')}?project_id={assignment.project.id}")
-
+    
 
 @login_required
 def add_task(request, project_id):
-    print("-------------------",project_id)
     project = get_object_or_404(
-        Project.objects.filter(
-            Q(id=project_id) & (Q(created_by=request.user) | Q(assigned_user=request.user))
-        )
+        Project.objects.filter(Q(id=project_id) & (Q(created_by=request.user) | Q(assigned_user=request.user)))
     )
-    
     if request.method == 'POST':
-        title = request.POST.get('title')
-        priority = request.POST.get('priority')
-        due_date = request.POST.get('due_date') or None
-        status = request.POST.get('status')
-        task_type = request.POST.get('task_type')
-        assigned_to_id = request.POST.get('assigned_to')
-        parent_task_id = request.POST.get('parent_task')
-
-        assigned_to = None
-        parent_task = None
-
-        if assigned_to_id:
-            assigned_to = get_user_model().objects.get(id=assigned_to_id)
-
-        if parent_task_id:
-            parent_task = Task.objects.get(id=parent_task_id)
-
-        Task.objects.create(
-            title=title,
-            priority=priority,
-            due_date=due_date,
-            status=status,
-            task_type=task_type,
-            created_by=request.user,
-            project=project,
-            assigned_to=assigned_to,
-            parent_task=parent_task
-        )
-        messages.success(request, 'Task created successfully!')
+        form = TaskForm(request.POST, project=project)
+        if form.is_valid():
+            task = form.save(commit=False)
+            task.project = project  # keep this
+            task.created_by = request.user
+            task.save()
+            messages.success(request, 'Task created successfully!')
+        else:
+            messages.error(request, 'Please fix the errors in the task form.')
         return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
-
     return redirect('assign_projects')
+
+
+# @login_required
+# def add_task(request, project_id):
+#     print("-------------------",project_id)
+#     project = get_object_or_404(
+#         Project.objects.filter(
+#             Q(id=project_id) & (Q(created_by=request.user) | Q(assigned_user=request.user))
+#         )
+#     )
+    
+#     if request.method == 'POST':
+#         title = request.POST.get('title')
+#         priority = request.POST.get('priority')
+#         due_date = request.POST.get('due_date') or None
+#         status = request.POST.get('status')
+#         task_type = request.POST.get('task_type')
+#         assigned_to_id = request.POST.get('assigned_to') or None
+#         parent_task_id = request.POST.get('parent_task') or None
+
+#         assigned_to = None
+
+#         if assigned_to_id:
+#             # Must be on the project team
+#             team_user_ids = Assignment.objects.filter(project=project)\
+#                                 .values_list('team_member__user_id', flat=True)
+#             if int(assigned_to_id) not in team_user_ids:
+#                 messages.error(request, 'Selected user is not a member of this project.')
+#                 return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
+#             assigned_to = get_user_model().objects.get(id=assigned_to_id)
+
+#         parent_task = Task.objects.get(id=parent_task_id) if parent_task_id else None
+
+        # if assigned_to_id:
+        #     assigned_to = get_user_model().objects.get(id=assigned_to_id)
+
+        # if parent_task_id:
+        #     parent_task = Task.objects.get(id=parent_task_id)
+
+    #     Task.objects.create(
+    #         title=title,
+    #         priority=priority,
+    #         due_date=due_date,
+    #         status=status,
+    #         task_type=task_type,
+    #         created_by=request.user,
+    #         project=project,
+    #         assigned_to=assigned_to,
+    #         parent_task=parent_task
+    #     )
+    #     messages.success(request, 'Task created successfully!')
+    #     return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
+
+    # return redirect('assign_projects')
   
 
 @login_required

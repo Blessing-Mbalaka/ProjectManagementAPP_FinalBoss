@@ -15,14 +15,17 @@
     }
 
     body {
-      background: #f6f5f7 url("{% static 'img/2.png' %}") center/cover no-repeat;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      min-height: 100vh;
+      background: #f6f5f7;
       display: flex;
       justify-content: center;
       align-items: center;
+      max-height: 80vh;
+      background-image: url(../img/2.png);
+      background-size: cover;
+      background-position: center;
       position: relative;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin-top: 100px;
     }
 
     body::before {
@@ -110,7 +113,7 @@
   </style>
 </head>
 
-<body>
+<body style="background-image: url('{% static 'img/2.png' %}'); background-size: cover;">
   <div class="container">
     <form method="POST" action="{% url 'login' %}">
       {% csrf_token %}

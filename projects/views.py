@@ -65,11 +65,14 @@ def delete_task(request, task_id):
 
 TASK_TYPES = ['UX/UI', 'Architecture', 'Frontend', 'Backend', 'Testing', 'Deployment', 'Paper', 'Book', 'Other']
 
+
 @login_required
 def staff_kanban(request):
-    tasks = Task.objects.filter(assigned_to=request.user).order_by('-created_at')
+    tasks = Task.objects.filter(
+        Q(assigned_to=request.user) |
+        Q(project__assignments__team_member__user=request.user)
+    ).distinct().order_by('-created_at')
 
-    # Group tasks by status
     grouped_tasks = {
         'todo': tasks.filter(status='todo'),
         'in_progress': tasks.filter(status='in_progress'),
@@ -77,10 +80,16 @@ def staff_kanban(request):
         'done': tasks.filter(status='done'),
     }
 
+    projects = Project.objects.filter(
+    assignments__team_member__user=request.user
+    ).distinct()
+    
     return render(request, 'projects/staff_kanban.html', {
         'grouped_tasks': grouped_tasks,
-        'task_types': TASK_TYPES
+        'task_types': TASK_TYPES,
+        'projects': projects
     })
+
 
 @login_required
 def staff_create_task(request):
@@ -90,7 +99,8 @@ def staff_create_task(request):
         task_type = request.POST.get('task_type')
         priority = request.POST.get('priority')
         due_date_str = request.POST.get('due_date')
-        project_name = request.POST.get('project_name', '').strip()
+        project_id = request.POST.get('project_id')
+        # project_name = request.POST.get('project_name', '').strip()
 
         # Convert due_date to a valid date or None
         due_date = None
@@ -100,9 +110,16 @@ def staff_create_task(request):
             except ValueError:
                 due_date = None  # fallback if date is badly formatted
 
-        project = None
-        if project_name:
-            project, _ = Project.objects.get_or_create(name=project_name, defaults={'created_by': request.user})
+        # project = None
+        # if project_name:
+        #     project, _ = Project.objects.get_or_create(name=project_name, defaults={'created_by': request.user})
+
+        if project_id:
+            # Only allow projects the staff is actually assigned to
+            project = Project.objects.filter(
+                id=project_id,
+                assignments__team_member__user=request.user
+            ).distinct().first()
 
         # Create the task
         Task.objects.create(

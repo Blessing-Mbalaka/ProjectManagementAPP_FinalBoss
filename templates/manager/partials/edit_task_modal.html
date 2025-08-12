@@ -7,11 +7,19 @@
           <h5 class="modal-title" id="editTaskModalLabel{{ task.id }}">Edit Task</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
+
         <div class="modal-body">
-        <div class="mb-3">
-            <label for="editProjectName{{ task.id }}" class="form-label">Project Name</label>
-            <input type="text" name="project_name" id="editProjectName{{ task.id }}" value="{{ task.project.name }}" class="form-control" placeholder="Enter project name">
-        </div>
+          <!-- ✅ Only allow projects available in context -->
+          <div class="mb-3">
+            <label for="editProject{{ task.id }}" class="form-label">Project</label>
+            <select name="project" id="editProject{{ task.id }}" class="form-select">
+              <option value="">-- No project --</option>
+              {% for p in projects %}
+                <option value="{{ p.id }}" {% if task.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
           <div class="mb-3">
             <label for="editTaskTitle{{ task.id }}" class="form-label">Title</label>
             <input type="text" name="title" id="editTaskTitle{{ task.id }}" value="{{ task.title }}" class="form-control" required>
@@ -26,6 +34,7 @@
               <option value="done" {% if task.status == "done" %}selected{% endif %}>Done</option>
             </select>
           </div>
+
           <div class="mb-3">
             <label for="editTaskType{{ task.id }}" class="form-label">Type</label>
             <select name="task_type" id="editTaskType{{ task.id }}" class="form-select">
@@ -34,10 +43,12 @@
               {% endfor %}
             </select>
           </div>
+
           <div class="mb-3">
             <label for="editDueDate{{ task.id }}" class="form-label">Due Date</label>
             <input type="date" name="due_date" id="editDueDate{{ task.id }}" value="{{ task.due_date|date:'Y-m-d' }}" class="form-control">
           </div>
+
           <div class="mb-3">
             <label for="editPriority{{ task.id }}" class="form-label">Priority</label>
             <select name="priority" id="editPriority{{ task.id }}" class="form-select">
@@ -47,6 +58,7 @@
             </select>
           </div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Save Changes</button>

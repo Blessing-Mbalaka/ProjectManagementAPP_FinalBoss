@@ -10,14 +10,16 @@ class Project(models.Model):
     )
    
     STATUS_CHOICES = (
-        ('active', 'Active'),
+        ('planning', 'Planning'),
+        ('in-progress', 'In Progress'),
+        ('on-hold', 'On Hold'),
         ('completed', 'Completed'),
     )
    
     name = models.CharField(max_length=255)
     description = models.TextField(max_length=255, blank=True, null=True)
     project_type = models.CharField(max_length=20, choices=PROJECT_TYPES, default='software')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planning')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_projects')
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateField(blank=True, null=True)

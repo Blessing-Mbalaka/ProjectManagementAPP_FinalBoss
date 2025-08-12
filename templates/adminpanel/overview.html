@@ -69,14 +69,18 @@
       </thead>
       <tbody id="projectTableBody">
 {% for project in projects %}
-<tr data-project="{{ project.name }}" data-user="{{ project.assigned_user.username|default:project.created_by.username }}">
+<tr data-project="{{ project.name }}"
+    data-user="{{ project.assigned_user.username|default:project.created_by.username }}"
+    data-status="{{ project.status }}">
   <td>{{ project.name }}</td>
   <td>{{ project.get_project_type_display }}</td>
   <td>
-    <span class="badge 
-      {% if project.status == 'completed' %}bg-success
-      {% elif project.status == 'active' %}bg-primary
-      {% else %}bg-secondary
+    <span class="badge
+      {% if project.status == 'completed' %} bg-success
+      {% elif project.status == 'in-progress' %} bg-primary
+      {% elif project.status == 'on-hold' %} bg-warning text-dark
+      {% elif project.status == 'planning' %} bg-secondary
+      {% else %} bg-secondary
       {% endif %}">
       {{ project.get_status_display }}
     </span>
@@ -286,6 +290,61 @@
       });
   });
 });
+
+(function() {
+  if (!document.getElementById('projectChart')) return;
+
+  const INSIGHTS = JSON.parse('{{ insights_json|escapejs }}');
+  const ctx = document.getElementById('projectChart').getContext('2d');
+  const picker = document.getElementById('chartSelector');
+
+  function titleCase(s) {
+    return s.replace(/-/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  let chart;
+
+  function render(kind) {
+    let labels = [], data = [], label = '';
+
+    if (kind === 'status') {
+      const obj = INSIGHTS.by_status || {};
+      labels = Object.keys(obj).map(titleCase);
+      data   = Object.values(obj);
+      label  = 'Projects by Status';
+    } else if (kind === 'type') {
+      const obj = INSIGHTS.by_type || {};
+      // Show friendly names for types
+      const DISPLAY = { software: 'Software', paper: 'Paper', book: 'Book' };
+      labels = Object.keys(obj).map(k => DISPLAY[k] || titleCase(k));
+      data   = Object.values(obj);
+      label  = 'Projects by Type';
+    } else {
+      const obj = INSIGHTS.progress_hist || {};
+      labels = Object.keys(obj);
+      data   = Object.values(obj);
+      label  = 'Progress Distribution';
+    }
+
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label, data }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+  }
+
+  render(picker.value || 'status');
+  picker.addEventListener('change', e => render(e.target.value));
+})();
 </script>
 
 {% endblock %}

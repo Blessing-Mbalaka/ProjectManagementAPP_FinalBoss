@@ -52,22 +52,6 @@ class Expenditure(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.category}) - {self.month}"
-
-
-class Project(models.Model):
-    name = models.CharField(max_length=255)
-    type = models.CharField(max_length=100)
-    status = models.CharField(max_length=50, choices=[
-        ('planning', 'Planning'),
-        ('in-progress', 'In Progress'),
-        ('on-hold', 'On Hold'),
-        ('completed', 'Completed'),
-    ])
-    progress = models.IntegerField(default=0)
-    assigned_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='adminpanelprojects')
-
-    def __str__(self):
-        return self.name
         
 
 class SupervisorProfile(models.Model):
