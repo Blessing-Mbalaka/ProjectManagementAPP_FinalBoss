@@ -2,13 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
-from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedback
+from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedback, Notification
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
 from projects.models import Project, Submission, StudentProfile, Meeting, ChatMessage, Task, Assignment
 from django.contrib.auth import get_user_model
-from .forms import SupervisorFeedbackForm
+from .forms import SupervisorFeedbackForm, NotificationForm
 from django.http import JsonResponse, HttpResponseBadRequest
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum, Count, Q
@@ -19,6 +19,8 @@ from manager.models import Paper
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils import timezone
+from django.db import models
 
 
 @login_required
@@ -102,10 +104,18 @@ def overview(request):
         'progress_hist': bins,
     }
 
+        # --- Notifications for the page ---
+    now = timezone.now()
+    recent_notifications = Notification.objects.filter(
+        models.Q(scheduled_at__isnull=True) | models.Q(scheduled_at__lte=now),
+        models.Q(expires_at__isnull=True)   | models.Q(expires_at__gt=now),
+    ).order_by('-is_pinned', '-created_at')[:8]
+
     return render(request, 'adminpanel/overview.html', {
         'projects': projects,
         'users': users,
         'insights_json': json.dumps(insights),
+        'recent_notifications': recent_notifications
     })
 
 
@@ -595,3 +605,34 @@ def assign_project_manager(request, project_id):
     managers = get_user_model().objects.filter(role='manager')
     return render(request, 'adminpanel/assign_project.html', {'project': project, 'managers': managers})
 
+
+# adminpanel/views.py
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import redirect
+from .forms import NotificationForm
+from .models import Notification
+from users.models import CustomUser  # adjust if your user model is elsewhere
+
+def is_admin(user):
+    return getattr(user, 'role', '') == 'admin'
+
+@login_required
+@user_passes_test(is_admin)
+def create_notification(request):
+    if request.method == 'POST':
+        form = NotificationForm(request.POST)
+        if form.is_valid():
+            notif = form.save(commit=False)
+            notif.created_by = request.user
+            notif.save()
+            form.save_m2m()
+            messages.success(request, "Notification created.")
+        else:
+            # stash errors to display on the overview page modal
+            for field, errs in form.errors.items():
+                for e in errs:
+                    messages.error(request, f"{field}: {e}")
+        # send back to Overview (where the modal lives)
+        return redirect('overview')
+    return redirect('overview')

@@ -16,6 +16,8 @@ import json
 from django.contrib.auth import get_user_model
 from manager.models import LearningContent, Template
 from django.db.models import Q
+from django.utils import timezone
+from adminpanel.models import Notification
 
 
 @login_required
@@ -23,6 +25,23 @@ def dashboard(request):
     form = DailyTaskForm()
     tasks = DailyTask.objects.filter(user=request.user).order_by('-created_at')
     upload_form = FileUploadForm()
+
+    now = timezone.now()
+    base_qs = (Notification.objects
+        .filter(
+            Q(scheduled_at__isnull=True) | Q(scheduled_at__lte=now),
+            Q(expires_at__isnull=True)   | Q(expires_at__gt=now),
+        )
+        .filter(
+            Q(audience='all') |
+            Q(audience='role', audience_role=getattr(request.user, 'role', None)) |
+            Q(audience='specific', recipients=request.user)
+        )
+        .select_related('created_by')
+        .prefetch_related('recipients')
+        .distinct()
+    )
+    my_notifications = base_qs.order_by('-is_pinned', '-created_at')[:10]
 
     if request.method == 'POST':
         form = DailyTaskForm(request.POST)
@@ -35,8 +54,11 @@ def dashboard(request):
     return render(request, 'projects/dashboard.html', {
         'form': form,
         'daily_tasks': tasks,
-        'upload_form': upload_form
+        'upload_form': upload_form,
+        'my_notifications': my_notifications,  # <-- ensure this is passed
     })
+
+
 
 
 @login_required

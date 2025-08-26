@@ -20,13 +20,47 @@ from django.db.models import Q
 import pandas as pd
 from django.core.files.base import ContentFile
 from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.shortcuts import render
+from adminpanel.models import Notification
 
 User = get_user_model()
 
 
 @login_required
 def manager_dashboard(request):
-    return render(request, 'manager/manager_dashboard.html')
+    now = timezone.now()
+    user_role = getattr(request.user, 'role', None)
+
+    # Build base queryset (active window + audience for THIS user)
+    base_qs = (Notification.objects
+        .filter(
+            Q(scheduled_at__isnull=True) | Q(scheduled_at__lte=now),
+            Q(expires_at__isnull=True)   | Q(expires_at__gt=now),
+        )
+        .filter(
+            Q(audience='all') |
+            Q(audience='role', audience_role=user_role) |
+            Q(audience='specific', recipients=request.user)
+        )
+        .select_related('created_by')
+        .prefetch_related('recipients')
+        .distinct()  # in case M2M joins duplicate rows
+    )
+
+    # New since last login (NO slice here)
+    last_login = getattr(request.user, 'last_login', None)
+    new_count = base_qs.filter(created_at__gt=last_login).count() if last_login else 0
+
+    # Final list to display (slice AFTER ordering)
+    my_notifications = base_qs.order_by('-is_pinned', '-created_at')[:10]
+
+    return render(request, 'manager/manager_dashboard.html', {
+        'my_notifications': my_notifications,
+        'new_notifications_count': new_count,
+    })
+
+
 
 @login_required
 def app_kanban(request):

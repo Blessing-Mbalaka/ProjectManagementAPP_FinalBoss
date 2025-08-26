@@ -35,5 +35,5 @@ urlpatterns = [
     path('edit-user/<int:user_id>/', views.edit_user, name='edit_user'),
     path('edit-user/<int:user_id>/', views.edit_user, name='edit_user'),
     path('register_users/',views.register_users,name='register_users'),
-
+    path('notifications/create/', views.create_notification, name='create_notification'),
 ]

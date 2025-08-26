@@ -687,12 +687,63 @@
                 </div>
             </div>
             <div class="content-box">
-                <h5>Notifications</h5>
-               
-                        <br><br><br><img src="{% static 'img/Ok-pana (4).png' %}" alt="" width="200px" height="170px">
+  <div class="d-flex align-items-center justify-content-between">
+    <h5 class="mb-0">
+      Notifications
+      {% if new_notifications_count %}
+        <span class="badge bg-info">{{ new_notifications_count }} new</span>
+      {% endif %}
+    </h5>
+    <!-- (Optional) link to a full notifications page later -->
+    {# <a href="{% url 'manager_notifications' %}" class="small">View all</a> #}
+  </div>
+
+  <div class="mt-3">
+    {% if my_notifications %}
+      <ul class="list-group list-group-flush small" style="max-height: 300px; overflow:auto;">
+        {% for n in my_notifications %}
+          <li class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-semibold">
+                {{ n.title }}
+                {% if request.user.last_login and n.created_at > request.user.last_login %}
+                  <span class="badge bg-info ms-2">New</span>
+                {% endif %}
+                {% if n.is_pinned %}<span class="ms-1">📌</span>{% endif %}
+              </span>
+              <span class="badge
+                {% if n.priority == 'urgent' %} bg-danger
+                {% elif n.priority == 'high' %} bg-warning text-dark
+                {% else %} bg-secondary
+                {% endif %}">
+                {{ n.get_priority_display }}
+              </span>
             </div>
+
+            <div class="text-muted mt-1">
+              {{ n.created_at|date:"Y-m-d H:i" }}
+              • {% if n.audience == 'all' %}All Users
+                {% elif n.audience == 'role' %}Managers
+                {% else %}Direct to you
+                {% endif %}
+              • by {{ n.created_by.get_full_name|default:n.created_by.username }}
+            </div>
+
+            <div class="mt-2">{{ n.body }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted mb-0">No notifications for you yet.</p>
+      
+    {% endif %}
+  </div>
+</div>
+
         </div>
     </div>
+
+    <br><br><br><img src="{% static 'img/Ok-pana (4).png' %}" alt="" width="200px" height="170px">
     </div>
 
     <!-- Upload Modal -->

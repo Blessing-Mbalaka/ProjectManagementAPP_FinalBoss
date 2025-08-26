@@ -4,6 +4,7 @@ from django.apps import apps
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from decimal import Decimal
+from django.core.exceptions import ValidationError
 
 
 class CostCentre(models.Model):
@@ -92,3 +93,58 @@ def create_supervisor_profile(sender, instance, created, **kwargs):
         SupervisorProfile.objects.get_or_create(user=instance)
 
 
+
+class Notification(models.Model):
+    PRIORITY_CHOICES = [
+        ('normal', 'Normal'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+    AUDIENCE_CHOICES = [
+        ('all', 'All Users'),
+        ('role', 'By Role'),
+        ('specific', 'Specific Users'),
+    ]
+
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='normal')
+
+    audience = models.CharField(max_length=10, choices=AUDIENCE_CHOICES, default='all')
+    # If audience == 'role', store the role key (e.g., 'manager', 'staff', 'student')
+    audience_role = models.CharField(max_length=20, blank=True, null=True)
+
+    # If audience == 'specific', pick explicit users
+    recipients = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='notifications_received'
+    )
+
+    is_pinned = models.BooleanField(default=False)
+    send_email = models.BooleanField(default=False)  # for later delivery handling
+
+    scheduled_at = models.DateTimeField(blank=True, null=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='notifications_created'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.get_priority_display()})"
+
+    def clean(self):
+        if self.audience == 'role' and not self.audience_role:
+            raise ValidationError("Please choose a role for the audience.")
+        if self.audience == 'specific' and self.pk is None:
+            # when creating, recipients will be saved after instance exists (save_m2m),
+            # but we can still hint via form validation; leave model-level minimal.
+            pass
