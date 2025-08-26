@@ -1,9 +1,24 @@
+:root{
+  --orange:#F26522;
+  --bg-dark: rgba(0,0,0,.45);
+  --card-bg: rgba(255,255,255,.86);
+  --card-border: rgba(255,255,255,.5);
+  --text:#1a1a1a;
+  --muted:#6b7280;
+}
 
 * {
 	box-sizing: border-box;
 }
 
-body {
+html, body{ height:100%; }
+body{
+  margin:0;
+  font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color:var(--text);
+}
+
+/* body {
 	background: #f6f5f7;
 	display: flex;
 	justify-content: center;
@@ -15,7 +30,7 @@ body {
 	position: relative;
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 	margin-top: 100px;
-}
+} */
 
 body::before {
 content: "";
