@@ -686,6 +686,12 @@ var currentBookId = null;
 
 
 function viewBookDetails(bookId, event) {
+    // Don't open book details if we're dragging
+    if (isDragging) {
+        console.log("Dragging in progress - skipping viewBookDetails");
+        return;
+    }
+
     if (event) event.stopPropagation(); // prevent bubbling from child buttons
 
     currentBookId = bookId;
