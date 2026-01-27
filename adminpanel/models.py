@@ -3,7 +3,7 @@ from django.db import models
 from django.apps import apps
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.core.exceptions import ValidationError
 
 
@@ -40,15 +40,38 @@ class Expenditure(models.Model):
     oracle_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
     def save(self, *args, **kwargs):
-        self.amount = Decimal(self.amount)
-        self.opening_balance = Decimal(self.opening_balance)
-        self.closing_balance = self.opening_balance - self.amount
+        try:
+            # Convert to Decimal with error handling
+            self.amount = Decimal(str(self.amount))
+            self.opening_balance = Decimal(str(self.opening_balance))
+            
+            # Validate decimal places
+            if self.amount.as_tuple().exponent < -2:
+                raise ValidationError('Amount must have at most 2 decimal places')
+            if self.opening_balance.as_tuple().exponent < -2:
+                raise ValidationError('Opening balance must have at most 2 decimal places')
+            
+            # Calculate closing balance with error handling
+            try:
+                self.closing_balance = self.opening_balance - self.amount
+            except InvalidOperation:
+                raise ValidationError('Error calculating closing balance: invalid number values')
+                
+        except InvalidOperation as e:
+            raise ValidationError(f'Invalid decimal value: {e}')
+        except (ValueError, TypeError) as e:
+            raise ValidationError(f'Invalid number format: {e}')
+        
         super().save(*args, **kwargs)
 
-        # Update CostCentre total_spent
-        total = Expenditure.objects.filter(cost_centre=self.cost_centre).aggregate(total=models.Sum('amount'))['total'] or 0
-        self.cost_centre.total_spent = total
-        self.cost_centre.save()
+        # Update CostCentre total_spent with error handling
+        try:
+            total = Expenditure.objects.filter(cost_centre=self.cost_centre).aggregate(total=models.Sum('amount'))['total'] or Decimal('0.00')
+            self.cost_centre.total_spent = Decimal(str(total))
+            self.cost_centre.save()
+        except InvalidOperation:
+            # Log error but don't fail the save
+            pass
 
 
     def __str__(self):

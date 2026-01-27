@@ -446,8 +446,31 @@ def edit_cost_centre(request, pk):
     cost_centre = get_object_or_404(CostCentre, pk=pk)
     if request.method == 'POST':
         cost_centre.name = request.POST.get('name')
-        cost_centre.total_received = request.POST.get('total_received')
-        cost_centre.save()
+        
+        # Validate and convert total_received with error handling
+        try:
+            total_received_str = request.POST.get('total_received', '0')
+            if not total_received_str or total_received_str.strip() == '':
+                total_received_str = '0.00'
+            total_received = Decimal(total_received_str)
+            # Validate decimal places (max 2)
+            if total_received.as_tuple().exponent < -2:
+                messages.error(request, 'Please enter a valid number with up to 2 decimal places')
+                return redirect('finance')
+            cost_centre.total_received = total_received
+        except InvalidOperation:
+            messages.error(request, 'Invalid amount: please enter a valid number')
+            return redirect('finance')
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid amount format')
+            return redirect('finance')
+        
+        try:
+            cost_centre.save()
+            messages.success(request, 'Cost Centre updated successfully')
+        except ValidationError as e:
+            messages.error(request, f'Error saving Cost Centre: {e}')
+        
         return redirect('finance')
     return redirect('finance')  # fallback if GET request
 
@@ -458,9 +481,51 @@ def edit_expenditure(request, pk):
         expenditure.month = request.POST.get('month')
         expenditure.name = request.POST.get('name')
         expenditure.category = request.POST.get('category')
-        expenditure.amount = Decimal(request.POST.get('amount', '0'))
-        expenditure.oracle_balance = Decimal(request.POST.get('oracle_balance', '0'))
-        expenditure.save()
+        
+        # Validate and convert amount with error handling
+        try:
+            amount_str = request.POST.get('amount', '0')
+            if not amount_str or amount_str.strip() == '':
+                amount_str = '0.00'
+            amount = Decimal(amount_str)
+            # Validate decimal places (max 2)
+            if amount.as_tuple().exponent < -2:
+                messages.error(request, 'Please enter a valid number with up to 2 decimal places')
+                return redirect('finance')
+            expenditure.amount = amount
+        except InvalidOperation:
+            messages.error(request, 'Invalid amount: please enter a valid number')
+            return redirect('finance')
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid amount format')
+            return redirect('finance')
+        
+        # Validate and convert oracle_balance with error handling
+        try:
+            oracle_str = request.POST.get('oracle_balance', '0')
+            if not oracle_str or oracle_str.strip() == '':
+                oracle_str = '0.00'
+            oracle_balance = Decimal(oracle_str)
+            # Validate decimal places (max 2)
+            if oracle_balance.as_tuple().exponent < -2:
+                messages.error(request, 'Please enter a valid Oracle balance with up to 2 decimal places')
+                return redirect('finance')
+            expenditure.oracle_balance = oracle_balance
+        except InvalidOperation:
+            messages.error(request, 'Invalid Oracle balance: please enter a valid number')
+            return redirect('finance')
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid Oracle balance format')
+            return redirect('finance')
+        
+        try:
+            expenditure.save()
+            messages.success(request, 'Expenditure updated successfully')
+        except ValidationError as e:
+            messages.error(request, f'Error saving Expenditure: {e}')
+        except InvalidOperation as e:
+            messages.error(request, 'Error calculating balance: invalid number format')
+        
         return redirect('finance')
     return redirect('finance')
 
