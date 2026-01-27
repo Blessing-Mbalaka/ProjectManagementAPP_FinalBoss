@@ -219,12 +219,9 @@
           <div class="mb-3">
             <select name="category" class="form-select" required>
               <option disabled selected>Select Category</option>
-              <option value="Salary">Salary</option>
-              <option value="Bursaries">Bursaries</option>
-              <option value="Invoices">Invoices</option>
-              <option value="Fitness">Fitness</option>
-              <option value="Equipment">Equipment/Office Resources</option>
-              <option value="Travel">Travel</option>
+              {% for key, label in category_choices %}
+              <option value="{{ key }}">{{ label }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="mb-3">

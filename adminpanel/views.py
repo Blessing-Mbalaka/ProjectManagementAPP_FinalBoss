@@ -434,6 +434,7 @@ def finance(request):
         'all_expenditures': all_expenditures,
         'category_totals': category_totals,
         'monthly_totals': monthly_totals,
+        'category_choices': Expenditure.EXPENSE_CATEGORY_CHOICES,
     })
 
 @login_required
