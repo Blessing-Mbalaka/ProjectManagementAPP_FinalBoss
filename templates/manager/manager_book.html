@@ -53,6 +53,7 @@
      data-title="{{ book.title }}"
      data-description="{{ book.description }}"
      data-author="{{ book.lead_author }}"
+     data-publisher="{{ book.publisher }}"
      data-due="{{ book.due_date }}"
      data-total="{{ book.total_chapters }}"
      data-completed="{{ book.completed_chapters }}"
@@ -113,6 +114,7 @@
      data-title="{{ book.title }}"
      data-description="{{ book.description }}"
      data-author="{{ book.lead_author }}"
+     data-publisher="{{ book.publisher }}"
      data-due="{{ book.due_date }}"
      data-total="{{ book.total_chapters }}"
      data-completed="{{ book.completed_chapters }}"
@@ -172,6 +174,7 @@
      data-title="{{ book.title }}"
      data-description="{{ book.description }}"
      data-author="{{ book.lead_author }}"
+     data-publisher="{{ book.publisher }}"
      data-due="{{ book.due_date }}"
      data-total="{{ book.total_chapters }}"
      data-completed="{{ book.completed_chapters }}"
@@ -233,6 +236,7 @@
      data-title="{{ book.title }}"
      data-description="{{ book.description }}"
      data-author="{{ book.lead_author }}"
+     data-publisher="{{ book.publisher }}"
      data-due="{{ book.due_date }}"
      data-total="{{ book.total_chapters }}"
      data-completed="{{ book.completed_chapters }}"
@@ -1088,6 +1092,7 @@ function dropBook(event, newStatus) {
     const bookData = {
         title: bookCard.dataset.title,
         lead_author: bookCard.dataset.author,
+        publisher: bookCard.dataset.publisher || '',
         due_date: bookCard.dataset.due,
         description: bookCard.dataset.description,
         total_chapters: bookCard.dataset.total,
