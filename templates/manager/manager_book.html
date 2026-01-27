@@ -45,7 +45,7 @@
             <span>Writing & Development</span>
             
         </div>
-        <div class="kanban-cards" id="writing-column">
+        <div class="kanban-cards" id="writing-column" ondragover="allowDrop(event)" ondrop="dropBook(event, 'writing')">
             {% for book in books %}
                 {% if book.status == 'writing' %}
                     <div class="kanban-card p-3 mb-3 shadow-sm" id="book-{{ book.id }}"
@@ -57,6 +57,8 @@
      data-total="{{ book.total_chapters }}"
      data-completed="{{ book.completed_chapters }}"
      data-status="{{ book.status }}"
+     draggable="true"
+     ondragstart="dragStartBook(event)"
      onclick="viewBookDetails({{ book.id }}, event)">
 
     <div class="d-flex justify-content-between">
@@ -103,7 +105,7 @@
             <span>Journal Submission</span>
         
         </div>
-        <div class="kanban-cards" id="submission-column">
+        <div class="kanban-cards" id="submission-column" ondragover="allowDrop(event)" ondrop="dropBook(event, 'submission')">
             {% for book in books %}
                 {% if book.status == 'submission' %}
                    <div class="kanban-card p-3 mb-3 shadow-sm" id="book-{{ book.id }}"
@@ -115,6 +117,8 @@
      data-total="{{ book.total_chapters }}"
      data-completed="{{ book.completed_chapters }}"
      data-status="{{ book.status }}"
+     draggable="true"
+     ondragstart="dragStartBook(event)"
      onclick="viewBookDetails({{ book.id }}, event)">
 
     <div class="d-flex justify-content-between">
@@ -997,6 +1001,84 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
+
+// Drag and drop handlers for kanban cards
+let draggedCardId = null;
+
+function dragStartBook(event) {
+    draggedCardId = event.currentTarget.id.replace('book-', '');
+    event.currentTarget.style.opacity = '0.5';
+    event.dataTransfer.effectAllowed = 'move';
+}
+
+function allowDrop(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    // Highlight the drop zone
+    event.currentTarget.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+}
+
+function dragLeaveColumn(event) {
+    if (event.currentTarget.classList && event.currentTarget.classList.contains('kanban-cards')) {
+        event.currentTarget.style.backgroundColor = 'transparent';
+    }
+}
+
+function dropBook(event, newStatus) {
+    event.preventDefault();
+    event.currentTarget.style.backgroundColor = 'transparent';
+    
+    if (!draggedCardId) return;
+    
+    const bookCard = document.getElementById(`book-${draggedCardId}`);
+    if (!bookCard) return;
+    
+    bookCard.style.opacity = '1';
+    const oldStatus = bookCard.dataset.status;
+    
+    // Only update if status changed
+    if (oldStatus === newStatus) return;
+    
+    // Update the book's status on the server
+    const bookData = {
+        title: bookCard.dataset.title,
+        lead_author: bookCard.dataset.author,
+        due_date: bookCard.dataset.due,
+        description: bookCard.dataset.description,
+        total_chapters: bookCard.dataset.total,
+        completed_chapters: bookCard.dataset.completed,
+        status: newStatus,
+    };
+    
+    fetch(`/manager/edit-book/${draggedCardId}/`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCSRFToken()
+        },
+        body: JSON.stringify(bookData)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            // Update the card's data-status and move it
+            bookCard.dataset.status = newStatus;
+            bookCard.parentElement.removeChild(bookCard);
+            document.getElementById(`${newStatus}-column`).appendChild(bookCard);
+        } else {
+            alert("Error updating book status");
+            bookCard.style.opacity = '1';
+        }
+    })
+    .catch(err => {
+        console.error("Error updating book:", err);
+        alert("Error updating book status: " + err.message);
+        bookCard.style.opacity = '1';
+    })
+    .finally(() => {
+        draggedCardId = null;
+    });
+}
 
 function getCSRFToken() {
     const name = 'csrftoken';
