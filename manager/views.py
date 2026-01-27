@@ -693,16 +693,23 @@ def add_book(request):
 
 @csrf_exempt
 def edit_book(request, book_id):
-    book = Book.objects.get(id=book_id)
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        form = BookForm(data, instance=book)
-        if form.is_valid():
-            form.save()
-            return JsonResponse({'success': True})
-        else:
-            return JsonResponse({'success': False, 'errors': form.errors})
-    return JsonResponse({'success': False, 'message': 'Invalid method'})
+    try:
+        book = Book.objects.get(id=book_id)
+        if request.method == 'POST':
+            data = json.loads(request.body)
+            print(f"DEBUG: Received data for book {book_id}: {data}")
+            form = BookForm(data, instance=book)
+            if form.is_valid():
+                form.save()
+                print(f"DEBUG: Book {book_id} saved successfully with status: {book.status}")
+                return JsonResponse({'success': True})
+            else:
+                print(f"DEBUG: Form validation failed: {form.errors}")
+                return JsonResponse({'success': False, 'errors': form.errors})
+        return JsonResponse({'success': False, 'message': 'Invalid method'})
+    except Exception as e:
+        print(f"DEBUG: Error in edit_book: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
 
 @csrf_exempt
 def delete_book(request, book_id):
