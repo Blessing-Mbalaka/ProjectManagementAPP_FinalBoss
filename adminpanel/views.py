@@ -908,7 +908,44 @@ def admin_journal(request):
 
 @login_required
 def admin_book(request):
-    return render(request, 'adminpanel/admin_book.html')
+    from manager.models import Book, Chapter
+    
+    # Fetch all books with their chapters
+    books = Book.objects.prefetch_related('chapters').order_by('-created_at')
+    
+    # Convert to JSON-friendly format for template
+    books_data = []
+    for book in books:
+        chapters = book.chapters.all().order_by('chapter_number')
+        chapters_list = [{
+            'id': ch.id,
+            'number': ch.chapter_number,
+            'title': ch.title,
+            'author': ch.author,
+            'editor': ch.editor or '',
+            'status': ch.status,
+            'lastUpdated': ch.last_updated.strftime('%Y-%m-%d %H:%M')
+        } for ch in chapters]
+        
+        books_data.append({
+            'id': book.id,
+            'title': book.title,
+            'status': book.status,
+            'author': book.lead_author,
+            'dueDate': book.due_date.strftime('%Y-%m-%d') if book.due_date else '',
+            'chapters': {
+                'total': book.total_chapters,
+                'completed': book.completed_chapters,
+                'list': chapters_list
+            },
+            'description': book.description or '',
+            'publisher': book.publisher or ''
+        })
+    
+    return render(request, 'adminpanel/admin_book.html', {
+        'books_json': books_data,
+        'book_status_choices': Book.STATUS_CHOICES,
+    })
 
 # def admin_required(view_func):
 #     return user_passes_test(lambda u: u.is_authenticated and u.role == 'admin')(view_func)

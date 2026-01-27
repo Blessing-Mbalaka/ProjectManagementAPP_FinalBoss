@@ -1,5 +1,6 @@
 {% extends 'adminpanel/index.html' %}
 {% load static %}
+{% csrf_token %}
 
 {% block title %}Books{% endblock %}
 
@@ -210,6 +211,7 @@
                             </div>
                             <div class="modal-body">
                                 <form id="bookForm">
+                                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
                                     <div class="row mb-3">
                                         <div class="col-md-8">
                                             <label for="bookTitle" class="form-label">Book Title</label>
@@ -471,77 +473,8 @@
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
 
-                // Book data storage
-                let books = [
-                    {
-                        id: 1,
-                        title: "Advanced Web Development",
-                        status: "writing",
-                        author: "Sarah Johnson",
-                        dueDate: "2024-06-15",
-                        chapters: {
-                            total: 15,
-                            completed: 12,
-                            list: [
-                                { id: 1, number: 1, title: "Introduction to Web Development", author: "Sarah Johnson", editor: "John Smith", status: "Completed", lastUpdated: "2024-01-15" },
-                                { id: 2, number: 2, title: "HTML Fundamentals", author: "Sarah Johnson", editor: "John Smith", status: "Completed", lastUpdated: "2024-01-22" },
-                                { id: 3, number: 3, title: "CSS Styling", author: "Sarah Johnson", editor: "John Smith", status: "Completed", lastUpdated: "2024-02-05" }
-                            ]
-                        },
-                        description: "A comprehensive guide to modern web development techniques and best practices.",
-                        publisher: ""
-                    },
-                    {
-                        id: 2,
-                        title: "Modern JavaScript Patterns",
-                        status: "writing",
-                        author: "Michael Chen",
-                        dueDate: "2024-07-01",
-                        chapters: {
-                            total: 10,
-                            completed: 8,
-                            list: [
-                                { id: 1, number: 1, title: "JavaScript Basics", author: "Michael Chen", editor: "Lisa Wong", status: "Completed", lastUpdated: "2024-01-10" },
-                                { id: 2, number: 2, title: "Functions and Scope", author: "Michael Chen", editor: "Lisa Wong", status: "Completed", lastUpdated: "2024-01-18" }
-                            ]
-                        },
-                        description: "Exploring modern JavaScript patterns and best practices.",
-                        publisher: ""
-                    },
-                    {
-                        id: 3,
-                        title: "Data Science Handbook",
-                        status: "submission",
-                        author: "Emily Davis",
-                        dueDate: "",
-                        chapters: {
-                            total: 12,
-                            completed: 12,
-                            list: [
-                                { id: 1, number: 1, title: "Introduction to Data Science", author: "Emily Davis", editor: "Robert Taylor", status: "Completed", lastUpdated: "2023-11-15" },
-                                { id: 2, number: 2, title: "Data Cleaning Techniques", author: "Emily Davis", editor: "Robert Taylor", status: "Completed", lastUpdated: "2023-11-22" }
-                            ]
-                        },
-                        description: "A practical guide to data science techniques and applications.",
-                        publisher: "Tech Publications"
-                    },
-                    {
-                        id: 4,
-                        title: "Python for Beginners",
-                        status: "submission",
-                        author: "James Wilson",
-                        dueDate: "2024-05-30",
-                        chapters: {
-                            total: 8,
-                            completed: 8,
-                            list: [
-                                { id: 1, number: 1, title: "Getting Started with Python", author: "James Wilson", editor: "Maria Rodriguez", status: "Completed", lastUpdated: "2023-12-10" }
-                            ]
-                        },
-                        description: "An introduction to Python programming for complete beginners.",
-                        publisher: "Code Press"
-                    }
-                ];
+                // Book data storage - loaded from database
+                let books = {{ books_json|safe }};
 
                 // DOM Elements
                 const kanbanBoard = document.getElementById('kanbanBoard');
@@ -710,7 +643,7 @@
                 <div class="kanban-card-footer">
                     <span>${book.chapters.completed}/${book.chapters.total} chapters</span>
                     <div class="kanban-card-actions">
-                        <button class="btn btn-sm btn-outline-primary" title="Edit" onclick="editBook(${book.id}, event)">
+                        <button class="btn btn-sm btn-outline-primary" title="Edit" onclick="showEditBookForm(${book.id}, event)">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="confirmDeleteBook(${book.id}, event)">
@@ -781,34 +714,135 @@
                         return;
                     }
 
-                    const newBook = {
-                        id: books.length > 0 ? Math.max(...books.map(b => b.id)) + 1 : 1,
+                    const bookData = {
                         title: document.getElementById('bookTitle').value,
                         status: document.getElementById('initialStatus').value,
-                        author: document.getElementById('leadAuthor').value,
-                        dueDate: document.getElementById('dueDate').value,
-                        chapters: {
-                            total: parseInt(document.getElementById('totalChapters').value),
-                            completed: parseInt(document.getElementById('completedChapters').value),
-                            list: []
-                        },
+                        lead_author: document.getElementById('leadAuthor').value,
+                        due_date: document.getElementById('dueDate').value || null,
+                        total_chapters: parseInt(document.getElementById('totalChapters').value),
+                        completed_chapters: parseInt(document.getElementById('completedChapters').value),
                         description: document.getElementById('bookDescription').value,
-                        publisher: document.getElementById('publisher').value
+                        publisher: document.getElementById('publisher').value || null
                     };
 
-                    books.push(newBook);
-                    addBookToKanban(newBook);
-                    updateCounts();
-
-                    // Reset form and close modal
-                    bookForm.reset();
-                    addBookModal.hide();
+                    // Send to backend
+                    fetch('/manager/add-book/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify(bookData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Add to local array with server-returned ID
+                            const newBook = {
+                                id: data.book_id,
+                                title: bookData.title,
+                                status: bookData.status,
+                                author: bookData.lead_author,
+                                dueDate: bookData.due_date || '',
+                                chapters: {
+                                    total: bookData.total_chapters,
+                                    completed: bookData.completed_chapters,
+                                    list: []
+                                },
+                                description: bookData.description,
+                                publisher: bookData.publisher || ''
+                            };
+                            
+                            books.push(newBook);
+                            addBookToKanban(newBook);
+                            updateCounts();
+                            
+                            // Reset form and close modal
+                            bookForm.reset();
+                            addBookModal.hide();
+                            alert('Book added successfully!');
+                        } else {
+                            alert('Error adding book: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error adding book');
+                    });
                 }
 
                 // Edit an existing book
                 function editBook(bookId, event) {
-                    event.stopPropagation();
+                    if (event) event.stopPropagation();
 
+                    const bookIndex = books.findIndex(b => b.id === bookId);
+                    if (bookIndex === -1) return;
+
+                    const bookData = {
+                        title: document.getElementById('editBookTitle').value,
+                        status: document.getElementById('editBookStatus').value,
+                        lead_author: document.getElementById('editLeadAuthor').value,
+                        due_date: document.getElementById('editDueDate').value || null,
+                        total_chapters: parseInt(document.getElementById('editTotalChapters').value),
+                        completed_chapters: parseInt(document.getElementById('editCompletedChapters').value),
+                        description: document.getElementById('editBookDescription').value,
+                        publisher: document.getElementById('editPublisher').value || null
+                    };
+
+                    // Send to backend
+                    fetch(`/manager/edit-book/${bookId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify(bookData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update local array
+                            books[bookIndex] = {
+                                ...books[bookIndex],
+                                title: bookData.title,
+                                status: bookData.status,
+                                author: bookData.lead_author,
+                                dueDate: bookData.due_date || '',
+                                chapters: {
+                                    ...books[bookIndex].chapters,
+                                    total: bookData.total_chapters,
+                                    completed: bookData.completed_chapters
+                                },
+                                description: bookData.description,
+                                publisher: bookData.publisher || ''
+                            };
+
+                            // Re-render the kanban board
+                            renderKanbanBoard();
+                            updateCounts();
+
+                            // If this is the current selected book in table view, update that too
+                            if (currentSelectedBook && currentSelectedBook.id === bookId) {
+                                currentSelectedBook = books[bookIndex];
+                                renderBookChapters(currentSelectedBook);
+                            }
+
+                            editBookModal.hide();
+                            alert('Book updated successfully!');
+                        } else {
+                            alert('Error updating book: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error updating book');
+                    });
+                }
+
+                // Show edit form for a book
+                function showEditBookForm(bookId, event) {
+                    if (event) event.stopPropagation();
+                    
                     const book = books.find(b => b.id === bookId);
                     if (!book) return;
 
@@ -892,23 +926,42 @@
 
                 // Delete a book
                 function deleteBook(bookId) {
-                    books = books.filter(b => b.id !== bookId);
+                    fetch(`/manager/delete-book/${bookId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Remove from local array
+                            books = books.filter(b => b.id !== bookId);
 
-                    // Re-render the kanban board
-                    renderKanbanBoard();
-                    updateCounts();
+                            // Re-render the kanban board
+                            renderKanbanBoard();
+                            updateCounts();
 
-                    // If this was the current selected book in table view, clear the table
-                    if (currentSelectedBook && currentSelectedBook.id === bookId) {
-                        currentSelectedBook = null;
-                        document.getElementById('chaptersTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
-                            No book selected. Please choose a book from the kanban view to see its chapters.
-                        </td>
-                    </tr>
-                `;
-                    }
+                            // If this was the current selected book in table view, clear the table
+                            if (currentSelectedBook && currentSelectedBook.id === bookId) {
+                                currentSelectedBook = null;
+                                document.getElementById('chaptersTableBody').innerHTML = `
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    No book selected. Please choose a book from the kanban view to see its chapters.
+                                </td>
+                            </tr>
+                        `;
+                            }
+                            alert('Book deleted successfully!');
+                        } else {
+                            alert('Error deleting book: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error deleting book');
+                    });
                 }
 
                 // Show book details in modal

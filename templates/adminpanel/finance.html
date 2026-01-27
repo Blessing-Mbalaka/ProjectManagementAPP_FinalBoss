@@ -292,7 +292,7 @@
           <div class="mb-3">
             <label>Category</label>
             <select name="category" class="form-select" required>
-              {% for key, label in record.EXPENSE_CATEGORY_CHOICES %}
+              {% for key, label in category_choices %}
                 <option value="{{ key }}" {% if record.category == key %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
