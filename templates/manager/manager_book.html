@@ -1013,20 +1013,28 @@ let draggedCardId = null;
 let isDragging = false;
 
 function dragStartBook(event) {
+    console.log("dragStartBook called for:", event.currentTarget.id);
     isDragging = true;
     draggedCardId = event.currentTarget.id.replace('book-', '');
+    
+    // CRITICAL: Set drag data for the browser to recognize this as a drag
+    event.dataTransfer.setData('text/html', event.currentTarget.innerHTML);
+    event.dataTransfer.effectAllowed = 'move';
+    
     event.currentTarget.style.opacity = '0.5';
     event.currentTarget.style.cursor = 'move';
-    event.dataTransfer.effectAllowed = 'move';
+    console.log("Dragging card:", draggedCardId);
 }
 
 function dragEndBook(event) {
+    console.log("dragEndBook called");
     isDragging = false;
     event.currentTarget.style.opacity = '1';
     event.currentTarget.style.cursor = 'grab';
 }
 
 function allowDrop(event) {
+    console.log("allowDrop called on:", event.currentTarget.id);
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
     // Highlight the drop zone
@@ -1040,22 +1048,32 @@ function dragLeaveColumn(event) {
 }
 
 function dropBook(event, newStatus) {
+    console.log("dropBook called for status:", newStatus, "draggedCardId:", draggedCardId);
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.style.backgroundColor = 'transparent';
     isDragging = false;
     
-    if (!draggedCardId) return;
+    if (!draggedCardId) {
+        console.log("ERROR: No draggedCardId set");
+        return;
+    }
     
     const bookCard = document.getElementById(`book-${draggedCardId}`);
-    if (!bookCard) return;
+    if (!bookCard) {
+        console.log("ERROR: Card not found:", `book-${draggedCardId}`);
+        return;
+    }
     
     bookCard.style.opacity = '1';
     bookCard.style.cursor = 'grab';
     const oldStatus = bookCard.dataset.status;
     
+    console.log("Moving card from", oldStatus, "to", newStatus);
+    
     // Only update if status changed
     if (oldStatus === newStatus) {
+        console.log("Status unchanged, skipping update");
         draggedCardId = null;
         return;
     }
@@ -1071,6 +1089,8 @@ function dropBook(event, newStatus) {
         status: newStatus,
     };
     
+    console.log("Sending update to server:", bookData);
+    
     fetch(`/manager/edit-book/${draggedCardId}/`, {
         method: "POST",
         headers: {
@@ -1081,11 +1101,13 @@ function dropBook(event, newStatus) {
     })
     .then(res => res.json())
     .then(result => {
+        console.log("Server response:", result);
         if (result.success) {
             // Update the card's data-status and move it
             bookCard.dataset.status = newStatus;
             bookCard.parentElement.removeChild(bookCard);
             document.getElementById(`${newStatus}-column`).appendChild(bookCard);
+            console.log("Card moved successfully");
         } else {
             alert("Error updating book status");
             bookCard.style.opacity = '1';
