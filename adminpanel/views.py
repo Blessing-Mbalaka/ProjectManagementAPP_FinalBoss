@@ -350,22 +350,83 @@ def update_task_progress(request, task_id):
 
 @login_required
 def finance(request):
-    cost_centres = CostCentre.objects.all()
-    all_expenditures = Expenditure.objects.select_related('cost_centre').all()
-
-    # Total spent per category
-    category_totals = (
-        Expenditure.objects.values('category')
-        .annotate(total=Sum('amount'))
-        .order_by('category')
-    )
-
-    monthly_totals = (
-        Expenditure.objects
-        .values('month')
-        .annotate(total=Sum('amount'))
-        .order_by('month')
-    )
+    from django.db import connection
+    
+    # Use raw SQL to avoid decimal conversion errors
+    with connection.cursor() as cursor:
+        # Fetch cost centres
+        cursor.execute("""
+            SELECT id, name, total_received, total_spent 
+            FROM adminpanel_costcentre
+        """)
+        cost_centre_rows = cursor.fetchall()
+        cost_centres = []
+        for row in cost_centre_rows:
+            cc_id, name, total_received, total_spent = row
+            try:
+                total_received = float(total_received) if total_received else 0
+                total_spent = float(total_spent) if total_spent else 0
+            except (ValueError, TypeError):
+                total_received = 0
+                total_spent = 0
+            
+            cost_centres.append({
+                'id': cc_id,
+                'name': name,
+                'total_received': total_received,
+                'total_spent': total_spent,
+                'total_remaining': total_received - total_spent
+            })
+        
+        # Fetch expenditures
+        cursor.execute("""
+            SELECT id, cost_centre_id, month, name, category, amount, 
+                   opening_balance, closing_balance, oracle_balance
+            FROM adminpanel_expenditure
+        """)
+        expenditure_rows = cursor.fetchall()
+        all_expenditures = []
+        for row in expenditure_rows:
+            exp_id, cc_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance = row
+            try:
+                amount = float(amount) if amount else 0
+                opening_balance = float(opening_balance) if opening_balance else 0
+                closing_balance = float(closing_balance) if closing_balance else 0
+                oracle_balance = float(oracle_balance) if oracle_balance else 0
+            except (ValueError, TypeError):
+                amount = opening_balance = closing_balance = oracle_balance = 0
+            
+            # Find cost centre
+            cc = next((c for c in cost_centres if c['id'] == cc_id), None)
+            
+            all_expenditures.append({
+                'id': exp_id,
+                'cost_centre': cc,
+                'cost_centre_id': cc_id,
+                'month': month,
+                'name': name,
+                'category': category,
+                'amount': amount,
+                'opening_balance': opening_balance,
+                'closing_balance': closing_balance,
+                'oracle_balance': oracle_balance
+            })
+    
+    # Calculate category totals
+    category_totals = {}
+    for exp in all_expenditures:
+        category = exp['category']
+        if category not in category_totals:
+            category_totals[category] = 0
+        category_totals[category] += exp['amount']
+    
+    # Calculate monthly totals
+    monthly_totals = {}
+    for exp in all_expenditures:
+        month = exp['month']
+        if month not in monthly_totals:
+            monthly_totals[month] = 0
+        monthly_totals[month] += exp['amount']
 
     return render(request, 'adminpanel/finance.html', {
         'cost_centres': cost_centres,

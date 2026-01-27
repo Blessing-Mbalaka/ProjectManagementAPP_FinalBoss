@@ -1,5 +1,6 @@
 {% extends 'adminpanel/index.html' %}
 {% load static %}
+{% load admin_custom_filters %}
 
 {% block title %}Finance{% endblock %}
 
@@ -58,9 +59,6 @@
                                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                 </form>
                             </td>
-
-
-                        </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -100,7 +98,7 @@
                 </thead>
                 <tbody id="expenditureTableBody">
     {% for record in all_expenditures %}
-        <tr data-cost-centre="{{ record.cost_centre.id }}">
+        <tr data-cost-centre="{{ record.cost_centre_id }}">
             <td>{{ record.month }}</td>
             <td>{{ record.name }}</td>
             <td>{% if record.category == 'Salary' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
