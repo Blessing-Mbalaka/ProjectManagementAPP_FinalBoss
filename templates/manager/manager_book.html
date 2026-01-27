@@ -1113,9 +1113,10 @@ function dropBook(event, newStatus) {
             bookCard.dataset.status = newStatus;
             bookCard.parentElement.removeChild(bookCard);
             document.getElementById(`${newStatus}-column`).appendChild(bookCard);
-            console.log("Card moved successfully");
+            console.log("Card moved successfully and saved to database");
         } else {
-            alert("Error updating book status");
+            console.error("Server returned error:", result);
+            alert("Error updating book status: " + (result.error || JSON.stringify(result.errors) || "Unknown error"));
             bookCard.style.opacity = '1';
         }
     })
