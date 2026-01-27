@@ -164,7 +164,7 @@
             <span>Peer Review</span>
            
         </div>
-        <div class="kanban-cards" id="review-column">
+        <div class="kanban-cards" id="review-column" ondragover="allowDrop(event)" ondrop="dropBook(event, 'review')">
             {% for book in books %}
                 {% if book.status == 'review' %}
                     <div class="kanban-card p-3 mb-3 shadow-sm" id="book-{{ book.id }}"
@@ -176,6 +176,9 @@
      data-total="{{ book.total_chapters }}"
      data-completed="{{ book.completed_chapters }}"
      data-status="{{ book.status }}"
+     draggable="true"
+     ondragstart="dragStartBook(event)"
+     ondragend="dragEndBook(event)"
      onclick="viewBookDetails({{ book.id }}, event)">
 
     <div class="d-flex justify-content-between">
@@ -222,7 +225,7 @@
             <span>In Production</span>
            
         </div>
-        <div class="kanban-cards" id="production-column">
+        <div class="kanban-cards" id="production-column" ondragover="allowDrop(event)" ondrop="dropBook(event, 'production')">
             {% for book in books %}
                 {% if book.status == 'production' %}
                     <div class="kanban-card p-3 mb-3 shadow-sm" id="book-{{ book.id }}"
@@ -234,6 +237,9 @@
      data-total="{{ book.total_chapters }}"
      data-completed="{{ book.completed_chapters }}"
      data-status="{{ book.status }}"
+     draggable="true"
+     ondragstart="dragStartBook(event)"
+     ondragend="dragEndBook(event)"
      onclick="viewBookDetails({{ book.id }}, event)">
 
     <div class="d-flex justify-content-between">
@@ -1004,11 +1010,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Drag and drop handlers for kanban cards
 let draggedCardId = null;
+let isDragging = false;
 
 function dragStartBook(event) {
+    isDragging = true;
     draggedCardId = event.currentTarget.id.replace('book-', '');
     event.currentTarget.style.opacity = '0.5';
+    event.currentTarget.style.cursor = 'move';
     event.dataTransfer.effectAllowed = 'move';
+}
+
+function dragEndBook(event) {
+    isDragging = false;
+    event.currentTarget.style.opacity = '1';
+    event.currentTarget.style.cursor = 'grab';
 }
 
 function allowDrop(event) {
@@ -1026,7 +1041,9 @@ function dragLeaveColumn(event) {
 
 function dropBook(event, newStatus) {
     event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.style.backgroundColor = 'transparent';
+    isDragging = false;
     
     if (!draggedCardId) return;
     
@@ -1034,10 +1051,14 @@ function dropBook(event, newStatus) {
     if (!bookCard) return;
     
     bookCard.style.opacity = '1';
+    bookCard.style.cursor = 'grab';
     const oldStatus = bookCard.dataset.status;
     
     // Only update if status changed
-    if (oldStatus === newStatus) return;
+    if (oldStatus === newStatus) {
+        draggedCardId = null;
+        return;
+    }
     
     // Update the book's status on the server
     const bookData = {
