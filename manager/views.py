@@ -13,6 +13,7 @@ from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.timezone import now
 import json
+from adminpanel.media_service import MediaService
 from users.models import CustomUser
 from django.contrib.auth import get_user_model
 from collections import defaultdict
@@ -522,12 +523,20 @@ def add_template(request):
         file = request.FILES['file']
 
         if file:
-            Template.objects.create(
+            template = Template.objects.create(
                 title=title,
                 description=description,
                 category=category,
                 file=file,
                 uploaded_by=request.user
+            )
+            # Create SystemMedia record for template
+            MediaService.create_media_record(
+                file_obj=file,
+                uploaded_by=request.user,
+                purpose='template',
+                description=f"Template: {title} ({category})",
+                related_object=template
             )
     return redirect('manager_templates')
 
@@ -539,7 +548,16 @@ def edit_template(request, pk):
         template.description = request.POST['description']
         template.category = request.POST['category']
         if 'file' in request.FILES:
-            template.file = request.FILES['file']
+            new_file = request.FILES['file']
+            template.file = new_file
+            # Create SystemMedia record for updated file
+            MediaService.create_media_record(
+                file_obj=new_file,
+                uploaded_by=request.user,
+                purpose='template',
+                description=f"Template: {template.title} ({template.category}) [Updated]",
+                related_object=template
+            )
         template.save()
         return redirect('manager_templates')
     return render(request, 'manager/edit_template.html', {'template': template})
@@ -565,7 +583,7 @@ def manager_journal(request):
 @login_required
 def add_paper(request):
     if request.method == 'POST':
-        print("POST DATA:", request.POST.dict())  # ← Add this to debug
+        print("POST DATA:", request.POST.dict())  
 
         status = request.POST.get('paperStatus')
         paper_type = request.POST.get('paperType')
@@ -574,7 +592,7 @@ def add_paper(request):
             messages.error(request, "Missing required fields.")
             return redirect('manager_journal')
 
-        Paper.objects.create(
+        paper = Paper.objects.create(
             title=request.POST.get('paperTitle'),
             internal_external=paper_type,
             paper_type='journal' if 'journal' in (request.POST.get('targetJournal') or '').lower() else 'conference',
@@ -588,6 +606,16 @@ def add_paper(request):
             manuscript=request.FILES.get('paperFile'),
             created_by=request.user,
         )
+        
+        # Create SystemMedia record for manuscript if provided
+        if paper.manuscript:
+            MediaService.create_media_record(
+                file_obj=paper.manuscript,
+                uploaded_by=request.user,
+                purpose='manuscript',
+                description=f"Manuscript: {paper.title}",
+                related_object=paper
+            )
 
         messages.success(request, "Paper added successfully.")
         return redirect('manager_journal')

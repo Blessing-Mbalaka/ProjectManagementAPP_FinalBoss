@@ -126,7 +126,8 @@
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.draggable-task').forEach(task => {
             task.addEventListener('dragstart', (e) => {
-                draggedTaskId = e.target.dataset.taskId;
+                const draggableElement = e.target.closest('.draggable-task');
+                draggedTaskId = draggableElement ? draggableElement.dataset.taskId : null;
             });
         });
 

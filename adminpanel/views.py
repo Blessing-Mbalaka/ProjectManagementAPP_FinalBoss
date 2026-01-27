@@ -2,15 +2,18 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
+from manager.models import Book, Chapter
 from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedback, Notification
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
 import csv
+from .media_service import MediaService
 import io
 from projects.models import Project, Submission, StudentProfile, Meeting, ChatMessage, Task, Assignment
 from django.contrib.auth import get_user_model
 from .forms import SupervisorFeedbackForm, NotificationForm, ProjectForm
+from projects.forms import ChatForm
 from django.http import JsonResponse, HttpResponseBadRequest
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum, Count, Q
@@ -833,6 +836,14 @@ def provide_feedback(request, submission_id):
             submission.feedback_text = feedback.comments
             if feedback.uploaded_file:
                 submission.feedback_file = feedback.uploaded_file
+                # Create SystemMedia record for feedback file
+                MediaService.create_media_record(
+                    file_obj=feedback.uploaded_file,
+                    uploaded_by=request.user,
+                    purpose='feedback',
+                    description=f"Feedback for submission: {submission.title}",
+                    related_object=submission
+                )
             submission.save()
 
             return redirect('supervisor_dashboard')  # or your submissions page
@@ -846,29 +857,51 @@ def provide_feedback(request, submission_id):
 
 @login_required
 @user_passes_test(lambda u: u.role == 'admin')
+@login_required
+@user_passes_test(lambda u: u.role in ['admin', 'supervisor'])
 def supervisor_dashboard(request):
     supervisor = request.user
     student_profiles = StudentProfile.objects.filter(supervisor=supervisor).select_related('user')
 
-    return render(request, 'adminpanel/supervisor_dashboard.html', {
+    # Use supervisor-only template if user is a supervisor (not admin)
+    template = 'adminpanel/supervisor_only_dashboard.html' if request.user.role == 'supervisor' else 'adminpanel/supervisor_dashboard.html'
+    
+    return render(request, template, {
         'student_profiles': student_profiles
     })
 
 @login_required
-@user_passes_test(lambda u: u.role == 'admin')
+@login_required
+@user_passes_test(lambda u: u.role in ['admin', 'supervisor'])
 def student_detail_view(request, student_id):
     student_user = CustomUser.objects.get(id=student_id)
     student_profile = StudentProfile.objects.get(user=student_user)
+    
+    # Permission check: Only allow supervisors to view their own supervised students
+    if student_profile.supervisor != request.user:
+        from django.http import Http404
+        raise Http404("You don't have permission to view this student's details.")
+    
     submission_history = Submission.objects.filter(student=student_user)
     meeting_history = Meeting.objects.filter(student=student_user)
+    # Get messages in conversation: messages from student to supervisor OR from supervisor to student
+    from django.db.models import Q
+    chat_messages = ChatMessage.objects.filter(
+        Q(sender=student_user, recipient=request.user) |  # Student sent to supervisor
+        Q(sender=request.user, recipient=student_user)     # Supervisor sent to student
+    ).order_by('timestamp')
     form = SupervisorFeedbackForm()
+    chat_form = ChatForm()
 
     return render(request, 'adminpanel/student_detail.html', {
         'student_user': student_user,
         'student_profile': student_profile,
         'submission_history': submission_history,
         'meeting_history': meeting_history,
-        'form' : form
+        'form' : form,
+        'chat_messages': chat_messages,
+        'chat_form': chat_form,
+        'user': request.user
     })
 
 
@@ -946,6 +979,33 @@ def admin_book(request):
         'books_json': books_data,
         'book_status_choices': Book.STATUS_CHOICES,
     })
+
+
+@csrf_exempt
+@login_required
+def update_book_status(request, book_id):
+    """Update the status of a book via kanban drag-and-drop"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            new_status = data.get('status')
+            
+            book = get_object_or_404(Book, id=book_id)
+            
+            # Validate status is in allowed choices
+            valid_statuses = [choice[0] for choice in Book.STATUS_CHOICES]
+            if new_status not in valid_statuses:
+                return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
+            
+            # Update and save
+            book.status = new_status
+            book.save()
+            return JsonResponse({'success': True})
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
 # def admin_required(view_func):
 #     return user_passes_test(lambda u: u.is_authenticated and u.role == 'admin')(view_func)

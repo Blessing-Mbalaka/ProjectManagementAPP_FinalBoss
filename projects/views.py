@@ -18,6 +18,7 @@ from manager.models import LearningContent, Template
 from django.db.models import Q
 from django.utils import timezone
 from adminpanel.models import Notification
+from adminpanel.media_service import MediaService
 
 
 @login_required
@@ -199,7 +200,18 @@ def update_task_status(request, task_id):
         data = json.loads(request.body)
         new_status = data.get('status')
 
-        task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
+        # Allow update if directly assigned OR assigned via team member
+        task = get_object_or_404(Task, id=task_id)
+        
+        # Check if user is directly assigned or is a team member on the project
+        is_directly_assigned = task.assigned_to == request.user
+        is_team_member = task.project.assignments.filter(
+            team_member__user=request.user
+        ).exists()
+        
+        if not (is_directly_assigned or is_team_member):
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        
         task.status = new_status
         task.save()
 
@@ -232,6 +244,9 @@ def ganttchart(request):
 def is_student(user):
     return user.role == 'student'
 
+def is_student_or_supervisor(user):
+    return user.role in ['student', 'admin', 'supervisor']
+
 @login_required
 @user_passes_test(is_student)
 def student_dashboard(request):
@@ -261,14 +276,20 @@ def student_dashboard(request):
     submission_form = SubmissionForm()
 
     # Notifications
-    notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')
-    unread_count = notifications.filter(is_read=False).count()
+    notifications = Notification.objects.filter(recipients=request.user).order_by('-created_at')
+    unread_count = 0
 
     #Meeting form
     meetings = Meeting.objects.filter(student=request.user).order_by('-date')
     meeting_form = MeetingForm()
 
-    chat_messages = ChatMessage.objects.filter(sender=request.user).order_by('timestamp')
+    # Get messages with supervisor (received or sent to supervisor)
+    from django.db.models import Q
+    student_profile = StudentProfile.objects.get(user=request.user)
+    chat_messages = ChatMessage.objects.filter(
+        Q(sender=request.user, recipient=student_profile.supervisor) |  # Student sent to supervisor
+        Q(sender=student_profile.supervisor, recipient=request.user)     # Supervisor sent to student
+    ).order_by('timestamp') if student_profile.supervisor else ChatMessage.objects.none()
     chat_form = ChatForm()
 
     feedback_reply_form = FeedbackReplyForm()
@@ -281,7 +302,7 @@ def student_dashboard(request):
             'co_supervisor': profile.co_supervisor,
             'research_title': profile.research_title,
             'year': profile.year,
-            'supervisor': "Prof. Arnesh Telukdarie",
+            'supervisor': profile.supervisor.get_full_name() if profile.supervisor else 'Not assigned',
             'progress': 65
         },
         'user': request.user,
@@ -327,6 +348,16 @@ def submit_document(request):
             submission.student = request.user
             submission.version_number = version
             submission.save()
+            
+            # Create SystemMedia record for the submission file
+            if submission.file:
+                MediaService.create_media_record(
+                    file_obj=submission.file,
+                    uploaded_by=request.user,
+                    purpose='submission',
+                    description=f"Submission: {submission.title} (v{submission.version_number})",
+                    related_object=submission
+                )
 
     return redirect('student_dashboard')
 
@@ -347,9 +378,9 @@ def submit_feedback_reply(request, submission_id):
 @login_required
 @user_passes_test(is_student)
 def mark_notification_read(request, notif_id):
-    notif = get_object_or_404(Notification, id=notif_id, recipient=request.user)
-    notif.is_read = True
-    notif.save()
+    notif = get_object_or_404(Notification, id=notif_id, recipients=request.user)
+    # Note: Notification model uses 'is_pinned' not 'is_read'
+    # This endpoint acknowledges the notification without database changes
     return redirect('student_dashboard')
 
 @login_required
@@ -364,15 +395,76 @@ def submit_meeting_request(request):
     return redirect('student_dashboard')
 
 @login_required
-@user_passes_test(is_student)
+@user_passes_test(is_student_or_supervisor)
 def send_chat_message(request):
     if request.method == 'POST':
+        print(f"\n=== SEND CHAT MESSAGE DEBUG ===")
+        print(f"Sender: {request.user} (ID: {request.user.id}, Role: {request.user.role})")
+        print(f"Request POST data: {request.POST}")
+        
         form = ChatForm(request.POST)
+        print(f"Form valid: {form.is_valid()}")
+        
         if form.is_valid():
             message = form.save(commit=False)
             message.sender = request.user
-            message.save()
-    return redirect('student_dashboard')
+            print(f"Message content: '{message.message}'")
+            
+            # Set recipient based on user role
+            if request.user.role == 'student':
+                # Students can only message their supervisor
+                student_profile = StudentProfile.objects.get(user=request.user)
+                message.recipient = student_profile.supervisor
+                print(f"Student -> Supervisor: Recipient set to {message.recipient} (ID: {message.recipient.id if message.recipient else 'None'})")
+            else:  # admin/supervisor
+                # Supervisor messages the student they're viewing
+                student_id = request.POST.get('student_id')
+                print(f"Student ID from POST: {student_id}")
+                
+                if student_id:
+                    student = CustomUser.objects.get(id=student_id)
+                    print(f"Student found: {student} (ID: {student.id})")
+                    
+                    # Permission check: Supervisor can only message students they supervise
+                    student_profile = StudentProfile.objects.get(user=student)
+                    print(f"Student's supervisor: {student_profile.supervisor} (ID: {student_profile.supervisor.id if student_profile.supervisor else 'None'})")
+                    print(f"Current supervisor: {request.user} (ID: {request.user.id})")
+                    
+                    if student_profile.supervisor == request.user:
+                        message.recipient = student
+                        print(f"✓ Permission granted - Recipient set to {message.recipient}")
+                    else:
+                        # Reject message if not authorized
+                        message.recipient = None
+                        print(f"✗ Permission denied - Supervisor not authorized for this student")
+                else:
+                    print(f"✗ No student_id provided in POST")
+            
+            if message.recipient:
+                message.save()
+                print(f"✓ Message SAVED (ID: {message.id})")
+            else:
+                print(f"✗ Message NOT saved - No recipient set")
+        else:
+            print(f"✗ Form errors: {form.errors}")
+        
+        print(f"=== END DEBUG ===\n")
+    
+    # Redirect based on user role
+    if request.user.role == 'student':
+        return redirect('student_dashboard')
+    elif request.user.role == 'supervisor':
+        # Supervisors redirect to supervisor portal
+        student_id = request.POST.get('student_id')
+        if student_id:
+            return redirect('supervisor_student_detail', student_id=student_id)
+        return redirect('supervisor_dashboard_portal')  # fallback
+    else:  # admin
+        # Admin redirects to old admin route
+        student_id = request.POST.get('student_id')
+        if student_id:
+            return redirect('student_detail', student_id=student_id)
+        return redirect('supervisor_dashboard')
 
 
 @login_required

@@ -95,6 +95,7 @@
                         <h5 class="mb-0"><i class="bi bi-chat-square-text me-2"></i>Feedback Requests</h5>
                     </div>
                     <div class="card-body">
+                        {% if submission_history %}
                         <div class="timeline">
                             <!-- Feedback items will be loaded here -->
                             <div class="timeline-item">
@@ -103,28 +104,23 @@
                                         <div>
                                            <strong>{{ student_user.get_full_name }}</strong> – Latest Feedback
 
-                                            <small class="text-muted ms-2">2023-05-15</small>
+                                            <small class="text-muted ms-2">{{ submission_history.first.created_at|date:"Y-m-d" }}</small>
                                         </div>
-                                        <span class="badge bg-info">Pending</span>
+                                        <span class="badge bg-info">{{ submission_history.first.status }}</span>
                                     </div>
                                     <div class="card-body">
-                                        <p>Student requested feedback on initial draft of introduction chapter</p>
-                                        <div class="d-flex justify-content-end">
-                                            <td>
-                                        {% if submission.id %}
-                                            <a href="{% url 'provide_feedback' submission.id %}" class="btn btn-sm btn-outline-primary">Review</a>
-                                        {% else %}
-                                            <span class="btn btn-sm btn-secondary disabled">No ID</span>
-                                        {% endif %}
-
-                                        </td>
-
+                                        <p>Student submitted: <strong>{{ submission_history.first.title }}</strong></p>
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <a href="{% url 'provide_feedback' submission_history.first.id %}" class="btn btn-sm btn-outline-primary">Review</a>
                                             <button class="btn btn-sm btn-outline-secondary">View Document</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        {% else %}
+                        <p class="text-muted">No feedback requests at this time.</p>
+                        {% endif %}
                     </div>
                 </div>
             </section>
@@ -229,17 +225,11 @@
         </div>
         <div class="card-body">
             <div class="chat-container" style="height: 400px; overflow-y: auto; margin-bottom: 20px;">
-                {% for chat in chat_messages %}
-                    <div class="chat-message {% if chat.sender == user %}student-message{% else %}supervisor-message{% endif %}">
-                        <p>{{ chat.message }}</p>
-                        <small class="text-muted d-block text-end">
-                            {% if chat.sender == user %}You{% else %}Supervisor{% endif %} – {{ chat.timestamp|date:"H:i" }}
-                        </small>
-                    </div>
-                {% endfor %}
+                {% include "includes/chat_messages.html" with empty_message="No messages yet. Start a conversation with this student!" %}
             </div>
             <form method="POST" action="{% url 'send_chat' %}">
                 {% csrf_token %}
+                <input type="hidden" name="student_id" value="{{ student_user.id }}">
                 <div class="input-group">
                     {{ chat_form.message.label_tag }}
                     {{ chat_form.message|add_class:"form-control" }}
@@ -256,7 +246,8 @@
 <div class="modal fade" id="feedbackModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="POST" action="{% url 'provide_feedback' submission_history.last.id %}" enctype="multipart/form-data">
+            {% if submission_history %}
+            <form method="POST" action="" id="feedbackForm" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-header">
                     <h5 class="modal-title">Provide Feedback</h5>
@@ -267,7 +258,7 @@
                         <label class="form-label">Student: <strong>{{ student_user.get_full_name }}</strong></label>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Document: <strong>{{ submission_history.last.title }}</strong></label>
+                        <label class="form-label">Document: <strong id="feedbackDocTitle"></strong></label>
                     </div>
 
                     <div class="mb-3">
@@ -290,6 +281,15 @@
                     <button type="submit" class="btn btn-primary">Submit Feedback</button>
                 </div>
             </form>
+            {% else %}
+            <div class="modal-header">
+                <h5 class="modal-title">Feedback</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">No submissions available to provide feedback on.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

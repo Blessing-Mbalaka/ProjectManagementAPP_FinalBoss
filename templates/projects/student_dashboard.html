@@ -517,7 +517,7 @@
             <div class="list-group">
                 {% for notif in notifications %}
                 <a href="{% url 'mark_notification_read' notif.id %}"
-                    class="list-group-item list-group-item-action {% if not notif.is_read %}active{% endif %}">
+                    class="list-group-item list-group-item-action">
                     <div class="d-flex w-100 justify-content-between">
                         <h6 class="mb-1">{{ notif.title }}</h6>
                         <small>{{ notif.created_at|date:"M d, Y H:i" }}</small>
@@ -637,25 +637,25 @@
             <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Chat with Supervisor</h5>
         </div>
         <div class="card-body">
-            <div class="chat-container" style="height: 400px; overflow-y: auto; margin-bottom: 20px;">
-                {% for chat in chat_messages %}
-                    <div class="chat-message {% if chat.sender == user %}student-message{% else %}supervisor-message{% endif %}">
-                        <p>{{ chat.message }}</p>
-                        <small class="text-muted d-block text-end">
-                            {% if chat.sender == user %}You{% else %}Supervisor{% endif %} – {{ chat.timestamp|date:"H:i" }}
-                        </small>
-                    </div>
-                {% endfor %}
-            </div>
-            <form method="POST" action="{% url 'send_chat' %}">
-                {% csrf_token %}
-                <div class="input-group">
-                    {{ chat_form.message|add_class:"form-control" }}
-                    <button class="btn btn-primary" type="submit">
-                        <i class="bi bi-send"></i>
-                    </button>
+            {% if user.role != 'student' %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Only supervisors and students can use the chat feature. This section is for student-supervisor conversations.
                 </div>
-            </form>
+            {% else %}
+                <div class="chat-container" style="height: 400px; overflow-y: auto; margin-bottom: 20px;">
+                    {% include "includes/chat_messages.html" with empty_message="No messages yet. Start a conversation with your supervisor!" %}
+                </div>
+                <form method="POST" action="{% url 'send_chat' %}">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        {{ chat_form.message|add_class:"form-control" }}
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
         </div>
     </div>
 </section>

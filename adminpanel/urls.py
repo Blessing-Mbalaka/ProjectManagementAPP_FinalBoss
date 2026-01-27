@@ -1,9 +1,17 @@
 from django.urls import path
 from . import views
+from . import supervisors
 
 urlpatterns = [
+    # Supervisor Portal Routes
+    path('supervisor-portal/dashboard/', supervisors.supervisor_dashboard, name='supervisor_dashboard_portal'),
+    path('supervisor-portal/messages/', supervisors.supervisor_messages, name='supervisor_messages'),
+    path('supervisor-portal/student/<int:student_id>/', supervisors.supervisor_student_detail, name='supervisor_student_detail'),
+    
+    # Admin Routes
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('admin_book/', views.admin_book, name='admin_book'),
+    path('update-book-status/<int:book_id>/', views.update_book_status, name='update_book_status'),
     path('app_kanban/', views.app_kanban, name='app_kanban'),
     path('admin_journal/', views.admin_journal, name='admin_journal'),
     path('admin_ganttchart/', views.admin_ganttchart, name='admin_ganttchart'),

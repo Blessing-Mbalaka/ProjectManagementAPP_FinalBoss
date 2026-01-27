@@ -98,7 +98,7 @@ class DailyTask(models.Model):
     
 class StudentProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    supervisor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='supervised_students', limit_choices_to={'role': 'admin'})
+    supervisor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='supervised_students', limit_choices_to={'role__in': ['admin', 'supervisor']})
     program = models.CharField(max_length=100)
     co_supervisor = models.CharField(max_length=100, blank=True, null=True)
     research_title = models.CharField(max_length=255)
@@ -185,7 +185,8 @@ class Meeting(models.Model):
         return f"{self.student.get_full_name()} – {self.date} @ {self.time}"
 
 class ChatMessage(models.Model):
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_messages', null=True, blank=True)
     submission = models.ForeignKey('Submission', on_delete=models.CASCADE, related_name='chat_messages', null=True, blank=True)
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)

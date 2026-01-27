@@ -1388,19 +1388,60 @@
                         if (draggedCard) {
                             const newStatus = this.dataset.status;
                             const bookId = parseInt(draggedCard.dataset.id);
+                            const cardElement = draggedCard;  // CAPTURE IT HERE before async operations
 
-                            // Update the book's status in our data
-                            const book = books.find(b => b.id === bookId);
-                            if (book && book.status !== newStatus) {
-                                book.status = newStatus;
-                                updateCounts();
-                            }
+                            console.log(`[Book Kanban DEBUG] Starting drop...`);
+                            console.log(`[Book Kanban DEBUG] cardElement:`, cardElement);
+                            console.log(`[Book Kanban DEBUG] cardElement type:`, typeof cardElement);
+                            console.log(`[Book Kanban DEBUG] bookId: ${bookId}, newStatus: ${newStatus}`);
 
-                            // Move the card to the new column
-                            const column = this.querySelector(`#${newStatus}-column`);
-                            if (column) {
-                                column.appendChild(draggedCard);
-                            }
+                            // Send update to backend
+                            fetch(`/adminpanel/update-book-status/${bookId}/`, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ status: newStatus })
+                            }).then(response => {
+                                console.log(`[Book Kanban DEBUG] Response received, status: ${response.status}`);
+                                return response.json().then(data => ({ status: response.status, data: data, ok: response.ok }));
+                            }).then(({ status, data, ok }) => {
+                                console.log(`[Book Kanban DEBUG] JSON parsed, ok: ${ok}, status: ${status}`);
+                                console.log(`[Book Kanban DEBUG] Response data:`, data);
+                                console.log(`[Book Kanban DEBUG] cardElement at this point:`, cardElement);
+                                
+                                if (ok) {
+                                    console.log('[Book Kanban DEBUG] Update successful, updating UI...');
+                                    // Update the book's status in our data
+                                    const book = books.find(b => b.id === bookId);
+                                    if (book) {
+                                        console.log(`[Book Kanban DEBUG] Found book in data, updating status to ${newStatus}`);
+                                        book.status = newStatus;
+                                        updateCounts();
+                                    }
+                                    // Move the card to the new column
+                                    const column = document.querySelector(`#${newStatus}-column`);
+                                    console.log(`[Book Kanban DEBUG] Looking for column with id: ${newStatus}-column`);
+                                    console.log(`[Book Kanban DEBUG] Found column:`, column);
+                                    
+                                    if (column && cardElement) {
+                                        console.log(`[Book Kanban DEBUG] About to append. cardElement:`, cardElement, `column:`, column);
+                                        column.appendChild(cardElement);
+                                        console.log('[Book Kanban DEBUG] Card appended successfully!');
+                                    } else {
+                                        console.error(`[Book Kanban DEBUG] Cannot append - column:`, column, `cardElement:`, cardElement);
+                                    }
+                                } else {
+                                    console.error(`[Book Kanban Error] Update failed. Status: ${status}, Error: ${data.error || 'Unknown error'}`);
+                                    alert(`Failed to update book status: ${data.error || 'Unknown error'}`);
+                                }
+                            }).catch(error => {
+                                console.error('[Book Kanban Error] Fetch error:', error);
+                                alert(`Error updating book status: ${error.message}`);
+                            });
+                        } else {
+                            console.error('[Book Kanban DEBUG] draggedCard is null/undefined');
                         }
                     }
                 }

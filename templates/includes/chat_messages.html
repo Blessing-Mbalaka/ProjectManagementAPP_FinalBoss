@@ -1,0 +1,11 @@
+<!-- Reusable Chat Messages Display Partial -->
+{% for chat in chat_messages %}
+    <div class="chat-message {% if chat.sender == user %}student-message{% else %}supervisor-message{% endif %}">
+        <p>{{ chat.message }}</p>
+        <small class="text-muted d-block text-end">
+            {% if chat.sender == user %}You{% else %}{{ chat.sender.get_full_name|default:chat.sender.username }}{% endif %} – {{ chat.timestamp|date:"H:i" }}
+        </small>
+    </div>
+{% empty %}
+    <div class="text-muted text-center py-4">{{ empty_message|default:"No messages yet." }}</div>
+{% endfor %}

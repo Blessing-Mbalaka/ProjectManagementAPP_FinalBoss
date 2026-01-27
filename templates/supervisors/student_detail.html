@@ -1,0 +1,144 @@
+{% extends 'supervisors/base.html' %}
+{% load static %}
+
+{% block title %}{{ student_profile.user.get_full_name }} - Supervisor Portal{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+
+<div class="container-fluid mt-4 mb-4">
+    <!-- Back Button & Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <a href="{% url 'supervisor_dashboard_portal' %}" class="btn btn-link text-decoration-none mb-3">
+                <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            <h2 class="mb-1">
+                <i class="bi bi-person me-2"></i>{{ student_profile.user.get_full_name|default:student_profile.user.username }}
+            </h2>
+            <p class="text-muted">Student Profile & Messages</p>
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="row">
+        <!-- Left Column - Student Info -->
+        <div class="col-lg-5">
+            <!-- Student Profile Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-person-badge me-2"></i>Student Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Full Name</label>
+                        <p class="mb-0"><strong>{{ student_profile.user.get_full_name|default:student_profile.user.username }}</strong></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Email</label>
+                        <p class="mb-0">
+                            <a href="mailto:{{ student_profile.user.email }}">{{ student_profile.user.email }}</a>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Program</label>
+                        <p class="mb-0">{{ student_profile.program|default:"Not specified" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Year</label>
+                        <p class="mb-0">{{ student_profile.year|default:"Not specified" }}</p>
+                    </div>
+                    <div class="mb-0">
+                        <label class="text-muted small">Research Title</label>
+                        <p class="mb-0">{{ student_profile.research_title|default:"Not specified" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-bar-chart me-2"></i>Activity
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Total Messages</label>
+                        <p class="mb-0"><strong>{{ chat_messages.count }}</strong></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Submissions</label>
+                        <p class="mb-0"><strong>{{ submissions_count|default:0 }}</strong></p>
+                    </div>
+                    <div class="mb-0">
+                        <label class="text-muted small">Member Since</label>
+                        <p class="mb-0">{{ student_profile.user.date_joined|date:"M d, Y" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Chat Messages -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-chat-dots me-2"></i>Messages with {{ student_profile.user.get_full_name|default:student_profile.user.username }}
+                    </h6>
+                </div>
+
+                <div class="card-body" style="max-height: 500px; overflow-y: auto; background-color: #f8f9fa;">
+                    {% if chat_messages %}
+                        {% for message in chat_messages %}
+                            <div class="mb-3">
+                                <!-- Sender Indicator -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <strong class="text-primary" style="font-size: 0.85rem;">
+                                        {{ message.sender.get_full_name|default:message.sender.username }}
+                                    </strong>
+                                    <small class="text-muted ms-2">
+                                        {{ message.timestamp|date:"M d, Y H:i" }}
+                                    </small>
+                                </div>
+
+                                <!-- Message Content -->
+                                <div class="alert {% if message.sender == user %}alert-primary{% else %}alert-light{% endif %} mb-0 py-2 px-3">
+                                    {{ message.message }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-chat-left-dots" style="font-size: 2.5rem; color: #ddd;"></i>
+                            <p class="text-muted mt-3 mb-0">No messages yet. Start the conversation!</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Message Form -->
+                <div class="card-footer bg-white border-top">
+                    <form method="POST" action="{% url 'send_chat' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="student_id" value="{{ student_profile.user.id }}">
+                        
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="message" 
+                                   placeholder="Type your message..." 
+                                   required>
+                            <button class="btn btn-primary" type="submit">
+                                <i class="bi bi-send"></i> Send
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

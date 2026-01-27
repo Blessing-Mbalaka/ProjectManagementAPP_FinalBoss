@@ -1,0 +1,60 @@
+{% extends 'adminpanel/supervisor_base.html' %}
+{% load static %}
+
+{% block title %}My Students - Supervisor Dashboard{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h3 class="mb-0"><i class="bi bi-people me-2"></i>My Supervised Students</h3>
+        </div>
+        <div class="col-auto">
+            <span class="badge bg-primary" style="font-size: 0.9rem;">{{ student_profiles.count }} Student{{ student_profiles.count|pluralize }}</span>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Program</th>
+                        <th>Year</th>
+                        <th>Research Title</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for profile in student_profiles %}
+                        <tr>
+                            <td>
+                                <strong>{{ profile.user.get_full_name|default:profile.user.username }}</strong>
+                                <br>
+                                <small class="text-muted">{{ profile.user.email }}</small>
+                            </td>
+                            <td>{{ profile.program }}</td>
+                            <td>{{ profile.year }}</td>
+                            <td>{{ profile.research_title }}</td>
+                            <td>
+                                <a href="{% url 'student_detail' profile.user.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i>View Details
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox"></i>
+                                <p class="mt-2 mb-0">No students assigned yet.</p>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'supervisors/base.html' %}
+{% load static %}
+
+{% block title %}Messages - Supervisor Portal{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+
+<div class="container-fluid mt-4 mb-4">
+    <!-- Messages Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="mb-1">
+                <i class="bi bi-chat-dots me-2"></i>Messages
+            </h2>
+            <p class="text-muted">Communicate with your supervised students</p>
+        </div>
+    </div>
+
+    <!-- Messages Content -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0">
+                            <i class="bi bi-chat-dots me-2"></i>Student Conversations
+                        </h5>
+                        <span class="badge bg-info">{{ conversations|length }} Student{{ conversations|length|pluralize }}</span>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    {% if conversations %}
+                        <div class="list-group list-group-flush">
+                            {% for student_profile, last_message in conversations %}
+                                <div class="list-group-item list-group-item-action p-3">
+                                    <div class="d-flex align-items-start justify-content-between">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">
+                                                <i class="bi bi-person me-2"></i>
+                                                {{ student_profile.user.get_full_name|default:student_profile.user.username }}
+                                            </h6>
+                                            <small class="text-muted d-block mb-2">{{ student_profile.user.email }}</small>
+                                            
+                                            <!-- Last Message Preview -->
+                                            {% if last_message %}
+                                                <div class="alert alert-light mb-0 py-2 px-3" style="border-left: 3px solid #0d6efd;">
+                                                    <small>
+                                                        <strong>{{ last_message.sender.get_full_name|default:last_message.sender.username }}:</strong>
+                                                        {{ last_message.message|truncatewords:15 }}
+                                                    </small>
+                                                    <br>
+                                                    <small class="text-muted">{{ last_message.timestamp|timesince }} ago</small>
+                                                </div>
+                                            {% else %}
+                                                <small class="text-muted">No messages yet</small>
+                                            {% endif %}
+                                        </div>
+
+                                        <!-- View Details Button -->
+                                        <div class="ms-3">
+                                            <a href="{% url 'supervisor_student_detail' student_profile.user.id %}" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-chat-dots me-1"></i>Open Chat
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-chat-left-dots" style="font-size: 3rem; color: #ccc;"></i>
+                            <p class="text-muted mt-3 mb-2">No conversations yet</p>
+                            <small class="text-muted">Messages from students will appear here when they start a conversation with you.</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

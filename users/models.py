@@ -23,6 +23,7 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
+        ('supervisor', 'Supervisor'),
         ('manager', 'Project Manager'),
         ('staff', 'Staff'),
         ('student', 'Student'),
