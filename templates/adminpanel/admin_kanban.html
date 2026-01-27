@@ -786,6 +786,13 @@
                 priorityElement.className = `task-priority priority-${task.priority}`;
                 priorityElement.textContent = `${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority`;
                 
+                // Progress
+                const progressElement = document.createElement('div');
+                progressElement.className = 'task-progress';
+                progressElement.innerHTML = `<span class="badge bg-success">📊 ${task.progress || 0}%</span>`;
+                progressElement.style.marginTop = '8px';
+                progressElement.style.marginBottom = '8px';
+                
                 // Tags
                 const tagsElement = document.createElement('div');
                 tagsElement.className = 'task-tags';
@@ -877,6 +884,7 @@
                 taskElement.appendChild(descriptionElement);
                 taskElement.appendChild(dueDateElement);
                 taskElement.appendChild(priorityElement);
+                taskElement.appendChild(progressElement);
                 taskElement.appendChild(tagsElement);
                 taskElement.appendChild(subtaskContainer);
                 taskElement.appendChild(actionsElement);

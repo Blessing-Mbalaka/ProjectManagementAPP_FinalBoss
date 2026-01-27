@@ -55,6 +55,14 @@ class Task(models.Model):
         ('done', 'Done'),
     ]
 
+    # Map task status to progress percentage
+    STATUS_TO_PROGRESS = {
+        'todo': 0,
+        'in_progress': 33,
+        'review': 66,
+        'done': 100,
+    }
+
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks', null=True, blank=True)
     parent_task = models.ForeignKey('self', null=True, blank=True, related_name='subtasks', on_delete=models.CASCADE)
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='assigned_tasks', null=True, blank=True)
@@ -69,6 +77,14 @@ class Task(models.Model):
     
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        """Auto-calculate progress based on task status"""
+        # Map status to progress percentage
+        if self.status in self.STATUS_TO_PROGRESS:
+            self.progress = self.STATUS_TO_PROGRESS[self.status]
+        
+        super().save(*args, **kwargs)
 
     
 class DailyTask(models.Model):

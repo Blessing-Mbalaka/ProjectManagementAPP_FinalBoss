@@ -195,7 +195,8 @@ body {
                         </div>
                         <div class="col-md-6">
                             <label for="{{ task_form.due_date.id_for_label }}" class="form-label fw-bold">Due Date</label>
-                            {{ task_form.due_date|add_class:"form-control" }}
+                            <input type="date" id="{{ task_form.due_date.id_for_label }}" name="{{ task_form.due_date.name }}" class="form-control" {% if task_form.due_date.value %}value="{{ task_form.due_date.value }}"{% endif %}>
+                            <small class="text-muted d-block mt-1">Select a date using the calendar</small>
                             {% if task_form.due_date.errors %}
                             <div class="invalid-feedback d-block">
                                 {% for error in task_form.due_date.errors %}{{ error }}{% endfor %}
@@ -248,6 +249,7 @@ body {
                     <th>Status</th>
                     <th>Priority</th>
                     <th>Type</th>
+                    <th>Progress</th>
                     <th>Due Date</th>
                     <th>Assigned To</th>
                     <th>Parent Task</th>
@@ -270,6 +272,7 @@ body {
                     </td>
                     <td>{{ task.priority }}</td>
                     <td>{{ task.task_type }}</td>
+                    <td><span class="badge bg-success">📊 {{ task.progress }}%</span></td>
                     <td>{{ task.due_date|default:"—" }}</td>
                     <td>{% if task.assigned_to %}
                         {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}
@@ -329,7 +332,8 @@ body {
             </div>
             <div class="mb-3">
                 <label for="id_due_date" class="form-label">Due Date</label>
-                {{ project_form.due_date|add_class:"form-control" }}
+                <input type="date" id="id_due_date" name="due_date" class="form-control" {% if project_form.due_date.value %}value="{{ project_form.due_date.value }}"{% endif %}>
+                <small class="text-muted d-block mt-1">Select a date using the calendar</small>
             </div>
         </div>
         <div class="modal-footer">
