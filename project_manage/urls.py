@@ -16,9 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.views.static import serve
 from django.conf import settings
 from adminpanel.views import overview
+from adminpanel.views_media import get_media_file
 from users.views import login_view
 from projects.views import dashboard
 from manager.views import manager_dashboard
@@ -34,6 +34,6 @@ urlpatterns = [
     path('overview/', overview, name='overview'),
     path('manager_dashboard/', manager_dashboard, name='manager_dashboard'),
     path('manager/', include('manager.urls')),  # Manager-related URLs
-    # Media files serving
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    # Custom media serving with filesystem/database fallback
+    re_path(r'^media/(?P<path>.*)$', get_media_file),
 ]

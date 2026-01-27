@@ -116,6 +116,17 @@ class SystemMedia(models.Model):
         help_text='Soft delete timestamp'
     )
     
+    # Dual-storage fields - backup to database
+    file_blob = models.BinaryField(
+        null=True,
+        blank=True,
+        help_text='File content stored in database (for fallback/backup)'
+    )
+    stored_in_db = models.BooleanField(
+        default=False,
+        help_text='Whether file is backed up in database'
+    )
+    
     class Meta:
         verbose_name = 'System Media'
         verbose_name_plural = 'System Media'
