@@ -103,7 +103,8 @@ def staff_kanban(request):
     }
 
     projects = Project.objects.filter(
-    assignments__team_member__user=request.user
+        Q(assigned_user=request.user) |
+        Q(assignments__team_member__user=request.user)
     ).distinct()
     
     return render(request, 'projects/staff_kanban.html', {
@@ -136,11 +137,13 @@ def staff_create_task(request):
         # if project_name:
         #     project, _ = Project.objects.get_or_create(name=project_name, defaults={'created_by': request.user})
 
+        project = None
         if project_id:
             # Only allow projects the staff is actually assigned to
             project = Project.objects.filter(
-                id=project_id,
-                assignments__team_member__user=request.user
+                Q(assigned_user=request.user) |
+                Q(assignments__team_member__user=request.user),
+                id=project_id
             ).distinct().first()
 
         # Create the task

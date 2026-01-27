@@ -296,13 +296,32 @@ def add_task(request, project_id):
         form = TaskForm(request.POST, project=project)
         if form.is_valid():
             task = form.save(commit=False)
-            task.project = project  # keep this
+            task.project = project
             task.created_by = request.user
             task.save()
             messages.success(request, 'Task created successfully!')
+            return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
         else:
+            # Form has errors - render the page with error messages displayed
             messages.error(request, 'Please fix the errors in the task form.')
-        return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
+            User = get_user_model()
+            projects = Project.objects.filter(
+                Q(created_by=request.user) | Q(assigned_user=request.user)
+            ).distinct()
+            assignments = project.assignments.select_related("team_member__user")
+            assignment_form = AssignmentForm(project=project)
+            project_form = ProjectForm()
+            
+            context = {
+                'projects': projects,
+                'project': project,
+                'assignments': assignments,
+                'assignment_form': assignment_form,
+                'task_form': form,  # Pass the form WITH errors
+                'project_form': project_form,
+            }
+            return render(request, 'manager/assign.html', context)
+    
     return redirect('assign_projects')
 
 

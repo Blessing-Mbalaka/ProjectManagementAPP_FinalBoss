@@ -134,17 +134,88 @@ body {
                     <i class="bi bi-list-task me-2"></i> Add Task for "{{ project.name }}"
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{% url 'add_task' project.id %}">
+                    <!-- Display form-level errors if any -->
+                    {% if task_form.non_field_errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Error:</strong>
+                        {% for error in task_form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{% url 'add_task' project.id %}" novalidate>
                     {% csrf_token %}
-                    <div class="mb-2">{{ task_form.title }}</div>
-                    <div class="mb-2">{{ task_form.assigned_to }}</div>
-                    <div class="mb-2">{{ task_form.priority }}</div>
-                    <div class="mb-2">{{ task_form.status }}</div>
-                    <div class="mb-2">{{ task_form.task_type }}</div>
-                    <div class="mb-2">{{ task_form.due_date }}</div>
-                    <div class="mb-2">{{ task_form.parent_task }}</div>
-                    <div class="mb-2">
-                        <button type="submit" class="btn btn-success">Add Task</button>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ task_form.title.id_for_label }}" class="form-label fw-bold">Title <span class="text-danger">*</span></label>
+                            {{ task_form.title|add_class:"form-control" }}
+                            {% if task_form.title.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in task_form.title.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ task_form.assigned_to.id_for_label }}" class="form-label fw-bold">Assigned To</label>
+                            {{ task_form.assigned_to|add_class:"form-select" }}
+                            {% if task_form.assigned_to.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in task_form.assigned_to.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ task_form.priority.id_for_label }}" class="form-label fw-bold">Priority</label>
+                            {{ task_form.priority|add_class:"form-select" }}
+                            {% if task_form.priority.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in task_form.priority.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ task_form.status.id_for_label }}" class="form-label fw-bold">Status</label>
+                            {{ task_form.status|add_class:"form-select" }}
+                            {% if task_form.status.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in task_form.status.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ task_form.task_type.id_for_label }}" class="form-label fw-bold">Task Type</label>
+                            {{ task_form.task_type|add_class:"form-select" }}
+                            {% if task_form.task_type.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in task_form.task_type.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ task_form.due_date.id_for_label }}" class="form-label fw-bold">Due Date</label>
+                            {{ task_form.due_date|add_class:"form-control" }}
+                            {% if task_form.due_date.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in task_form.due_date.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ task_form.parent_task.id_for_label }}" class="form-label fw-bold">Parent Task <small class="text-muted">(Optional - for subtasks)</small></label>
+                            {{ task_form.parent_task|add_class:"form-select" }}
+                            {% if task_form.parent_task.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in task_form.parent_task.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="bi bi-plus-circle me-2"></i>Add Task
+                            </button>
+                        </div>
                     </div>
                     </form>
                 </div>

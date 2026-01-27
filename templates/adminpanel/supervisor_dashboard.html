@@ -22,7 +22,7 @@
                 <tbody>
                     {% for profile in student_profiles %}
                         <tr>
-                            <td>{{ profile.user.get_full_name }}</td>
+                            <td>{{ profile.user.username }}</td>
                             <td>{{ profile.program }}</td>
                             <td>{{ profile.year }}</td>
                             <td>{{ profile.research_title }}</td>

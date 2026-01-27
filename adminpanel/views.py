@@ -6,9 +6,11 @@ from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedba
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
+import csv
+import io
 from projects.models import Project, Submission, StudentProfile, Meeting, ChatMessage, Task, Assignment
 from django.contrib.auth import get_user_model
-from .forms import SupervisorFeedbackForm, NotificationForm
+from .forms import SupervisorFeedbackForm, NotificationForm, ProjectForm
 from django.http import JsonResponse, HttpResponseBadRequest
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum, Count, Q
@@ -21,6 +23,10 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.db import models
+from django.views.decorators.http import require_http_methods
+from projects.models import StudentProfile
+import csv
+import io
 
 
 @login_required
@@ -69,7 +75,7 @@ def register_users(request):
 @login_required
 def overview(request):
     User = get_user_model()
-    users = User.objects.all()
+    users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
 
     projects = Project.objects.prefetch_related(
         'tasks',
@@ -274,26 +280,35 @@ def edit_user(request, user_id):
 @login_required
 @user_passes_test(lambda u: u.role == 'admin')
 def assign_project(request):
+    """Assign an existing project to a staff member"""
     if request.method == 'POST':
-        name = request.POST.get('project_name')
-        type = request.POST.get('project_type')
-        status = request.POST.get('status')
+        project_id = request.POST.get('project_id')
         assigned_user_id = request.POST.get('assigned_user')
         description = request.POST.get('description', '')
-        due_date = request.POST.get('due_date')
         
+        # Validate project exists
+        project = get_object_or_404(Project, id=project_id)
+        
+        # Validate user exists
         assigned_user = get_object_or_404(get_user_model(), id=assigned_user_id)
-
-        Project.objects.create(
-            name=name,
-            project_type=type,
-            status=status,
-            assigned_user=assigned_user,
-            description=description,
-            created_by=request.user,
-            due_date=due_date
-        )
+        
+        # Update project assignment and description
+        project.assigned_user = assigned_user
+        if description:
+            project.description = description
+        project.save()
+        
+        messages.success(request, f"Project '{project.name}' assigned to {assigned_user.get_full_name() or assigned_user.username}!")
         return redirect('overview')
+    
+    # GET request - provide list of projects and users
+    projects = Project.objects.all().order_by('-created_at')
+    users = get_user_model().objects.filter(is_active=True).order_by('first_name', 'last_name')
+    
+    return render(request, 'adminpanel/overview.html', {
+        'projects': projects,
+        'users': users
+    })
     
 @login_required
 def gantt_data_api(request):
@@ -636,3 +651,216 @@ def create_notification(request):
         # send back to Overview (where the modal lives)
         return redirect('overview')
     return redirect('overview')
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+@require_http_methods(["POST"])
+def load_student_manual(request):
+    """Load a single student manually via modal form (non-destructive)"""
+    try:
+        email = request.POST.get('email', '').strip()
+        program = request.POST.get('program', '').strip()
+        year = request.POST.get('year', '').strip()
+        research_title = request.POST.get('research_title', '').strip()
+        
+        if not all([email, program, year, research_title]):
+            messages.error(request, "All fields are required.")
+            return redirect('overview')
+        
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            messages.error(request, f"User with email '{email}' does not exist.")
+            return redirect('overview')
+        
+        # Non-destructive: only create or update if new
+        student_profile, created = StudentProfile.objects.get_or_create(
+            user=user,
+            defaults={
+                'supervisor': request.user,
+                'program': program,
+                'year': year,
+                'research_title': research_title,
+                'co_supervisor': request.POST.get('co_supervisor', '').strip() or None,
+            }
+        )
+        
+        if created:
+            messages.success(request, f"Added {user.get_full_name()} as supervised student.")
+        else:
+            messages.warning(request, f"{user.get_full_name()} already registered.")
+        
+        return redirect('supervisor_dashboard')
+        
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        return redirect('overview')
+
+
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+@require_http_methods(["POST"])
+def load_students_csv(request):
+    """Load multiple students from CSV file (non-destructive)"""
+    try:
+        if 'csv_file' not in request.FILES:
+            messages.error(request, "No CSV file provided.")
+            return redirect('overview')
+        
+        csv_file = request.FILES['csv_file']
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, "Please upload a CSV file.")
+            return redirect('overview')
+        
+        decoded_file = csv_file.read().decode('utf-8')
+        reader = csv.DictReader(io.StringIO(decoded_file))
+        
+        required_fields = {'email', 'program', 'year', 'research_title'}
+        if not required_fields.issubset(set(reader.fieldnames or [])):
+            messages.error(request, "CSV missing required columns: email, program, year, research_title")
+            return redirect('overview')
+        
+        created_count = 0
+        skipped_count = 0
+        errors = []
+        
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                email = row.get('email', '').strip()
+                program = row.get('program', '').strip()
+                year = row.get('year', '').strip()
+                research_title = row.get('research_title', '').strip()
+                
+                if not all([email, program, year, research_title]):
+                    errors.append(f"Row {row_num}: Missing required fields")
+                    continue
+                
+                try:
+                    user = CustomUser.objects.get(email=email)
+                except CustomUser.DoesNotExist:
+                    errors.append(f"Row {row_num}: User '{email}' not found")
+                    continue
+                
+                student_profile, created = StudentProfile.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'supervisor': request.user,
+                        'program': program,
+                        'year': year,
+                        'research_title': research_title,
+                        'co_supervisor': row.get('co_supervisor', '').strip() or None,
+                    }
+                )
+                
+                if created:
+                    created_count += 1
+                else:
+                    skipped_count += 1
+                    
+            except Exception as e:
+                errors.append(f"Row {row_num}: {str(e)}")
+        
+        if created_count > 0:
+            messages.success(request, f"Added {created_count} new student(s).")
+        if skipped_count > 0:
+            messages.info(request, f"Skipped {skipped_count} existing student(s).")
+        
+        for error in errors[:5]:
+            messages.error(request, error)
+        
+        return redirect('supervisor_dashboard')
+        
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        return redirect('overview')
+
+
+# ============================================================================
+# PROJECT MANAGEMENT VIEWS
+# ============================================================================
+
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+def create_project(request):
+    """Create a new project via AJAX or form submission"""
+    if request.method == 'POST':
+        form = ProjectForm(request.POST)
+        if form.is_valid():
+            project = form.save(commit=False)
+            project.created_by = request.user
+            project.save()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'Project created successfully', 'project_id': project.id})
+            else:
+                messages.success(request, f"Project '{project.name}' created successfully!")
+                return redirect('overview')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
+            else:
+                messages.error(request, "Form validation failed.")
+                return redirect('overview')
+    
+    form = ProjectForm()
+    return render(request, 'adminpanel/partials/addprojects.html', {'form': form})
+
+
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+def update_project(request, project_id):
+    """Update an existing project"""
+    project = get_object_or_404(Project, id=project_id)
+    
+    if request.method == 'POST':
+        form = ProjectForm(request.POST, instance=project)
+        if form.is_valid():
+            form.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'Project updated successfully'})
+            else:
+                messages.success(request, f"Project '{project.name}' updated successfully!")
+                return redirect('overview')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
+            else:
+                messages.error(request, "Form validation failed.")
+                return redirect('overview')
+    
+    form = ProjectForm(instance=project)
+    return render(request, 'adminpanel/partials/addprojects.html', {'form': form, 'editing': True})
+
+
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+def delete_project(request, project_id):
+    """Delete a project"""
+    project = get_object_or_404(Project, id=project_id)
+    project_name = project.name
+    
+    if request.method == 'POST':
+        try:
+            project.delete()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': f"Project '{project_name}' deleted successfully"})
+            else:
+                messages.success(request, f"Project '{project_name}' deleted successfully!")
+                return redirect('overview')
+        except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': f"Error deleting project: {str(e)}"})
+            else:
+                messages.error(request, f"Error deleting project: {str(e)}")
+                return redirect('overview')
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'})
+    return redirect('overview')
+
+
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+def get_projects_json(request):
+    """Get all projects as JSON for dropdown population"""
+    projects = Project.objects.all().values('id', 'name', 'description', 'project_type', 'status', 'due_date').order_by('-created_at')
+    return JsonResponse({'projects': list(projects)})

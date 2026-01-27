@@ -1,0 +1,511 @@
+{% load static %}
+
+<div class="modal fade" id="addProjectsModal" tabindex="-1" aria-labelledby="addProjectsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header border-bottom">
+        <h5 class="modal-title" id="addProjectsModalLabel">Manage Projects</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs mb-4" id="projectsTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-project" type="button" role="tab" aria-controls="add-project" aria-selected="true">
+              <i class="bi bi-plus-circle"></i> Add New Project
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="list-tab" data-bs-toggle="tab" data-bs-target="#projects-list" type="button" role="tab" aria-controls="projects-list" aria-selected="false">
+              <i class="bi bi-list-ul"></i> Existing Projects
+            </button>
+          </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="projectsTabContent">
+          <!-- Add Project Tab -->
+          <div class="tab-pane fade show active" id="add-project" role="tabpanel" aria-labelledby="add-tab">
+            <form id="addProjectForm" method="POST" action="{% url 'create_project' %}" class="needs-validation">
+              {% csrf_token %}
+              
+              <!-- Alert for errors -->
+              <div id="formErrors" class="alert alert-danger d-none" role="alert">
+                <strong>Error!</strong>
+                <ul id="errorList" class="mb-0 ps-3"></ul>
+              </div>
+
+              <div class="mb-3">
+                <label for="projectName" class="form-label fw-bold">Project Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="projectName" name="name" placeholder="e.g., Website Redesign" required>
+                <small class="form-text text-muted">Project name must be unique</small>
+              </div>
+
+              <div class="mb-3">
+                <label for="projectType" class="form-label fw-bold">Project Type <span class="text-danger">*</span></label>
+                <select class="form-select" id="projectType" name="project_type" required>
+                  <option value="">-- Select project type --</option>
+                  <option value="software">Software Project</option>
+                  <option value="paper">Research Paper</option>
+                  <option value="book">Book</option>
+                </select>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="projectStatus" class="form-label fw-bold">Status <span class="text-danger">*</span></label>
+                    <select class="form-select" id="projectStatus" name="status" required>
+                      <option value="">-- Select status --</option>
+                      <option value="planning">Planning</option>
+                      <option value="in-progress">In Progress</option>
+                      <option value="on-hold">On Hold</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="projectDueDate" class="form-label fw-bold">Due Date</label>
+                    <input type="date" class="form-control" id="projectDueDate" name="due_date">
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="projectDescription" class="form-label fw-bold">Description</label>
+                <textarea class="form-control" id="projectDescription" name="description" rows="3" placeholder="Project description (optional)"></textarea>
+              </div>
+
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-success btn-lg">
+                  <i class="bi bi-plus-lg"></i> Create Project
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Projects List Tab -->
+          <div class="tab-pane fade" id="projects-list" role="tabpanel" aria-labelledby="list-tab">
+            <div id="projectsTableContainer" class="table-responsive">
+              <p class="text-muted text-center py-5">Loading projects...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Project Modal (Hidden, populated dynamically) -->
+<div class="modal fade" id="editProjectModal" tabindex="-1" aria-labelledby="editProjectModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editProjectModalLabel">Edit Project</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editProjectForm" method="POST" class="needs-validation">
+        {% csrf_token %}
+        <input type="hidden" id="editProjectId" name="project_id">
+        <div class="modal-body">
+          <div id="editFormErrors" class="alert alert-danger d-none" role="alert">
+            <strong>Error!</strong>
+            <ul id="editErrorList" class="mb-0 ps-3"></ul>
+          </div>
+
+          <div class="mb-3">
+            <label for="editProjectName" class="form-label fw-bold">Project Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editProjectName" name="name" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="editProjectType" class="form-label fw-bold">Project Type <span class="text-danger">*</span></label>
+            <select class="form-select" id="editProjectType" name="project_type" required>
+              <option value="software">Software Project</option>
+              <option value="paper">Research Paper</option>
+              <option value="book">Book</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="editProjectStatus" class="form-label fw-bold">Status <span class="text-danger">*</span></label>
+                <select class="form-select" id="editProjectStatus" name="status" required>
+                  <option value="planning">Planning</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="on-hold">On Hold</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="editProjectDueDate" class="form-label fw-bold">Due Date</label>
+                <input type="date" class="form-control" id="editProjectDueDate" name="due_date">
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="editProjectDescription" class="form-label fw-bold">Description</label>
+            <textarea class="form-control" id="editProjectDescription" name="description" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .project-table-row:hover {
+    background-color: #f8f9fa;
+  }
+
+  .badge {
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+  }
+
+  .action-btn {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .modal-dialog-scrollable .modal-body {
+    max-height: 70vh;
+  }
+
+  #projectsTableContainer .table {
+    margin-bottom: 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+  }
+
+  .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+</style>
+
+<script>
+  // URL patterns (updated dynamically with project IDs)
+  const getUpdateUrl = (id) => `{% url "admin_update_project" project_id=0 %}`.replace('0', id);
+  const getDeleteUrl = (id) => `{% url "admin_delete_project" project_id=0 %}`.replace('0', id);
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    // Load projects when list tab is clicked
+    document.getElementById('list-tab').addEventListener('click', loadProjects);
+
+    // Handle add project form submission
+    document.getElementById('addProjectForm').addEventListener('submit', handleAddProject);
+
+    // Handle edit project form submission
+    document.getElementById('editProjectForm').addEventListener('submit', handleEditProject);
+  });
+
+  function loadProjects() {
+    const container = document.getElementById('projectsTableContainer');
+    container.innerHTML = '<p class="text-muted text-center py-5">Loading projects...</p>';
+
+    fetch('{% url "admin_get_projects_json" %}')
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to load projects');
+        return response.json();
+      })
+      .then(data => {
+        if (data.projects.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              <p>No projects yet. Create one in the "Add New Project" tab.</p>
+            </div>
+          `;
+        } else {
+          renderProjectsTable(data.projects);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        container.innerHTML = '<div class="alert alert-danger">Error loading projects. Please refresh and try again.</div>';
+      });
+  }
+
+  function renderProjectsTable(projects) {
+    const container = document.getElementById('projectsTableContainer');
+    let html = `
+      <table class="table table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>Project Name</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Due Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    projects.forEach(project => {
+      const dueDate = project.due_date ? new Date(project.due_date).toLocaleDateString() : '--';
+      const statusBadgeClass = getStatusBadgeClass(project.status);
+      const typeDisplay = getProjectTypeDisplay(project.project_type);
+
+      html += `
+        <tr class="project-table-row">
+          <td><strong>${escapeHtml(project.name)}</strong></td>
+          <td><small>${typeDisplay}</small></td>
+          <td><span class="badge ${statusBadgeClass}">${capitalize(project.status.replace('-', ' '))}</span></td>
+          <td>${dueDate}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-primary action-btn" onclick="openEditModal(${project.id}, '${escapeHtml(project.name)}', '${project.project_type}', '${project.status}', '${project.due_date || ''}', '${escapeHtml(project.description || '')}')">
+              <i class="bi bi-pencil"></i> Edit
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger action-btn" onclick="deleteProject(${project.id}, '${escapeHtml(project.name)}')">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `
+        </tbody>
+      </table>
+    `;
+
+    container.innerHTML = html;
+  }
+
+  function openEditModal(id, name, type, status, dueDate, description) {
+    document.getElementById('editProjectId').value = id;
+    document.getElementById('editProjectName').value = name;
+    document.getElementById('editProjectType').value = type;
+    document.getElementById('editProjectStatus').value = status;
+    document.getElementById('editProjectDueDate').value = dueDate;
+    document.getElementById('editProjectDescription').value = description;
+    document.getElementById('editFormErrors').classList.add('d-none');
+
+    const modal = new bootstrap.Modal(document.getElementById('editProjectModal'));
+    modal.show();
+  }
+
+  function handleAddProject(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('addProjectForm');
+    const formData = new FormData(form);
+
+    // Get CSRF token from the form
+    const csrftoken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch('{% url "admin_create_project" %}', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrftoken
+      }
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          // Clear form
+          document.getElementById('addProjectForm').reset();
+          // Hide error alert
+          document.getElementById('formErrors').classList.add('d-none');
+          // Show success message
+          showAlert('Project created successfully!', 'success');
+          // Reload projects in the list tab
+          setTimeout(() => {
+            document.getElementById('list-tab').click();
+          }, 500);
+        } else {
+          // Show errors
+          const errorList = document.getElementById('errorList');
+          errorList.innerHTML = '';
+          if (typeof data.errors === 'object') {
+            for (const [field, messages] of Object.entries(data.errors)) {
+              if (Array.isArray(messages)) {
+                messages.forEach(msg => {
+                  errorList.innerHTML += `<li>${field}: ${msg}</li>`;
+                });
+              } else {
+                errorList.innerHTML += `<li>${field}: ${messages}</li>`;
+              }
+            }
+          } else {
+            errorList.innerHTML = `<li>${data.message || 'An error occurred'}</li>`;
+          }
+          document.getElementById('formErrors').classList.remove('d-none');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        const errorList = document.getElementById('errorList');
+        errorList.innerHTML = `<li>Network error: ${error.message}</li>`;
+        document.getElementById('formErrors').classList.remove('d-none');
+      });
+  }
+
+  function handleEditProject(event) {
+    event.preventDefault();
+
+    const projectId = document.getElementById('editProjectId').value;
+    const form = document.getElementById('editProjectForm');
+    const formData = new FormData(form);
+
+    // Get CSRF token from the form
+    const csrftoken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch(getUpdateUrl(projectId), {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrftoken
+      }
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          bootstrap.Modal.getInstance(document.getElementById('editProjectModal')).hide();
+          showAlert('Project updated successfully!', 'success');
+          loadProjects();
+        } else {
+          const errorList = document.getElementById('editErrorList');
+          errorList.innerHTML = '';
+          if (typeof data.errors === 'object') {
+            for (const [field, messages] of Object.entries(data.errors)) {
+              if (Array.isArray(messages)) {
+                messages.forEach(msg => {
+                  errorList.innerHTML += `<li>${field}: ${msg}</li>`;
+                });
+              } else {
+                errorList.innerHTML += `<li>${field}: ${messages}</li>`;
+              }
+            }
+          } else {
+            errorList.innerHTML = `<li>${data.message || 'An error occurred'}</li>`;
+          }
+          document.getElementById('editFormErrors').classList.remove('d-none');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        const errorList = document.getElementById('editErrorList');
+        errorList.innerHTML = `<li>Network error: ${error.message}</li>`;
+        document.getElementById('editFormErrors').classList.remove('d-none');
+      });
+  }
+
+  function deleteProject(id, name) {
+    if (confirm(`Are you sure you want to delete the project "${name}"? This action cannot be undone.`)) {
+      fetch(getDeleteUrl(id), {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          if (data.success) {
+            showAlert('Project deleted successfully!', 'success');
+            loadProjects();
+          } else {
+            showAlert(data.message || 'Error deleting project', 'danger');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          showAlert(`Error: ${error.message}`, 'danger');
+        });
+    }
+  }
+
+  function getStatusBadgeClass(status) {
+    const classes = {
+      'planning': 'bg-info',
+      'in-progress': 'bg-primary',
+      'on-hold': 'bg-warning',
+      'completed': 'bg-success'
+    };
+    return classes[status] || 'bg-secondary';
+  }
+
+  function getProjectTypeDisplay(type) {
+    const types = {
+      'software': 'Software Project',
+      'paper': 'Research Paper',
+      'book': 'Book'
+    };
+    return types[type] || type;
+  }
+
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function showAlert(message, type) {
+    // Find or create alert container in modal
+    const modal = document.querySelector('.modal.show');
+    if (modal) {
+      const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      `;
+      const modalBody = modal.querySelector('.modal-body');
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = alertHtml;
+      modalBody.insertBefore(tempDiv.firstElementChild, modalBody.firstChild);
+
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        const alerts = modalBody.querySelectorAll('.alert');
+        if (alerts.length > 0) {
+          alerts[0].remove();
+        }
+      }, 5000);
+    }
+  }
+</script>

@@ -24,8 +24,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-_0c$9attqx23_v=(t13^$f8!z)yyn+kz+^)%a=)5r)sg_r8b0u')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
-
+# DEBUG = True os.getenv('DEBUG', 'False').lower() == 'true'
+DEBUG=True
 # Enhanced ALLOWED_HOSTS configuration for Azure Container Apps and other platforms
 ALLOWED_HOSTS = [
     '127.0.0.1', 
@@ -74,7 +74,7 @@ ALLOWED_ADMIN_EMAILS = [
 ]
 
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.consol.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -113,6 +113,12 @@ INSTALLED_APPS = [
     'manager',
 ]
 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -147,16 +153,16 @@ WSGI_APPLICATION = 'project_manage.wsgi.application'
 AUTH_USER_MODEL = 'users.CustomUser'
 
 # Database configuration for both Docker and Azure
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv(
-            'DATABASE_URL',
-            'postgres://postgres:postgres@db:5432/project_management'  # <-- NOTE the host is 'db' here
-        ),
-        conn_max_age=600,
-        ssl_require=False
-    )
-}
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=os.getenv(
+#             'DATABASE_URL',
+#             'postgres://postgres:postgres@db:5432/project_management'  # <-- NOTE the host is 'db' here
+#         ),
+#         conn_max_age=600,
+#         ssl_require=False
+#     )
+# }
 
 
 
