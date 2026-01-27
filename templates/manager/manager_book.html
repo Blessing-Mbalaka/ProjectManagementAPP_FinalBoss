@@ -707,15 +707,8 @@ function viewBookDetails(bookId, event) {
     // Enable print button
     document.getElementById("printSummaryBtn").disabled = false;
 
-    // Clear and populate chapter table body with dummy row or fetched chapters
-    const tbody = document.getElementById("chaptersTableBody");
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="7" class="text-center text-muted py-4">
-                No chapters yet. Click "Add Chapter" to begin adding content.
-            </td>
-        </tr>
-    `;
+    // Load chapters from server
+    loadChapters(bookId);
 
     // Switch to Table View
     document.querySelector('[data-view="table"]').click();
@@ -840,11 +833,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 function loadChapters(bookId) {
+    const tableBody = document.getElementById("chaptersTableBody");
+    
+    // Show loading state
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+                <span class="spinner-border spinner-border-sm me-2"></span>Loading chapters...
+            </td>
+        </tr>
+    `;
+    
     fetch(`/manager/get-chapters/${bookId}/`)
         .then(res => res.json())
         .then(data => {
-            const tableBody = document.getElementById("chaptersTableBody");
             tableBody.innerHTML = "";
+
+            if (!data.chapters || data.chapters.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No chapters yet. Click "Add Chapter" to begin adding content.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
 
             data.chapters.forEach(ch => {
                 const row = document.createElement("tr");
@@ -878,6 +892,16 @@ function loadChapters(bookId) {
                     deleteChapter(chapterId, bookId);
                 });
             });
+        })
+        .catch(err => {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger py-4">
+                        Error loading chapters: ${err.message}
+                    </td>
+                </tr>
+            `;
+            console.error("Error loading chapters:", err);
         });
 }
 
