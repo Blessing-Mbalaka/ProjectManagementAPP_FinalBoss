@@ -22,7 +22,8 @@ from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-from django.db import models
+from django.db import models, connection
+from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 from projects.models import StudentProfile
 import csv
@@ -437,19 +438,32 @@ def finance(request):
 
 @login_required
 def add_cost_centre(request):
+    """Add a new cost centre using raw SQL to avoid decimal conversion errors"""
     if request.method == 'POST':
         name = request.POST.get('name')
         received = request.POST.get('received')
         if name and received:
-            CostCentre.objects.create(
-                name=name,
-                total_received=received,
-                total_spent=0
-            )
-            return JsonResponse({'message': 'Cost Centre added successfully'})
+            try:
+                # Validate decimal conversion
+                total_received = Decimal(received)
+                if total_received.as_tuple().exponent < -2:
+                    return HttpResponseBadRequest('Please enter a valid number with up to 2 decimal places')
+            except (InvalidOperation, ValueError, TypeError):
+                return HttpResponseBadRequest("Invalid number format")
+            
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO adminpanel_costcentre (name, total_received, total_spent)
+                        VALUES (%s, %s, %s)
+                    """, [name, str(total_received), '0.00'])
+                return JsonResponse({'message': 'Cost Centre added successfully'})
+            except Exception as e:
+                return HttpResponseBadRequest(f'Error adding cost centre: {str(e)}')
         return HttpResponseBadRequest('Missing fields')
     return HttpResponseBadRequest('Invalid request')
     
+@login_required
 @login_required
 def add_expenditure(request):
     if request.method == 'POST':
@@ -458,145 +472,334 @@ def add_expenditure(request):
         name = request.POST.get('name')
         category = request.POST.get('category')
 
-        # Safely convert numeric fields
+        # Safely convert numeric fields with validation
         try:
-            amount = Decimal(request.POST.get('amount', '0') or '0.00')
-            oracle = Decimal(request.POST.get('oracle_balance', '0') or '0.00')
-        except InvalidOperation:
-            return HttpResponseBadRequest("Invalid number format")
-
-        cost_centre = CostCentre.objects.get(id=cost_centre_id)
-        Expenditure.objects.create(
-            cost_centre=cost_centre,
-            month=month,
-            name=name,
-            category=category,
-            amount=amount,
-            oracle_balance=oracle
-        )
-        return redirect('finance')
-
-
-@login_required
-def get_expenditures(request, cost_centre_id):
-    cost_centre = CostCentre.objects.get(id=cost_centre_id)
-    expenditures = cost_centre.expenditures.all()
-    data = []
-    for exp in expenditures:
-        data.append({
-            'month': exp.month,
-            'name': exp.name,
-            'category': exp.category,
-            'amount': str(exp.amount),
-            'opening_balance': str(exp.opening_balance),
-            'closing_balance': str(exp.closing_balance),
-            'oracle_balance': str(exp.oracle_balance),
-        })
-    return JsonResponse({'expenditures': data})
-
-@login_required
-def delete_cost_centre(request, pk):
-    cost_centre = get_object_or_404(CostCentre, pk=pk)
-    if request.method == 'POST':
-        cost_centre.delete()
-        return redirect('finance')
-    return render(request, 'adminpanel/confirm_delete.html', {'cost_centre': cost_centre})
-
-@login_required
-def edit_cost_centre(request, pk):
-    cost_centre = get_object_or_404(CostCentre, pk=pk)
-    if request.method == 'POST':
-        cost_centre.name = request.POST.get('name')
-        
-        # Validate and convert total_received with error handling
-        try:
-            total_received_str = request.POST.get('total_received', '0')
-            if not total_received_str or total_received_str.strip() == '':
-                total_received_str = '0.00'
-            total_received = Decimal(total_received_str)
-            # Validate decimal places (max 2)
-            if total_received.as_tuple().exponent < -2:
-                messages.error(request, 'Please enter a valid number with up to 2 decimal places')
-                return redirect('finance')
-            cost_centre.total_received = total_received
-        except InvalidOperation:
-            messages.error(request, 'Invalid amount: please enter a valid number')
-            return redirect('finance')
-        except (ValueError, TypeError):
-            messages.error(request, 'Invalid amount format')
-            return redirect('finance')
-        
-        try:
-            cost_centre.save()
-            messages.success(request, 'Cost Centre updated successfully')
-        except ValidationError as e:
-            messages.error(request, f'Error saving Cost Centre: {e}')
-        
-        return redirect('finance')
-    return redirect('finance')  # fallback if GET request
-
-@login_required
-def edit_expenditure(request, pk):
-    expenditure = get_object_or_404(Expenditure, pk=pk)
-    if request.method == 'POST':
-        expenditure.month = request.POST.get('month')
-        expenditure.name = request.POST.get('name')
-        expenditure.category = request.POST.get('category')
-        
-        # Validate and convert amount with error handling
-        try:
-            amount_str = request.POST.get('amount', '0')
-            if not amount_str or amount_str.strip() == '':
-                amount_str = '0.00'
+            amount_str = request.POST.get('amount', '0') or '0.00'
             amount = Decimal(amount_str)
+            
             # Validate decimal places (max 2)
             if amount.as_tuple().exponent < -2:
                 messages.error(request, 'Please enter a valid number with up to 2 decimal places')
                 return redirect('finance')
-            expenditure.amount = amount
-        except InvalidOperation:
-            messages.error(request, 'Invalid amount: please enter a valid number')
-            return redirect('finance')
-        except (ValueError, TypeError):
-            messages.error(request, 'Invalid amount format')
-            return redirect('finance')
-        
-        # Validate and convert oracle_balance with error handling
-        try:
-            oracle_str = request.POST.get('oracle_balance', '0')
-            if not oracle_str or oracle_str.strip() == '':
-                oracle_str = '0.00'
-            oracle_balance = Decimal(oracle_str)
+            
+            oracle_str = request.POST.get('oracle_balance', '0') or '0.00'
+            oracle = Decimal(oracle_str)
+            
             # Validate decimal places (max 2)
-            if oracle_balance.as_tuple().exponent < -2:
-                messages.error(request, 'Please enter a valid Oracle balance with up to 2 decimal places')
+            if oracle.as_tuple().exponent < -2:
+                messages.error(request, 'Please enter a valid oracle balance with up to 2 decimal places')
                 return redirect('finance')
-            expenditure.oracle_balance = oracle_balance
+                
         except InvalidOperation:
-            messages.error(request, 'Invalid Oracle balance: please enter a valid number')
+            messages.error(request, 'Invalid number format: please enter a valid number')
             return redirect('finance')
         except (ValueError, TypeError):
-            messages.error(request, 'Invalid Oracle balance format')
+            messages.error(request, 'Invalid number format')
             return redirect('finance')
-        
+
         try:
-            expenditure.save()
-            messages.success(request, 'Expenditure updated successfully')
-        except ValidationError as e:
-            messages.error(request, f'Error saving Expenditure: {e}')
-        except InvalidOperation as e:
-            messages.error(request, 'Error calculating balance: invalid number format')
+            with connection.cursor() as cursor:
+                # Check if cost centre exists
+                cursor.execute("""
+                    SELECT id, total_spent FROM adminpanel_costcentre WHERE id = %s
+                """, [cost_centre_id])
+                cc_row = cursor.fetchone()
+                
+                if not cc_row:
+                    messages.error(request, 'Cost Centre not found')
+                    return redirect('finance')
+                
+                cc_id, total_spent = cc_row
+                
+                # Calculate opening balance for expenditure
+                opening_balance = Decimal(str(total_spent)) if total_spent else Decimal('0')
+                closing_balance = opening_balance - amount
+                
+                # Insert expenditure
+                cursor.execute("""
+                    INSERT INTO adminpanel_expenditure 
+                    (cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, [cost_centre_id, month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle)])
+                
+                # Update cost centre total_spent
+                new_total = opening_balance + amount
+                cursor.execute("""
+                    UPDATE adminpanel_costcentre 
+                    SET total_spent = %s
+                    WHERE id = %s
+                """, [str(new_total), cost_centre_id])
+                
+                messages.success(request, 'Expenditure added successfully')
+                return redirect('finance')
+                
+        except InvalidOperation:
+            messages.error(request, 'Error processing numbers: invalid format')
+            return redirect('finance')
+        except Exception as e:
+            messages.error(request, f'Error adding expenditure: {str(e)}')
+            return redirect('finance')
+
+
+@login_required
+def get_expenditures(request, cost_centre_id):
+    """Get expenditures for a cost centre using raw SQL"""
+    try:
+        data = []
         
+        with connection.cursor() as cursor:
+            # Check if cost centre exists
+            cursor.execute("""
+                SELECT id FROM adminpanel_costcentre WHERE id = %s
+            """, [cost_centre_id])
+            
+            if not cursor.fetchone():
+                return JsonResponse({'error': 'Cost centre not found'}, status=404)
+            
+            # Fetch expenditures
+            cursor.execute("""
+                SELECT id, month, name, category, amount, opening_balance, closing_balance, oracle_balance
+                FROM adminpanel_expenditure
+                WHERE cost_centre_id = %s
+                ORDER BY id
+            """, [cost_centre_id])
+            
+            for row in cursor.fetchall():
+                exp_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance = row
+                
+                # Convert to float safely
+                try:
+                    amount = float(amount) if amount else 0
+                    opening_balance = float(opening_balance) if opening_balance else 0
+                    closing_balance = float(closing_balance) if closing_balance else 0
+                    oracle_balance = float(oracle_balance) if oracle_balance else 0
+                except (ValueError, TypeError):
+                    amount = opening_balance = closing_balance = oracle_balance = 0
+                
+                data.append({
+                    'month': month,
+                    'name': name,
+                    'category': category,
+                    'amount': str(amount),
+                    'opening_balance': str(opening_balance),
+                    'closing_balance': str(closing_balance),
+                    'oracle_balance': str(oracle_balance),
+                })
+        
+        return JsonResponse({'expenditures': data})
+    except Exception as e:
+        return JsonResponse({'error': f'Error fetching expenditures: {str(e)}'}, status=500)
+
+@login_required
+def delete_cost_centre(request, pk):
+    """Delete a cost centre using raw SQL"""
+    try:
+        with connection.cursor() as cursor:
+            # Check if cost centre exists
+            cursor.execute("""
+                SELECT id, name FROM adminpanel_costcentre WHERE id = %s
+            """, [pk])
+            row = cursor.fetchone()
+            
+            if not row:
+                messages.error(request, 'Cost centre not found')
+                return redirect('finance')
+            
+            cost_centre_id, cost_centre_name = row
+            
+            if request.method == 'POST':
+                # Delete associated expenditures first
+                cursor.execute("""
+                    DELETE FROM adminpanel_expenditure WHERE cost_centre_id = %s
+                """, [cost_centre_id])
+                
+                # Delete cost centre
+                cursor.execute("""
+                    DELETE FROM adminpanel_costcentre WHERE id = %s
+                """, [cost_centre_id])
+                
+                messages.success(request, 'Cost centre deleted successfully')
+                return redirect('finance')
+            
+            # For GET request, return a simple confirmation message
+            return render(request, 'adminpanel/confirm_delete.html', {
+                'cost_centre': {'id': cost_centre_id, 'name': cost_centre_name}
+            })
+    except Exception as e:
+        messages.error(request, f'Error processing cost centre: {str(e)}')
         return redirect('finance')
-    return redirect('finance')
+
+@login_required
+def edit_cost_centre(request, pk):
+    """Edit a cost centre using raw SQL"""
+    try:
+        with connection.cursor() as cursor:
+            # Fetch cost centre
+            cursor.execute("""
+                SELECT id, name, total_received FROM adminpanel_costcentre WHERE id = %s
+            """, [pk])
+            row = cursor.fetchone()
+            
+            if not row:
+                messages.error(request, 'Cost centre not found')
+                return redirect('finance')
+            
+            cost_centre_id, old_name, old_total_received = row
+            
+            if request.method == 'POST':
+                name = request.POST.get('name', old_name)
+                
+                # Validate and convert total_received with error handling
+                try:
+                    total_received_str = request.POST.get('total_received', str(old_total_received))
+                    if not total_received_str or total_received_str.strip() == '':
+                        total_received_str = '0.00'
+                    total_received = Decimal(total_received_str)
+                    
+                    # Validate decimal places (max 2)
+                    if total_received.as_tuple().exponent < -2:
+                        messages.error(request, 'Please enter a valid number with up to 2 decimal places')
+                        return redirect('finance')
+                        
+                except InvalidOperation:
+                    messages.error(request, 'Invalid amount: please enter a valid number')
+                    return redirect('finance')
+                except (ValueError, TypeError):
+                    messages.error(request, 'Invalid amount format')
+                    return redirect('finance')
+                
+                try:
+                    # Update cost centre
+                    cursor.execute("""
+                        UPDATE adminpanel_costcentre 
+                        SET name = %s, total_received = %s
+                        WHERE id = %s
+                    """, [name, str(total_received), cost_centre_id])
+                    
+                    messages.success(request, 'Cost Centre updated successfully')
+                except Exception as e:
+                    messages.error(request, f'Error saving Cost Centre: {str(e)}')
+                
+                return redirect('finance')
+            
+            return redirect('finance')
+    except Exception as e:
+        messages.error(request, f'Error processing cost centre: {str(e)}')
+        return redirect('finance')
+
+@login_required
+def edit_expenditure(request, pk):
+    """Edit an expenditure using raw SQL"""
+    try:
+        with connection.cursor() as cursor:
+            # Fetch expenditure
+            cursor.execute("""
+                SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance
+                FROM adminpanel_expenditure WHERE id = %s
+            """, [pk])
+            row = cursor.fetchone()
+            
+            if not row:
+                messages.error(request, 'Expenditure not found')
+                return redirect('finance')
+            
+            exp_id, cost_centre_id, old_month, old_name, old_category, old_amount, old_opening_balance, old_oracle_balance = row
+            
+            if request.method == 'POST':
+                month = request.POST.get('month', old_month)
+                name = request.POST.get('name', old_name)
+                category = request.POST.get('category', old_category)
+                
+                # Validate and convert amount with error handling
+                try:
+                    amount_str = request.POST.get('amount', str(old_amount))
+                    if not amount_str or amount_str.strip() == '':
+                        amount_str = '0.00'
+                    amount = Decimal(amount_str)
+                    
+                    # Validate decimal places (max 2)
+                    if amount.as_tuple().exponent < -2:
+                        messages.error(request, 'Please enter a valid number with up to 2 decimal places')
+                        return redirect('finance')
+                        
+                except InvalidOperation:
+                    messages.error(request, 'Invalid amount: please enter a valid number')
+                    return redirect('finance')
+                except (ValueError, TypeError):
+                    messages.error(request, 'Invalid amount format')
+                    return redirect('finance')
+                
+                # Validate and convert oracle_balance with error handling
+                try:
+                    oracle_str = request.POST.get('oracle_balance', str(old_oracle_balance))
+                    if not oracle_str or oracle_str.strip() == '':
+                        oracle_str = '0.00'
+                    oracle_balance = Decimal(oracle_str)
+                    
+                    # Validate decimal places (max 2)
+                    if oracle_balance.as_tuple().exponent < -2:
+                        messages.error(request, 'Please enter a valid Oracle balance with up to 2 decimal places')
+                        return redirect('finance')
+                        
+                except InvalidOperation:
+                    messages.error(request, 'Invalid Oracle balance: please enter a valid number')
+                    return redirect('finance')
+                except (ValueError, TypeError):
+                    messages.error(request, 'Invalid Oracle balance format')
+                    return redirect('finance')
+                
+                try:
+                    # Calculate closing balance
+                    opening_balance = Decimal(str(old_opening_balance))
+                    closing_balance = opening_balance - amount
+                    
+                    # Update expenditure
+                    cursor.execute("""
+                        UPDATE adminpanel_expenditure
+                        SET month = %s, name = %s, category = %s, amount = %s, 
+                            opening_balance = %s, closing_balance = %s, oracle_balance = %s
+                        WHERE id = %s
+                    """, [month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle_balance), exp_id])
+                    
+                    messages.success(request, 'Expenditure updated successfully')
+                except InvalidOperation:
+                    messages.error(request, 'Error calculating balance: invalid number format')
+                except Exception as e:
+                    messages.error(request, f'Error saving Expenditure: {str(e)}')
+                
+                return redirect('finance')
+            
+            return redirect('finance')
+    except Exception as e:
+        messages.error(request, f'Error processing expenditure: {str(e)}')
+        return redirect('finance')
 
 @login_required
 def delete_expenditure(request, pk):
-    expenditure = get_object_or_404(Expenditure, pk=pk)
-    if request.method == 'POST':
-        expenditure.delete()
+    """Delete an expenditure using raw SQL"""
+    try:
+        with connection.cursor() as cursor:
+            # Check if expenditure exists
+            cursor.execute("""
+                SELECT id FROM adminpanel_expenditure WHERE id = %s
+            """, [pk])
+            
+            if not cursor.fetchone():
+                messages.error(request, 'Expenditure not found')
+                return redirect('finance')
+            
+            if request.method == 'POST':
+                cursor.execute("""
+                    DELETE FROM adminpanel_expenditure WHERE id = %s
+                """, [pk])
+                
+                messages.success(request, 'Expenditure deleted successfully')
+                return redirect('finance')
+            
+            return redirect('finance')
+    except Exception as e:
+        messages.error(request, f'Error deleting expenditure: {str(e)}')
         return redirect('finance')
-    return redirect('finance')
 
 
 @login_required
