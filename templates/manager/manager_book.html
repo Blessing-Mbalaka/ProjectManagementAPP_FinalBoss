@@ -1147,14 +1147,25 @@ function dropBook(event, newStatus) {
         },
         body: JSON.stringify(bookData)
     })
-    .then(res => res.json())
+    .then(res => {
+        console.log("Response status:", res.status);
+        return res.json();
+    })
     .then(result => {
         console.log("Server response:", result);
+        console.log("Response success:", result.success);
+        
         if (result.success) {
+            console.log("Update successful - new status should be:", result.new_status || newStatus);
             // Update the card's data-status and move it
             bookCard.dataset.status = newStatus;
             bookCard.parentElement.removeChild(bookCard);
-            document.getElementById(`${newStatus}-column`).appendChild(bookCard);
+            const targetColumn = document.getElementById(`${newStatus}-column`);
+            console.log("Target column:", targetColumn);
+            if (targetColumn) {
+                targetColumn.appendChild(bookCard);
+                console.log("Card successfully moved to new column");
+            }
             console.log("Card moved successfully and saved to database");
             
             // Show saved notification

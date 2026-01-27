@@ -698,17 +698,24 @@ def edit_book(request, book_id):
         if request.method == 'POST':
             data = json.loads(request.body)
             print(f"DEBUG: Received data for book {book_id}: {data}")
+            print(f"DEBUG: Old status: {book.status}")
+            
             form = BookForm(data, instance=book)
             if form.is_valid():
-                form.save()
-                print(f"DEBUG: Book {book_id} saved successfully with status: {book.status}")
-                return JsonResponse({'success': True})
+                updated_book = form.save()
+                updated_book.refresh_from_db()
+                print(f"DEBUG: Book {book_id} saved successfully")
+                print(f"DEBUG: New status in DB: {updated_book.status}")
+                return JsonResponse({'success': True, 'book_id': book_id, 'new_status': updated_book.status})
             else:
                 print(f"DEBUG: Form validation failed: {form.errors}")
-                return JsonResponse({'success': False, 'errors': form.errors})
+                print(f"DEBUG: Form clean errors: {form.non_field_errors()}")
+                return JsonResponse({'success': False, 'errors': dict(form.errors)})
         return JsonResponse({'success': False, 'message': 'Invalid method'})
     except Exception as e:
         print(f"DEBUG: Error in edit_book: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)})
 
 @csrf_exempt
