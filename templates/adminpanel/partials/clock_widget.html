@@ -1,0 +1,175 @@
+<!-- Clock In/Out Widget -->
+<div class="card clock-widget">
+    <div class="card-body text-center">
+        <h5 class="card-title mb-4">
+            <i class="bi bi-clock"></i> Time Tracking
+        </h5>
+        
+        <!-- Status Display -->
+        <div id="clockStatus" class="mb-4">
+            <div class="spinner-border text-primary d-none" id="clockSpinner" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div id="statusText" style="font-size: 1.1rem; font-weight: 600;">
+                Loading...
+            </div>
+            <div id="timeDisplay" style="font-size: 0.9rem; color: #666; margin-top: 8px;">
+            </div>
+        </div>
+        
+        <!-- Clock Buttons -->
+        <div class="d-grid gap-2">
+            <button id="clockInBtn" class="btn btn-success btn-lg d-none" onclick="clockIn()">
+                <i class="bi bi-play-circle"></i> Clock In
+            </button>
+            <button id="clockOutBtn" class="btn btn-danger btn-lg d-none" onclick="clockOut()">
+                <i class="bi bi-stop-circle"></i> Clock Out
+            </button>
+        </div>
+        
+        <!-- Today's Hours -->
+        <div class="mt-4 p-3 bg-light rounded">
+            <small class="text-muted">Today's Hours</small>
+            <div id="todayHours" style="font-size: 1.3rem; font-weight: bold; color: #333;">
+                0h 0m
+            </div>
+        </div>
+        
+        <!-- Last Session -->
+        <div class="mt-3 p-3 bg-light rounded">
+            <small class="text-muted">Session Duration</small>
+            <div id="sessionDuration" style="font-size: 1rem; font-weight: bold; color: #555;">
+                -
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.clock-widget {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-width: 280px;
+}
+
+.clock-widget .btn-success:hover {
+    background-color: #218838;
+}
+
+.clock-widget .btn-danger:hover {
+    background-color: #c82333;
+}
+</style>
+
+<script>
+// Load initial status
+document.addEventListener('DOMContentLoaded', function() {
+    updateClockStatus();
+    setInterval(updateClockStatus, 5000); // Refresh every 5 seconds
+});
+
+function updateClockStatus() {
+    fetch('/adminpanel/clock-status/')
+        .then(response => response.json())
+        .then(data => {
+            const statusText = document.getElementById('statusText');
+            const timeDisplay = document.getElementById('timeDisplay');
+            const clockInBtn = document.getElementById('clockInBtn');
+            const clockOutBtn = document.getElementById('clockOutBtn');
+            const todayHours = document.getElementById('todayHours');
+            const sessionDuration = document.getElementById('sessionDuration');
+            
+            if (data.clocked_in) {
+                statusText.innerHTML = '<span style="color: #28a745;">✓ Clocked In</span>';
+                timeDisplay.innerHTML = `Since: ${data.clock_in_time}`;
+                clockInBtn.classList.add('d-none');
+                clockOutBtn.classList.remove('d-none');
+                sessionDuration.innerHTML = data.duration || '0h 0m';
+            } else {
+                statusText.innerHTML = '<span style="color: #999;">○ Clocked Out</span>';
+                timeDisplay.innerHTML = '';
+                clockInBtn.classList.remove('d-none');
+                clockOutBtn.classList.add('d-none');
+                sessionDuration.innerHTML = '-';
+            }
+            
+            todayHours.innerHTML = data.today_hours || '0h 0m';
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function clockIn() {
+    const btn = document.getElementById('clockInBtn');
+    btn.disabled = true;
+    
+    fetch('/adminpanel/clock-in/', { 
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateClockStatus();
+                showNotification('Clocked in successfully!', 'success');
+            } else {
+                showNotification(data.message, 'warning');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error clocking in', 'danger');
+        })
+        .finally(() => btn.disabled = false);
+}
+
+function clockOut() {
+    const btn = document.getElementById('clockOutBtn');
+    btn.disabled = true;
+    
+    fetch('/adminpanel/clock-out/', { 
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateClockStatus();
+                showNotification('Clocked out successfully! ' + data.duration, 'success');
+            } else {
+                showNotification(data.message, 'warning');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error clocking out', 'danger');
+        })
+        .finally(() => btn.disabled = false);
+}
+
+function showNotification(message, type) {
+    // Simple notification - customize based on your alert system
+    alert(message);
+}
+
+// Helper function to get CSRF token from cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>

@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.db import models
 from projects.models import Project, Task, Assignment,TeamMember
 from projects.forms import ProjectForm, AssignmentForm, TaskForm
-from .models import LearningContent, Template, Paper, Book, Chapter
+from .models import LearningContent, Template, Paper, Book, Chapter, PaperComment
 from .forms import BookForm
 from django.http import JsonResponse
 from django.contrib import messages
@@ -812,4 +812,66 @@ def delete_chapter(request, chapter_id):
         Chapter.objects.filter(id=chapter_id).delete()
         return JsonResponse({"success": True})
     return JsonResponse({"success": False, "error": "Invalid request"})
+
+
+@login_required
+def get_paper_comments(request, paper_id):
+    """Get or add comments for a paper"""
+    paper = get_object_or_404(Paper, id=paper_id)
+    
+    if request.method == 'POST':
+        # Add new comment
+        try:
+            data = json.loads(request.body)
+            text = data.get('text', '').strip()
+            
+            if not text:
+                return JsonResponse({'success': False, 'error': 'Comment cannot be empty'})
+            
+            comment = PaperComment.objects.create(
+                paper=paper,
+                user=request.user,
+                text=text
+            )
+            
+            return JsonResponse({'success': True, 'comment_id': comment.id})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    elif request.method == 'GET':
+        # Fetch comments
+        try:
+            # Get active (non-archived) comments
+            active_comments = PaperComment.objects.filter(
+                paper=paper,
+                archived=False
+            ).order_by('-created_at')
+            
+            # Get archived comments
+            archived_comments = PaperComment.objects.filter(
+                paper=paper,
+                archived=True
+            ).order_by('-created_at')
+            
+            def format_comments(comments):
+                return [{
+                    'id': c.id,
+                    'user': c.user.get_full_name() or c.user.username,
+                    'text': c.text,
+                    'created_at': c.created_at.strftime('%I:%M %p'),  # 2:34 PM format
+                    'created_date': c.created_at.strftime('%b %d, %Y'),  # Feb 03, 2026
+                    'timestamp': c.created_at.isoformat()
+                } for c in comments]
+            
+            return JsonResponse({
+                'success': True,
+                'comments': format_comments(active_comments),
+                'archived_comments': format_comments(archived_comments),
+                'archived_count': archived_comments.count()
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
 

@@ -171,3 +171,91 @@ class Notification(models.Model):
             # when creating, recipients will be saved after instance exists (save_m2m),
             # but we can still hint via form validation; leave model-level minimal.
             pass
+"""Clock In/Out Model - Tracks employee attendance"""
+from django.db import models
+from users.models import CustomUser
+from datetime import timedelta
+
+class ClockInRecord(models.Model):
+    """Records employee clock in/out times"""
+    
+    STATUS_CHOICES = [
+        ('clocked_in', 'Clocked In'),
+        ('clocked_out', 'Clocked Out'),
+    ]
+    
+    employee = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='clock_records'
+    )
+    
+    clock_in_time = models.DateTimeField(auto_now_add=True)
+    clock_out_time = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='clocked_in')
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-clock_in_time']
+        indexes = [
+            models.Index(fields=['employee', '-clock_in_time']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.employee.username} - {self.clock_in_time.strftime('%Y-%m-%d %H:%M')}"
+    
+    @property
+    def duration(self):
+        """Calculate duration between clock in and out"""
+        if self.clock_out_time:
+            return self.clock_out_time - self.clock_in_time
+        from django.utils import timezone
+        return timezone.now() - self.clock_in_time
+    
+    @property
+    def duration_display(self):
+        """Return formatted duration string"""
+        if not self.duration:
+            return "0h 0m"
+        total_seconds = int(self.duration.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        return f"{hours}h {minutes}m"
+    
+    @property
+    def clock_out_time_display(self):
+        if self.clock_out_time:
+            return self.clock_out_time.strftime('%H:%M:%S')
+        return "Still clocked in"
+    
+    def save(self, *args, **kwargs):
+        if self.clock_out_time:
+            self.status = 'clocked_out'
+        else:
+            self.status = 'clocked_in'
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_current_session(cls, employee):
+        """Get current active clock in session"""
+        return cls.objects.filter(employee=employee, clock_out_time__isnull=True).first()
+    
+    @classmethod
+    def get_today_sessions(cls, employee):
+        """Get all clock sessions for today"""
+        from django.utils import timezone
+        today = timezone.now().date()
+        return cls.objects.filter(employee=employee, clock_in_time__date=today)
+    
+    @classmethod
+    def get_today_total_hours(cls, employee):
+        """Calculate total hours worked today"""
+        sessions = cls.get_today_sessions(employee)
+        total_duration = timedelta()
+        for session in sessions:
+            total_duration += session.duration
+        total_seconds = int(total_duration.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        return f"{hours}h {minutes}m"

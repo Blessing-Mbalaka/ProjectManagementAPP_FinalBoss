@@ -39,6 +39,7 @@ urlpatterns = [
     path('edit-chapter/<int:chapter_id>/', views.edit_chapter, name='edit_chapter'),
     path('get-chapters/<int:book_id>/', views.get_chapters, name='get_chapters'),
     path('gantt/data/all/', views.manager_gantt_all_data, name='manager_gantt_all_data'),
+    path('paper/<int:paper_id>/comments/', views.get_paper_comments, name='get_paper_comments'),
 ]
 
 

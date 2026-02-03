@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import CostCentre, Expenditure, Notification, SupervisorProfile, SupervisorFeedback
+from .models import CostCentre, Expenditure, Notification, SupervisorProfile, SupervisorFeedback, ClockInRecord
+
 from .media_models import SystemMedia
 
 # Register SystemMedia model
@@ -36,3 +37,12 @@ class SystemMediaAdmin(admin.ModelAdmin):
     def related_model_name(self, obj):
         return obj.related_model_name or 'N/A'
     related_model_name.short_description = 'Related Model'
+
+
+
+@admin.register(ClockInRecord)
+class ClockInRecordAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'clock_in_time', 'status', 'duration_display')
+    list_filter = ('status', 'clock_in_time')
+    search_fields = ('employee__username',)
+    readonly_fields = ('clock_in_time', 'duration_display')

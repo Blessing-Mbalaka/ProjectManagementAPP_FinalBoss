@@ -1,5 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
+
+#Here  is the Default Django User_ROLE_VALIDATION.
 from django.contrib.auth.decorators import login_required, user_passes_test
+
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
 from manager.models import Book, Chapter
@@ -149,7 +152,7 @@ def manage_users(request):
     role_totals = Counter(CustomUser.objects.exclude(role='admin').values_list('role', flat=True))
     role_labels = dict(CustomUser.ROLE_CHOICES)
 
-        # 🛠️ Create a dict of user_id → pre-filled edit form
+        #Create a dict of user_id → pre-filled edit form
     edit_forms = {user.id: CustomUserCreationForm(instance=user) for user in users}
 
     return render(request, 'adminpanel/manage_users.html', {

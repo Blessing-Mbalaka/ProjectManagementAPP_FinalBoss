@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import supervisors
+from .clock_views import clock_in, clock_out, get_clock_status, clock_history
 
 urlpatterns = [
     # Supervisor Portal Routes
@@ -29,8 +30,8 @@ urlpatterns = [
     path('finance/edit-cost-centre/<int:pk>/', views.edit_cost_centre, name='edit_cost_centre'),
     path('finance/edit-expenditure/<int:pk>/', views.edit_expenditure, name='edit_expenditure'),
     path('finance/delete-expenditure/<int:pk>/', views.delete_expenditure, name='delete_expenditure'),
-    # path('admin/user-kanban/<int:user_id>/', views.admin_user_kanban, name='admin_user_kanban'),
-    path('user-kanban/<int:user_id>/', views.admin_user_kanban, name='admin_user_kanban'),
+    path('admin/user-kanban/<int:user_id>/', views.admin_user_kanban, name='admin_user_kanban'),
+    # path('user-kanban/<int:user_id>/', views.admin_user_kanban, name='admin_user_kanban'),
     path('assign-project/', views.assign_project, name='admin_assign_project'),
     path('create-project/', views.create_project, name='admin_create_project'),
     path('update-project/<int:project_id>/', views.update_project, name='admin_update_project'),
@@ -50,4 +51,9 @@ urlpatterns = [
         path('load-student-manual/', views.load_student_manual, name='load_student_manual'),
     path('load-students-csv/', views.load_students_csv, name='load_students_csv'),
     path('notifications/create/', views.create_notification, name='create_notification'),
+    path('clock-in/', clock_in, name='clock_in'),
+    path('clock-out/', clock_out, name='clock_out'),
+    path('clock-status/', get_clock_status, name='clock_status'),
+    path('clock-history/', clock_history, name='clock_history'),
+
 ]
