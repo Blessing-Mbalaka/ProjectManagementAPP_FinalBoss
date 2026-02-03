@@ -420,7 +420,7 @@
       return;
     }
 
-    fetch(`/admin/user-kanban/${userId}/`)
+    fetch(`/adminpanel/user-kanban/${userId}/`)
       .then(response => response.text())
       .then(html => {
         boardArea.innerHTML = html;

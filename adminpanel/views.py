@@ -1015,8 +1015,8 @@ def update_book_status(request, book_id):
 
 def admin_required(view_func):
     return user_passes_test(
-        lambda u: u.is_authenticated and u.role == 'admin',
-        login_url='/login/'  #  app login page
+        lambda u: u.is_authenticated and u.role == 'admin'
+        # login_url='/login/'  # This is breaking code. wierd custom login_url override.
     )(view_func)
 
 @admin_required
