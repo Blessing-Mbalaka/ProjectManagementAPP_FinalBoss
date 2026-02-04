@@ -496,6 +496,109 @@ def finance(request):
     })
 
 @login_required
+@user_passes_test(lambda u: u.role in ['admin', 'financialadmin'])
+def finance_readonly(request):
+    """Read-only finance dashboard for financial admin users"""
+    from django.db import connection
+
+    payment_summary = defaultdict(lambda: {'count': 0, 'total': Decimal('0.00')})
+    payments_by_cc = defaultdict(list)
+    cost_centres_map = {}
+    all_expenditures = []
+    expenditure_summary = defaultdict(lambda: Decimal('0.00'))
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT id, cost_centre_id, amount, description, payment_date
+            FROM adminpanel_costcentrepayment
+            ORDER BY payment_date DESC
+        """)
+        for payment_id, cc_id, amount, description, payment_date in cursor.fetchall():
+            amount_dec = safe_decimal(amount)
+            summary = payment_summary[cc_id]
+            summary['count'] += 1
+            summary['total'] += amount_dec
+            payments_by_cc[cc_id].append({
+                'id': payment_id,
+                'amount': decimal_to_float(amount_dec),
+                'description': description,
+                'payment_date': payment_date
+            })
+
+        cursor.execute("SELECT id, name, moa_amount FROM adminpanel_costcentre ORDER BY name")
+        for cc_id, name, moa_amount in cursor.fetchall():
+            cost_centres_map[cc_id] = {'id': cc_id, 'name': name, 'moa_amount': safe_decimal(moa_amount)}
+
+        cursor.execute("""
+            SELECT id, cost_centre_id, month, name, category, amount, opening_balance
+            FROM adminpanel_expenditure
+            ORDER BY month DESC
+        """)
+        for exp_id, cc_id, month, name, category, amount, opening_balance in cursor.fetchall():
+            amount_dec = safe_decimal(amount)
+            opening_balance_dec = safe_decimal(opening_balance)
+            cc_info = cost_centres_map.get(cc_id, {'id': cc_id, 'name': f'CC {cc_id}', 'moa_amount': Decimal('0')})
+            expenditure_summary[cc_id] += amount_dec
+
+            all_expenditures.append({
+                'id': exp_id,
+                'cost_centre_id': cc_id,
+                'cost_centre_name': cc_info['name'],
+                'month': month,
+                'name': name,
+                'category': category,
+                'amount': decimal_to_float(amount_dec),
+                'opening_balance': decimal_to_float(opening_balance_dec),
+            })
+
+    cost_centres = []
+    for cc_id, cc_info in cost_centres_map.items():
+        summary = payment_summary[cc_id]
+        total_spent = expenditure_summary[cc_id]
+        total_remaining = cc_info['moa_amount'] - total_spent
+        moa_outstanding = cc_info['moa_amount'] - summary['total']
+
+        cost_centres.append({
+            'id': cc_id,
+            'name': cc_info['name'],
+            'payment_count': summary['count'],
+            'get_total_received': decimal_to_float(summary['total']),
+            'total_spent': decimal_to_float(total_spent),
+            'total_remaining': decimal_to_float(total_remaining),
+            'moa_amount': decimal_to_float(cc_info['moa_amount']),
+            'moa_outstanding': decimal_to_float(moa_outstanding),
+        })
+
+    cost_centres.sort(key=lambda x: x['name'])
+
+    category_totals_dict = {}
+    monthly_totals_dict = {}
+    for exp in all_expenditures:
+        category = exp['category']
+        category_totals_dict.setdefault(category, 0)
+        category_totals_dict[category] += exp['amount']
+
+        month = exp['month']
+        monthly_totals_dict.setdefault(month, 0)
+        monthly_totals_dict[month] += exp['amount']
+
+    category_totals = [{'category': cat, 'total': total} for cat, total in sorted(category_totals_dict.items())]
+    monthly_totals = [{'month': month, 'total': total} for month, total in sorted(monthly_totals_dict.items())]
+
+    audit_logs = AuditLog.objects.all().order_by('-timestamp')[:100]
+
+    return render(request, 'adminpanel/finance_readonly.html', {
+        'cost_centres': cost_centres,
+        'all_expenditures': all_expenditures,
+        'category_totals': category_totals,
+        'monthly_totals': monthly_totals,
+        'category_choices': Expenditure.EXPENSE_CATEGORY_CHOICES,
+        'payments_by_cc': payments_by_cc,
+        'audit_logs': audit_logs,
+        'is_readonly': True,
+    })
+
+@login_required
 @login_required
 def add_cost_centre(request):
     """Add a new cost centre with optional initial payment and MOA amount"""
@@ -1118,13 +1221,192 @@ def student_detail_view(request, student_id):
 
 @login_required
 def admin_journal(request):
+    from manager.models import PaperStatusHistory
+    
     internal_papers = Paper.objects.filter(internal_external='internal').order_by('-updated_at')
     external_papers = Paper.objects.filter(internal_external='external').order_by('-updated_at')
+    
+    # Add available statuses for the UI
+    for paper in list(internal_papers) + list(external_papers):
+        paper.available_statuses = paper.get_available_statuses()
     
     return render(request, 'adminpanel/admin_journal.html', {
         'internal_papers': internal_papers,
         'external_papers': external_papers,
+        'internal_statuses': Paper.INTERNAL_STATUSES,
+        'external_statuses': Paper.EXTERNAL_STATUSES,
     })
+
+
+@login_required
+def move_paper_external(request, paper_id):
+    """Move a paper from internal to external with submission details"""
+    from manager.models import PaperStatusHistory
+    
+    paper = get_object_or_404(Paper, id=paper_id)
+    
+    if request.method == 'POST':
+        # Change type to external
+        paper.internal_external = 'external'
+        old_status = paper.status
+        paper.status = 'submitted'
+        paper.submission_date = request.POST.get('submission_date')
+        paper.target_journal = request.POST.get('target_journal')
+        paper.save()
+        
+        # Log status change
+        PaperStatusHistory.objects.create(
+            paper=paper,
+            old_status=old_status,
+            new_status='submitted',
+            changed_by=request.user,
+            reason=f'Moved to external - Target: {paper.target_journal}'
+        )
+        
+        messages.success(request, f"Paper '{paper.title}' moved to external (submitted to {paper.target_journal}).")
+        return redirect('admin_journal')
+    
+    # GET - show form
+    return render(request, 'adminpanel/move_paper_external.html', {'paper': paper})
+
+
+@login_required
+def return_paper_internal(request, paper_id):
+    """Return a paper from external to internal with feedback"""
+    from manager.models import PaperStatusHistory
+    
+    paper = get_object_or_404(Paper, id=paper_id)
+    
+    if request.method == 'POST':
+        # Change type back to internal
+        paper.internal_external = 'internal'
+        old_status = paper.status
+        paper.status = 'returned-feedback'
+        paper.feedback_text = request.POST.get('feedback')
+        paper.decision_date = request.POST.get('decision_date')
+        paper.save()
+        
+        # Log status change
+        PaperStatusHistory.objects.create(
+            paper=paper,
+            old_status=old_status,
+            new_status='returned-feedback',
+            changed_by=request.user,
+            reason='Returned to internal with feedback'
+        )
+        
+        messages.success(request, f"Paper '{paper.title}' returned to internal with feedback.")
+        return redirect('admin_journal')
+    
+    # GET - show form
+    return render(request, 'adminpanel/return_paper_internal.html', {'paper': paper})
+
+@login_required
+def admin_conferences(request):
+    from manager.models import Conference
+    
+    internal_conferences = Conference.objects.filter(internal_external='internal').order_by('-updated_at')
+    external_conferences = Conference.objects.filter(internal_external='external').order_by('-updated_at')
+    
+    return render(request, 'adminpanel/conferences.html', {
+        'internal_conferences': internal_conferences,
+        'external_conferences': external_conferences,
+    })
+
+@login_required
+def add_conference(request):
+    from manager.models import Conference
+    
+    if request.method == 'POST':
+        conference = Conference(
+            title=request.POST.get('conferenceTitle'),
+            conference_name=request.POST.get('conferenceName'),
+            location=request.POST.get('conferenceLocation'),
+            lead_author=request.POST.get('leadAuthor'),
+            co_authors=request.POST.get('coAuthors'),
+            status=request.POST.get('conferenceStatus'),
+            abstract=request.POST.get('conferenceAbstract'),
+            submission_date=request.POST.get('submissionDate') or None,
+            conference_date=request.POST.get('conferenceDate') or None,
+            internal_external=request.POST.get('conferenceType'),
+            created_by=request.user
+        )
+        
+        if request.FILES.get('conferenceFile'):
+            conference.paper = request.FILES['conferenceFile']
+        
+        conference.save()
+        messages.success(request, 'Conference added successfully!')
+        return redirect('admin_conferences')
+    
+    return render(request, 'adminpanel/conferences.html')
+
+@login_required
+def edit_conference(request, conference_id):
+    """Handle conference edit via Django form with validation"""
+    from manager.models import Conference
+    from manager.forms import ConferenceForm
+    from django.http import JsonResponse
+    
+    try:
+        conference = get_object_or_404(Conference, id=conference_id)
+        
+        # Capture old M2M values before form processing
+        old_co_authors = set(conference.co_authors_users.values_list('id', flat=True))
+        old_reviewers = set(conference.assigned_reviewers.values_list('id', flat=True))
+        
+        # Use ConferenceForm for proper validation and handling of all field types
+        form = ConferenceForm(request.POST, request.FILES, instance=conference)
+        
+        if form.is_valid():
+            # Set the changed_by user for signal processing
+            conference._changed_by = request.user
+            
+            # Capture new M2M values after form processes them
+            new_co_authors = set(form.cleaned_data.get('co_authors_users', []).values_list('id', flat=True))
+            new_reviewers = set(form.cleaned_data.get('assigned_reviewers', []).values_list('id', flat=True))
+            
+            # Set M2M change flags
+            if old_co_authors != new_co_authors:
+                conference._co_authors_changed = {
+                    'old': list(conference.co_authors_users.all()),
+                    'new': list(form.cleaned_data.get('co_authors_users', []))
+                }
+            
+            if old_reviewers != new_reviewers:
+                conference._reviewers_changed = {
+                    'old': list(conference.assigned_reviewers.all()),
+                    'new': list(form.cleaned_data.get('assigned_reviewers', []))
+                }
+            
+            # Form.save() automatically handles all field types including ForeignKey and M2M
+            form.save()
+            return JsonResponse({'success': True, 'message': 'Conference updated successfully'})
+        else:
+            # Return form errors as JSON
+            errors = {field: error[0] for field, error in form.errors.items()}
+            return JsonResponse({
+                'success': False,
+                'errors': errors,
+                'message': 'Form validation failed'
+            }, status=400)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+def delete_conference(request, conference_id):
+    from manager.models import Conference
+    
+    try:
+        conference = Conference.objects.get(id=conference_id)
+        conference.delete()
+        messages.success(request, 'Conference deleted successfully!')
+    except Conference.DoesNotExist:
+        messages.error(request, 'Conference not found.')
+    
+    return redirect('admin_conferences')
 
 @login_required
 def admin_book(request):
@@ -1533,13 +1815,13 @@ def user_activity_api(request):
             hours = duration.total_seconds() / 3600
             total_hours += Decimal(str(hours))
             
-            date_key = record.clock_in_time.strftime('%Y-%m-%d')
+            date_key = timezone.localtime(record.clock_in_time).strftime('%Y-%m-%d')
             hours_by_date[date_key] = hours_by_date.get(date_key, 0) + hours
             
-            date_obj = record.clock_in_time.date()
+            date_obj = timezone.localtime(record.clock_in_time).date()
             days_present.add(date_obj)
             
-            day_name = record.clock_in_time.strftime('%A')
+            day_name = timezone.localtime(record.clock_in_time).strftime('%A')
             day_distribution[day_name] += 1
     
     days_present_count = len(days_present)
@@ -1579,7 +1861,7 @@ def user_activity_api(request):
         current_week_start = week_start - timedelta(weeks=week_offset)
         current_week_end = current_week_start + timedelta(days=6)
         
-        week_records = [r for r in clock_records if current_week_start <= r.clock_in_time.date() <= current_week_end]
+        week_records = [r for r in clock_records if current_week_start <= timezone.localtime(r.clock_in_time).date() <= current_week_end]
         
         week_hours = Decimal('0.00')
         week_days = set()
@@ -1588,7 +1870,7 @@ def user_activity_api(request):
             if record.clock_out_time:
                 duration = record.clock_out_time - record.clock_in_time
                 week_hours += Decimal(str(duration.total_seconds() / 3600))
-                week_days.add(record.clock_in_time.date())
+                week_days.add(timezone.localtime(record.clock_in_time).date())
         
         week_number = current_week_start.isocalendar()[1]
         avg_week_hours = float(week_hours) / max(len(week_days), 1) if len(week_days) > 0 else 0
@@ -1605,10 +1887,10 @@ def user_activity_api(request):
     recent_records = []
     for record in clock_records[:20]:
         recent_records.append({
-            'date': record.clock_in_time.strftime('%Y-%m-%d'),
+            'date': timezone.localtime(record.clock_in_time).strftime('%Y-%m-%d'),
             'employee': record.employee.get_full_name() or record.employee.username,
-            'clock_in': record.clock_in_time.strftime('%H:%M:%S'),
-            'clock_out': record.clock_out_time.strftime('%H:%M:%S') if record.clock_out_time else '--',
+            'clock_in': timezone.localtime(record.clock_in_time).strftime('%H:%M:%S'),
+            'clock_out': timezone.localtime(record.clock_out_time).strftime('%H:%M:%S') if record.clock_out_time else '--',
             'duration': record.duration_display,
             'status': record.status
         })
@@ -1624,8 +1906,8 @@ def user_activity_api(request):
     
     for record in clock_records:
         if record.clock_out_time:
-            day_name = record.clock_in_time.strftime('%A')
-            hour = record.clock_in_time.hour
+            day_name = timezone.localtime(record.clock_in_time).strftime('%A')
+            hour = timezone.localtime(record.clock_in_time).hour
             
             if day_name in heatmap_data:
                 duration = (record.clock_out_time - record.clock_in_time).total_seconds() / 3600
@@ -1648,4 +1930,61 @@ def user_activity_api(request):
     return JsonResponse(response_data)
 
 
+@login_required
+def get_conference_form_html(request, conference_id):
+    """Return the rendered Django form HTML for editing a conference"""
+    try:
+        from manager.models import Conference
+        from manager.forms import ConferenceForm
+        
+        conference = get_object_or_404(Conference, id=conference_id)
+        form = ConferenceForm(instance=conference)
+        
+        from django.template.loader import render_to_string
+        html = render_to_string('includes/conference_form.html', {'form': form})
+        
+        return JsonResponse({
+            'success': True,
+            'form_html': html
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})
 
+
+@login_required
+def get_conference_data(request, conference_id):
+    """Return conference data as JSON for populating the edit form"""
+    try:
+        from manager.models import Conference
+        
+        conference = get_object_or_404(Conference, id=conference_id)
+        
+        # Serialize co_authors_users and assigned_reviewers IDs
+        co_authors_ids = list(conference.co_authors_users.values_list('id', flat=True))
+        reviewers_ids = list(conference.assigned_reviewers.values_list('id', flat=True))
+        
+        data = {
+            'id': conference.id,
+            'title': conference.title,
+            'conference_name': conference.conference_name,
+            'location': conference.location or '',
+            'internal_external': conference.internal_external,
+            'status': conference.status,
+            'lead_author': conference.lead_author,
+            'co_authors': conference.co_authors or '',
+            'lead_author_user': conference.lead_author_user_id,
+            'co_authors_users': co_authors_ids,
+            'assigned_reviewers': reviewers_ids,
+            'abstract': conference.abstract or '',
+            'submission_date': conference.submission_date.isoformat() if conference.submission_date else '',
+            'conference_date': conference.conference_date.isoformat() if conference.conference_date else '',
+            'decision_date': conference.decision_date.isoformat() if conference.decision_date else '',
+        }
+        
+        return JsonResponse({'success': True, 'data': data})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})

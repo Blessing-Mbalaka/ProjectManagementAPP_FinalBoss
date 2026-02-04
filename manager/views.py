@@ -6,7 +6,7 @@ from django.db import models
 from projects.models import Project, Task, Assignment,TeamMember
 from projects.forms import ProjectForm, AssignmentForm, TaskForm
 from .models import LearningContent, Template, Paper, Book, Chapter, PaperComment
-from .forms import BookForm
+from .forms import BookForm, PaperForm
 from django.http import JsonResponse
 from django.contrib import messages
 from datetime import datetime
@@ -675,22 +675,54 @@ def delete_paper(request, paper_id):
 @require_POST
 @login_required
 def edit_paper_ajax(request, paper_id):
-    paper = get_object_or_404(Paper, id=paper_id)
+    """Handle paper edit via Django form with validation"""
+    try:
+        paper = get_object_or_404(Paper, id=paper_id)
+        
+        # Capture old M2M values before form processing
+        old_co_authors = set(paper.co_authors_users.values_list('id', flat=True))
+        old_reviewers = set(paper.assigned_reviewers.values_list('id', flat=True))
+        
+        # Use PaperForm for proper validation and handling of all field types
+        form = PaperForm(request.POST, request.FILES, instance=paper)
+        
+        if form.is_valid():
+            # Set the changed_by user for signal processing
+            paper._changed_by = request.user
+            
+            # Capture new M2M values after form processes them
+            new_co_authors = set(form.cleaned_data.get('co_authors_users', []).values_list('id', flat=True))
+            new_reviewers = set(form.cleaned_data.get('assigned_reviewers', []).values_list('id', flat=True))
+            
+            # Set M2M change flags
+            if old_co_authors != new_co_authors:
+                paper._co_authors_changed = {
+                    'old': list(paper.co_authors_users.all()),
+                    'new': list(form.cleaned_data.get('co_authors_users', []))
+                }
+            
+            if old_reviewers != new_reviewers:
+                paper._reviewers_changed = {
+                    'old': list(paper.assigned_reviewers.all()),
+                    'new': list(form.cleaned_data.get('assigned_reviewers', []))
+                }
+            
+            # Form.save() automatically handles all field types including ForeignKey and M2M
+            form.save()
+            return JsonResponse({'success': True, 'message': 'Paper updated successfully'})
+        else:
+            # Return form errors as JSON
+            errors = {field: error[0] for field, error in form.errors.items()}
+            return JsonResponse({
+                'success': False,
+                'errors': errors,
+                'message': 'Form validation failed'
+            }, status=400)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-    paper.title = request.POST.get('paperTitle')
-    paper.status = request.POST.get('paperStatus')
-    paper.version = request.POST.get('currentVersion')
-    paper.lead_author = request.POST.get('leadAuthor')
-    paper.co_authors = request.POST.get('coAuthors')
-    paper.target_journal = request.POST.get('targetJournal')
-    paper.submission_date = request.POST.get('submissionDate') or None
-    paper.abstract = request.POST.get('paperAbstract')
-
-    if request.FILES.get('paperFile'):
-        paper.manuscript = request.FILES['paperFile']
-
-    paper.save()
-    return JsonResponse({'success': True})
 
 @login_required
 def manager_book(request):
@@ -875,3 +907,57 @@ def get_paper_comments(request, paper_id):
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 
+@login_required
+def get_paper_form_html(request, paper_id):
+    """Return the rendered Django form HTML for editing a paper"""
+    try:
+        paper = get_object_or_404(Paper, id=paper_id)
+        form = PaperForm(instance=paper)
+        
+        from django.template.loader import render_to_string
+        html = render_to_string('includes/paper_form.html', {'form': form})
+        
+        return JsonResponse({
+            'success': True,
+            'form_html': html
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def get_paper_data(request, paper_id):
+    """Return paper data as JSON for populating the edit form"""
+    try:
+        paper = get_object_or_404(Paper, id=paper_id)
+        
+        # Serialize co_authors_users and assigned_reviewers IDs
+        co_authors_ids = list(paper.co_authors_users.values_list('id', flat=True))
+        reviewers_ids = list(paper.assigned_reviewers.values_list('id', flat=True))
+        
+        data = {
+            'id': paper.id,
+            'title': paper.title,
+            'paper_type': paper.paper_type,
+            'internal_external': paper.internal_external,
+            'status': paper.status,
+            'version': paper.version,
+            'lead_author': paper.lead_author,
+            'co_authors': paper.co_authors or '',
+            'lead_author_user': paper.lead_author_user_id,
+            'co_authors_users': co_authors_ids,
+            'assigned_reviewers': reviewers_ids,
+            'abstract': paper.abstract or '',
+            'target_journal': paper.target_journal or '',
+            'submission_date': paper.submission_date.isoformat() if paper.submission_date else '',
+            'decision_date': paper.decision_date.isoformat() if paper.decision_date else '',
+            'feedback_text': paper.feedback_text or '',
+        }
+        
+        return JsonResponse({'success': True, 'data': data})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)})

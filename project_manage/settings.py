@@ -75,7 +75,9 @@ ALLOWED_ADMIN_EMAILS = [
 ]
 
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_BACKEND = 'django.core.mail.backends.consol.EmailBackend'
+# Use console backend for development/testing, switch to smtp for production
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Uncomment for production
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -94,10 +96,6 @@ if container_app_hostname:
 custom_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
 if custom_csrf_origins:
     CSRF_TRUSTED_ORIGINS.extend([origin.strip() for origin in custom_csrf_origins.split(',') if origin.strip()])
-
-# For development/testing, disable CSRF if needed (NOT recommended for production)
-if DEBUG and os.getenv('DISABLE_CSRF', 'False').lower() == 'true':
-    MIDDLEWARE = [m for m in MIDDLEWARE if m != 'django.middleware.csrf.CsrfViewMiddleware']
 
 # Application definition
 INSTALLED_APPS = [
@@ -130,6 +128,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# For development/testing, disable CSRF if needed (NOT recommended for production)
+if DEBUG and os.getenv('DISABLE_CSRF', 'False').lower() == 'true':
+    MIDDLEWARE = [m for m in MIDDLEWARE if m != 'django.middleware.csrf.CsrfViewMiddleware']
 
 ROOT_URLCONF = 'project_manage.urls'
 
@@ -186,7 +188,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Johannesburg'
 USE_I18N = True
 USE_TZ = True
 

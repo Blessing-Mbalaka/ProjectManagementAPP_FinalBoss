@@ -19,13 +19,13 @@ def clock_in(request):
         })
     
     # Create new clock in record
-    record = ClockInRecord.objects.create(employee=request.user)
+    record = ClockInRecord.objects.create(employee=request.user, clock_in_time=timezone.now())
     
     return JsonResponse({
         'success': True,
         'message': 'Clocked in successfully',
         'clocked_in': True,
-        'time': record.clock_in_time.strftime('%H:%M:%S')
+        'time': timezone.localtime(record.clock_in_time).strftime('%H:%M:%S')
     })
 
 @login_required
@@ -49,7 +49,7 @@ def clock_out(request):
         'message': 'Clocked out successfully',
         'clocked_in': False,
         'duration': current.duration_display,
-        'time': current.clock_out_time.strftime('%H:%M:%S')
+        'time': timezone.localtime(current.clock_out_time).strftime('%H:%M:%S')
     })
 
 @login_required
@@ -60,7 +60,7 @@ def get_clock_status(request):
     
     return JsonResponse({
         'clocked_in': current is not None,
-        'clock_in_time': current.clock_in_time.strftime('%H:%M:%S') if current else None,
+        'clock_in_time': timezone.localtime(current.clock_in_time).strftime('%H:%M:%S') if current else None,
         'duration': current.duration_display if current else None,
         'today_hours': today_hours
     })
@@ -73,9 +73,9 @@ def clock_history(request):
     history = []
     for record in records:
         history.append({
-            'date': record.clock_in_time.strftime('%Y-%m-%d'),
-            'clock_in': record.clock_in_time.strftime('%H:%M:%S'),
-            'clock_out': record.clock_out_time_display,
+            'date': timezone.localtime(record.clock_in_time).strftime('%Y-%m-%d'),
+            'clock_in': timezone.localtime(record.clock_in_time).strftime('%H:%M:%S'),
+            'clock_out': timezone.localtime(record.clock_out_time).strftime('%H:%M:%S') if record.clock_out_time else '--',
             'duration': record.duration_display,
             'notes': record.notes
         })

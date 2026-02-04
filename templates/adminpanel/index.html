@@ -41,15 +41,18 @@
             </div>
 
             <ul class="sidebar-menu">
+                {% if user.role != 'financialadmin' %}
                 <li><a href="{% url 'overview' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
                 <!-- <li><a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
                 <li><a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a></li> -->
                 <li><a href="{% url 'admin_journal' %}" class="nav-link"><i class="bi bi-file-earmark-text"></i><span>Paper</span></a></li>
+                <li><a href="{% url 'admin_conferences' %}" class="nav-link"><i class="bi bi-megaphone"></i><span>Conferences</span></a></li>
                 <li><a href="{% url 'admin_book' %}" class="nav-link"><i class="bi bi-book"></i><span>Books</span></a></li>
                 <!-- <li><a href="{% url 'admin_ganttchart' %}" class="nav-link"><i class="bi bi-graph-up"></i><span>Project Analytics</span></a></li> -->
-                <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
                 <li><a href="{% url 'supervisor_dashboard' %}" class="nav-link"><i class="bi bi-collection-play"></i><span>Supervision</span></a></li>
                 <li><a href="{% url 'manage_users' %}" class="nav-link"><i class="bi bi-people"></i><span>Manage Users</span></a></li>
+                {% endif %}
+                <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
                 </ul>
 
             <div class="sidebar-footer">

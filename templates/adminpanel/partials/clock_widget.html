@@ -1,5 +1,5 @@
 <!-- Clock In/Out Widget -->
-<div class="card clock-widget">
+<div class="card clock-widget m-3">
     <div class="card-body text-center">
         <h5 class="card-title mb-4">
             <i class="bi bi-clock"></i> Time Tracking
@@ -70,7 +70,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function updateClockStatus() {
     fetch('/adminpanel/clock-status/')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             const statusText = document.getElementById('statusText');
             const timeDisplay = document.getElementById('timeDisplay');
@@ -95,7 +100,14 @@ function updateClockStatus() {
             
             todayHours.innerHTML = data.today_hours || '0h 0m';
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Clock status error:', error);
+            // Show loading failed message
+            const statusText = document.getElementById('statusText');
+            if (statusText) {
+                statusText.innerHTML = '<span style="color: #dc3545;">✗ Status unavailable</span>';
+            }
+        });
 }
 
 function clockIn() {
@@ -109,18 +121,23 @@ function clockIn() {
             'X-CSRFToken': getCookie('csrftoken')
         }
     })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 updateClockStatus();
                 showNotification('Clocked in successfully!', 'success');
             } else {
-                showNotification(data.message, 'warning');
+                showNotification(data.message || 'Failed to clock in', 'warning');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error clocking in', 'danger');
+            console.error('Clock in error:', error);
+            showNotification('Error clocking in: ' + error.message, 'danger');
         })
         .finally(() => btn.disabled = false);
 }
@@ -136,18 +153,23 @@ function clockOut() {
             'X-CSRFToken': getCookie('csrftoken')
         }
     })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 updateClockStatus();
-                showNotification('Clocked out successfully! ' + data.duration, 'success');
+                showNotification('Clocked out successfully! ' + (data.duration || ''), 'success');
             } else {
-                showNotification(data.message, 'warning');
+                showNotification(data.message || 'Failed to clock out', 'warning');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error clocking out', 'danger');
+            console.error('Clock out error:', error);
+            showNotification('Error clocking out: ' + error.message, 'danger');
         })
         .finally(() => btn.disabled = false);
 }

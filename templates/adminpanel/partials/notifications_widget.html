@@ -1,0 +1,147 @@
+<!-- Notification Bell and Dropdown -->
+<div class="notification-widget ms-3">
+    <button 
+        class="btn btn-link position-relative" 
+        id="notificationBell"
+        data-bs-toggle="dropdown" 
+        aria-expanded="false"
+        title="Notifications"
+        style="font-size: 1.3rem; color: #333; text-decoration: none;"
+    >
+        <i class="bi bi-bell"></i>
+        <span 
+            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+            id="notificationBadge"
+            style="display: none;"
+        >
+            <span id="notificationCount">0</span>
+        </span>
+    </button>
+
+    <!-- Notification Dropdown Menu -->
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationBell" id="notificationDropdown">
+        <li><h6 class="dropdown-header">Notifications</h6></li>
+        <li><hr class="dropdown-divider"></li>
+        <li id="notificationsList" style="max-height: 400px; overflow-y: auto;">
+            <a class="dropdown-item text-muted text-center py-3" href="#">
+                <small>No notifications</small>
+            </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-center" href="#" id="viewAllNotifications"><small>View All</small></a></li>
+    </ul>
+</div>
+
+<style>
+    .notification-widget {
+        display: inline-block;
+    }
+    
+    .notification-item {
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .notification-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .notification-item.priority-urgent {
+        border-left: 3px solid #dc3545;
+    }
+    
+    .notification-item.priority-high {
+        border-left: 3px solid #fd7e14;
+    }
+    
+    .notification-item.priority-normal {
+        border-left: 3px solid #0d6efd;
+    }
+    
+    .notification-title {
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
+    
+    .notification-body {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 5px;
+    }
+    
+    .notification-time {
+        font-size: 0.8rem;
+        color: #999;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadNotifications();
+    
+    // Refresh notifications every 30 seconds
+    setInterval(loadNotifications, 30000);
+    
+    // Load on dropdown click
+    document.getElementById('notificationBell').addEventListener('click', loadNotifications);
+});
+
+function loadNotifications() {
+    fetch('{% url "get_user_notifications" %}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayNotifications(data.notifications);
+                updateBadge(data.unread_count);
+            }
+        })
+        .catch(error => console.error('Error loading notifications:', error));
+}
+
+function displayNotifications(notifications) {
+    const notificationsList = document.getElementById('notificationsList');
+    
+    if (notifications.length === 0) {
+        notificationsList.innerHTML = `
+            <a class="dropdown-item text-muted text-center py-3" href="#">
+                <small>No notifications</small>
+            </a>
+        `;
+        return;
+    }
+    
+    notificationsList.innerHTML = notifications.map(notif => `
+        <a class="dropdown-item notification-item priority-${notif.priority}" href="#" onclick="handleNotificationClick(event, ${notif.id})">
+            <div class="notification-title">${notif.title}</div>
+            <div class="notification-body">${notif.body.substring(0, 100)}${notif.body.length > 100 ? '...' : ''}</div>
+            <div class="notification-time">${new Date(notif.created_at).toLocaleDateString()}</div>
+        </a>
+    `).join('');
+}
+
+function updateBadge(count) {
+    const badge = document.getElementById('notificationBadge');
+    const countSpan = document.getElementById('notificationCount');
+    
+    if (count > 0) {
+        countSpan.textContent = count > 99 ? '99+' : count;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function handleNotificationClick(event, notificationId) {
+    event.preventDefault();
+    // Optional: Mark as read and handle navigation
+    fetch(`{% url "mark_notification_read" 0 %}`.replace('/0/', `/${notificationId}/`), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .catch(error => console.error('Error marking notification as read:', error));
+}
+</script>

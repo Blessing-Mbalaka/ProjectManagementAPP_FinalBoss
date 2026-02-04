@@ -74,7 +74,7 @@
                                 {% for paper in internal_papers %}
                                     <tr>
                                     <td>{{ paper.title }}</td>
-                                    <td>{{ paper.lead_author }}{% if paper.co_authors %}, {{ paper.co_authors }}{% endif %}</td>
+                                    <td>{{ paper.get_lead_author_display }}{% if paper.co_authors %}, {{ paper.co_authors }}{% endif %}</td>
                                     <td>{{ paper.status|capfirst }}</td>
                                     <td>{{ paper.version }}</td>
                                     <td>{{ paper.updated_at|date:"Y-m-d" }}</td>
@@ -88,7 +88,7 @@
         data-title="{{ paper.title }}"
         data-status="{{ paper.status }}"
         data-version="{{ paper.version }}"
-        data-lead="{{ paper.lead_author }}"
+        data-lead="{{ paper.get_lead_author_display }}"
         data-co="{{ paper.co_authors }}"
         data-journal="{{ paper.target_journal }}"
         data-submission="{{ paper.submission_date }}"
@@ -139,7 +139,7 @@
                                     {% for paper in external_papers %}
                                         <tr>
                                         <td>{{ paper.title }}</td>
-                                        <td>{{ paper.lead_author }}{% if paper.co_authors %}, {{ paper.co_authors }}{% endif %}</td>
+                                        <td>{{ paper.get_lead_author_display }}{% if paper.co_authors %}, {{ paper.co_authors }}{% endif %}</td>
                                         <td>{{ paper.target_journal }}</td>
                                         <td>{{ paper.status|capfirst }}</td>
                                         <td>{{ paper.submission_date }}</td>
@@ -154,7 +154,7 @@
         data-title="{{ paper.title }}"
         data-status="{{ paper.status }}"
         data-version="{{ paper.version }}"
-        data-lead="{{ paper.lead_author }}"
+        data-lead="{{ paper.get_lead_author_display }}"
         data-co="{{ paper.co_authors }}"
         data-journal="{{ paper.target_journal }}"
         data-submission="{{ paper.submission_date }}"
@@ -278,78 +278,20 @@
 
         <!-- Edit Paper Modal -->
         <div class="modal fade" id="editPaperModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Edit Research Paper</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form id="editPaperForm">
-                            <input type="hidden" id="editPaperId">
-                            <div class="row mb-3">
-                                <div class="col-md-8">
-                                    <label for="editPaperTitle" class="form-label">Paper Title *</label>
-                                    <input type="text" class="form-control" id="editPaperTitle" required>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="editPaperType" class="form-label">Paper Type *</label>
-                                    <select class="form-select" id="editPaperType" name="editPaperType" required disabled>
-                                        <option value="internal">Internal</option>
-                                        <option value="external">External</option>
-                                    </select>
-                                </div>
-                            </div>
+                        <form id="editPaperForm" method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" id="editPaperId" name="paper_id">
                             
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="editPaperStatus" class="form-label">Status *</label>
-                                    <select class="form-select" id="editPaperStatus" name="editPaperStatus" required>
-                                        <option value="draft">Draft</option>
-                                        <option value="in-progress">In Progress</option>
-                                        <option value="review">Internal Review</option>
-                                        <option value="submitted">Submitted</option>
-                                        <option value="accepted">Accepted</option>
-                                        <option value="published">Published</option>
-                                        <option value="rejected">Rejected</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="editCurrentVersion" class="form-label">Current Version *</label>
-                                    <input type="text" class="form-control" id="editCurrentVersion" name="editCurrentVersion" required>
-                                </div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="editLeadAuthor" class="form-label">Lead Author *</label>
-                                    <input type="text" class="form-control" id="editLeadAuthor" name="editLeadAuthor" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="editCoAuthors" class="form-label">Co-Authors</label>
-                                    <input type="text" class="form-control" id="editCoAuthors" name="editCoAuthors" placeholder="Separate with commas">
-                                </div>
-                            </div>
-                            
-                            <div class="row mb-3" id="editJournalInfoRow">
-                                <div class="col-md-6">
-                                    <label for="editTargetJournal" class="form-label">Target Journal/Conference</label>
-                                    <input type="text" class="form-control" id="editTargetJournal" name="editTargetJournal">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="editSubmissionDate" class="form-label">Submission Date</label>
-                                    <input type="date" class="form-control" id="editSubmissionDate" name="editSubmissionDate">
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="editPaperAbstract" class="form-label">Abstract</label>
-                                <textarea class="form-control" id="editPaperAbstract" name="editPaperAbstract" rows="3"></textarea>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="editPaperFile" class="form-label">Upload New Manuscript</label>
-                                <input class="form-control" type="file" id="editPaperFile" name="editPaperFile">
+                            <!-- Dynamic form will be inserted here by JavaScript -->
+                            <div id="editFormContainer">
+                                <p class="text-muted">Loading form...</p>
                             </div>
                             
                             <div class="alert alert-danger d-none" id="editFormError"></div>
@@ -400,60 +342,154 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-    const editButtons = document.querySelectorAll('.editBtn');
+            const editButtons = document.querySelectorAll('.editBtn');
 
-    editButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            document.getElementById('editPaperId').value = button.dataset.id;
-            document.getElementById('editPaperTitle').value = button.dataset.title;
-            document.getElementById('editPaperStatus').value = button.dataset.status;
-            document.getElementById('editCurrentVersion').value = button.dataset.version;
-            document.getElementById('editLeadAuthor').value = button.dataset.lead;
-            document.getElementById('editCoAuthors').value = button.dataset.co;
-            document.getElementById('editTargetJournal').value = button.dataset.journal;
-            document.getElementById('editSubmissionDate').value = button.dataset.submission;
-            document.getElementById('editPaperAbstract').value = button.dataset.abstract;
-            document.getElementById('editPaperType').value = button.dataset.type;
+            editButtons.forEach(button => {
+                button.addEventListener('click', async () => {
+                    const paperId = button.dataset.id;
+                    
+                    // Fetch the form HTML
+                    try {
+                        const formResponse = await fetch(`/manager/paper/${paperId}/form-html/`);
+                        const formData = await formResponse.json();
+                        
+                        if (formData.success) {
+                            // Insert the form HTML into the modal
+                            document.getElementById('editFormContainer').innerHTML = formData.form_html;
+                            document.getElementById('editPaperId').value = paperId;
+                            
+                            // Fetch the paper data to populate the form
+                            const dataResponse = await fetch(`/manager/paper/${paperId}/data/`);
+                            const paperData = await dataResponse.json();
+                            
+                            if (paperData.success) {
+                                populateForm(paperData.data);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error loading form:', error);
+                        alert('Failed to load edit form');
+                    }
+                });
+            });
+
+            // Function to populate form fields with paper data
+            function populateForm(data) {
+                // Text fields
+                const titleField = document.querySelector('[name="title"]');
+                if (titleField) titleField.value = data.title || '';
+                
+                const versionField = document.querySelector('[name="version"]');
+                if (versionField) versionField.value = data.version || '';
+                
+                const leadAuthorField = document.querySelector('[name="lead_author"]');
+                if (leadAuthorField) leadAuthorField.value = data.lead_author || '';
+                
+                const coAuthorsField = document.querySelector('[name="co_authors"]');
+                if (coAuthorsField) coAuthorsField.value = data.co_authors || '';
+                
+                const abstractField = document.querySelector('[name="abstract"]');
+                if (abstractField) abstractField.value = data.abstract || '';
+                
+                const targetJournalField = document.querySelector('[name="target_journal"]');
+                if (targetJournalField) targetJournalField.value = data.target_journal || '';
+                
+                const submissionDateField = document.querySelector('[name="submission_date"]');
+                if (submissionDateField) submissionDateField.value = data.submission_date || '';
+                
+                const decisionDateField = document.querySelector('[name="decision_date"]');
+                if (decisionDateField) decisionDateField.value = data.decision_date || '';
+                
+                const feedbackField = document.querySelector('[name="feedback_text"]');
+                if (feedbackField) feedbackField.value = data.feedback_text || '';
+                
+                // Select fields
+                const paperTypeField = document.querySelector('[name="paper_type"]');
+                if (paperTypeField) paperTypeField.value = data.paper_type || '';
+                
+                const internalExternalField = document.querySelector('[name="internal_external"]');
+                if (internalExternalField) internalExternalField.value = data.internal_external || '';
+                
+                const statusField = document.querySelector('[name="status"]');
+                if (statusField) statusField.value = data.status || '';
+                
+                // ForeignKey field (lead_author_user)
+                const leadAuthorUserField = document.querySelector('[name="lead_author_user"]');
+                if (leadAuthorUserField && data.lead_author_user) {
+                    leadAuthorUserField.value = data.lead_author_user;
+                }
+                
+                // M2M fields (co_authors_users, assigned_reviewers)
+                if (data.co_authors_users && data.co_authors_users.length > 0) {
+                    const coAuthorsCheckboxes = document.querySelectorAll('[name="co_authors_users"]');
+                    coAuthorsCheckboxes.forEach(checkbox => {
+                        checkbox.checked = data.co_authors_users.includes(parseInt(checkbox.value));
+                    });
+                }
+                
+                if (data.assigned_reviewers && data.assigned_reviewers.length > 0) {
+                    const reviewersCheckboxes = document.querySelectorAll('[name="assigned_reviewers"]');
+                    reviewersCheckboxes.forEach(checkbox => {
+                        checkbox.checked = data.assigned_reviewers.includes(parseInt(checkbox.value));
+                    });
+                }
+            }
         });
-    });
-});
 
-document.getElementById('updatePaperBtn').addEventListener('click', async function () {
-    const paperId = document.getElementById('editPaperId').value;
-    const formData = new FormData();
+        // Handle form submission
+        document.getElementById('updatePaperBtn').addEventListener('click', async function () {
+            const form = document.getElementById('editPaperForm');
+            const paperId = document.getElementById('editPaperId').value;
+            
+            try {
+                const formData = new FormData(form);
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                const response = await fetch(`/manager/edit-ajax/${paperId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
 
-    formData.append('paperTitle', document.getElementById('editPaperTitle').value);
-    formData.append('paperStatus', document.getElementById('editPaperStatus').value);
-    formData.append('currentVersion', document.getElementById('editCurrentVersion').value);
-    formData.append('leadAuthor', document.getElementById('editLeadAuthor').value);
-    formData.append('coAuthors', document.getElementById('editCoAuthors').value);
-    formData.append('targetJournal', document.getElementById('editTargetJournal').value);
-    formData.append('submissionDate', document.getElementById('editSubmissionDate').value);
-    formData.append('paperAbstract', document.getElementById('editPaperAbstract').value);
-
-    const manuscript = document.getElementById('editPaperFile').files[0];
-    if (manuscript) {
-        formData.append('paperFile', manuscript);
-    }
-
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-    const response = await fetch(`/manager/edit-ajax/${paperId}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': csrfToken
-        },
-        body: formData
-    });
-
-    if (response.ok) {
-        location.reload();  // Reload to reflect updates
-    } else {
-        alert("Failed to update paper.");
-    }
-});
-
-
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Show success message
+                    const toastTitle = document.getElementById('toastTitle');
+                    const toastMessage = document.getElementById('toastMessage');
+                    toastTitle.textContent = 'Success';
+                    toastMessage.textContent = result.message || 'Paper updated successfully';
+                    
+                    const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+                    toast.show();
+                    
+                    // Close modal and reload
+                    setTimeout(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('editPaperModal'));
+                        if (modal) modal.hide();
+                        location.reload();
+                    }, 1000);
+                } else {
+                    // Show error messages
+                    const errorDiv = document.getElementById('editFormError');
+                    if (result.errors) {
+                        const errorMessages = Object.entries(result.errors)
+                            .map(([field, msg]) => `${field}: ${msg}`)
+                            .join('<br>');
+                        errorDiv.innerHTML = errorMessages;
+                    } else {
+                        errorDiv.textContent = result.message || 'Failed to update paper';
+                    }
+                    errorDiv.classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                document.getElementById('editFormError').textContent = 'An error occurred while updating the paper';
+                document.getElementById('editFormError').classList.remove('d-none');
+            }
+        });
     </script>
  
     {% endblock %}

@@ -322,7 +322,7 @@ class ClockInRecord(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.employee.username} - {self.clock_in_time.strftime('%Y-%m-%d %H:%M')}"
+        return f"{self.employee.username} - {timezone.localtime(self.clock_in_time).strftime('%Y-%m-%d %H:%M')}"
     
     @property
     def duration(self):
@@ -345,7 +345,7 @@ class ClockInRecord(models.Model):
     @property
     def clock_out_time_display(self):
         if self.clock_out_time:
-            return self.clock_out_time.strftime('%H:%M:%S')
+            return timezone.localtime(self.clock_out_time).strftime('%H:%M:%S')
         return "Still clocked in"
     
     def save(self, *args, **kwargs):

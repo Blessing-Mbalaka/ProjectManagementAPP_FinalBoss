@@ -1,0 +1,332 @@
+{% load static %}
+{% load widget_tweaks %}
+
+{% comment %}
+Reusable conference form partial for both create and edit modals.
+Renders Django ConferenceForm with Bootstrap 5 styling.
+Use: {% include "includes/conference_form.html" with form=form %}
+{% endcomment %}
+
+<style>
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 0.375rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .checkbox-group {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        background-color: #f8f9fa;
+    }
+    
+    .checkbox-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: normal;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+        margin-right: 0.5rem;
+    }
+    
+    .form-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+
+<div class="conference-form">
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Form Errors:</strong>
+            <ul class="mb-0">
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    <!-- Conference Classification Section -->
+    <div class="form-section">
+        <div class="section-title">Conference Classification</div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.internal_external.id_for_label }}" class="form-label">
+                        Type *
+                    </label>
+                    {% if form.internal_external.field.disabled %}
+                        {{ form.internal_external|add_class:"form-select"|attr:"disabled" }}
+                        <small class="text-muted d-block mt-1">Cannot change type after creation</small>
+                    {% else %}
+                        {{ form.internal_external|add_class:"form-select" }}
+                    {% endif %}
+                    {% if form.internal_external.errors %}
+                        <div class="invalid-feedback d-block">{{ form.internal_external.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Basic Information Section -->
+    <div class="form-section">
+        <div class="section-title">Basic Information</div>
+        
+        <div class="mb-3">
+            <div class="form-group">
+                <label for="{{ form.title.id_for_label }}" class="form-label">
+                    Paper Title *
+                </label>
+                {{ form.title|add_class:"form-control" }}
+                {% if form.title.errors %}
+                    <div class="invalid-feedback d-block">{{ form.title.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.conference_name.id_for_label }}" class="form-label">
+                        Conference Name *
+                    </label>
+                    {{ form.conference_name|add_class:"form-control" }}
+                    {% if form.conference_name.errors %}
+                        <div class="invalid-feedback d-block">{{ form.conference_name.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.location.id_for_label }}" class="form-label">
+                        Location
+                    </label>
+                    {{ form.location|add_class:"form-control" }}
+                    {% if form.location.errors %}
+                        <div class="invalid-feedback d-block">{{ form.location.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.status.id_for_label }}" class="form-label">
+                        Status *
+                    </label>
+                    {{ form.status|add_class:"form-select" }}
+                    {% if form.status.errors %}
+                        <div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <div class="form-group">
+                <label for="{{ form.abstract.id_for_label }}" class="form-label">
+                    Abstract
+                </label>
+                {{ form.abstract|add_class:"form-control"|attr:"rows:4" }}
+                {% if form.abstract.errors %}
+                    <div class="invalid-feedback d-block">{{ form.abstract.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Authors Section -->
+    <div class="form-section">
+        <div class="section-title">Authors</div>
+        
+        <div class="alert alert-info" role="alert">
+            <small><strong>Note:</strong> Use the user dropdowns below (Lead Author User, Co-Authors Users) for modern user selection. The legacy text fields are retained for backward compatibility.</small>
+        </div>
+
+        <!-- New User-based Author Fields -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.lead_author_user.id_for_label }}" class="form-label">
+                        Lead Author (User)
+                    </label>
+                    {{ form.lead_author_user|add_class:"form-select" }}
+                    <small class="text-muted d-block mt-1">{{ form.lead_author_user.help_text|safe }}</small>
+                    {% if form.lead_author_user.errors %}
+                        <div class="invalid-feedback d-block">{{ form.lead_author_user.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="form-label">
+                        Co-Authors (Users)
+                    </label>
+                    <div class="checkbox-group">
+                        {% for checkbox in form.co_authors_users %}
+                            {{ checkbox }}
+                        {% empty %}
+                            <p class="text-muted mb-0">No users available</p>
+                        {% endfor %}
+                    </div>
+                    <small class="text-muted d-block mt-1">{{ form.co_authors_users.help_text|safe }}</small>
+                    {% if form.co_authors_users.errors %}
+                        <div class="invalid-feedback d-block">{{ form.co_authors_users.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Legacy Author Text Fields -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.lead_author.id_for_label }}" class="form-label">
+                        Lead Author (Legacy Text)
+                    </label>
+                    {{ form.lead_author|add_class:"form-control" }}
+                    <small class="text-muted d-block mt-1">Legacy field for backward compatibility. Prefer "Lead Author (User)" above.</small>
+                    {% if form.lead_author.errors %}
+                        <div class="invalid-feedback d-block">{{ form.lead_author.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.co_authors.id_for_label }}" class="form-label">
+                        Co-Authors (Legacy Text)
+                    </label>
+                    {{ form.co_authors|add_class:"form-control"|attr:"rows:2" }}
+                    <small class="text-muted d-block mt-1">Legacy field - separate with commas. Prefer "Co-Authors (Users)" above.</small>
+                    {% if form.co_authors.errors %}
+                        <div class="invalid-feedback d-block">{{ form.co_authors.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviewers Section -->
+    <div class="form-section">
+        <div class="section-title">Review Assignment</div>
+        
+        <div class="mb-3">
+            <div class="form-group">
+                <label class="form-label">
+                    Assigned Reviewers
+                </label>
+                <div class="checkbox-group">
+                    {% for checkbox in form.assigned_reviewers %}
+                        {{ checkbox }}
+                    {% empty %}
+                        <p class="text-muted mb-0">No users available</p>
+                    {% endfor %}
+                </div>
+                <small class="text-muted d-block mt-1">{{ form.assigned_reviewers.help_text|safe }}</small>
+                {% if form.assigned_reviewers.errors %}
+                    <div class="invalid-feedback d-block">{{ form.assigned_reviewers.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Conference Information Section -->
+    <div class="form-section">
+        <div class="section-title">Conference Information</div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.submission_date.id_for_label }}" class="form-label">
+                        Submission Date
+                    </label>
+                    {{ form.submission_date|add_class:"form-control"|attr:"type:date" }}
+                    {% if form.submission_date.errors %}
+                        <div class="invalid-feedback d-block">{{ form.submission_date.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.conference_date.id_for_label }}" class="form-label">
+                        Conference Date
+                    </label>
+                    {{ form.conference_date|add_class:"form-control"|attr:"type:date" }}
+                    {% if form.conference_date.errors %}
+                        <div class="invalid-feedback d-block">{{ form.conference_date.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="{{ form.decision_date.id_for_label }}" class="form-label">
+                        Decision Date
+                    </label>
+                    {{ form.decision_date|add_class:"form-control"|attr:"type:date" }}
+                    {% if form.decision_date.errors %}
+                        <div class="invalid-feedback d-block">{{ form.decision_date.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paper Section -->
+    <div class="form-section">
+        <div class="section-title">Conference Paper</div>
+        
+        <div class="mb-3">
+            <div class="form-group">
+                <label for="{{ form.paper.id_for_label }}" class="form-label">
+                    Paper File
+                    {% if form.paper.field.required %}
+                        <span class="text-danger">*</span>
+                    {% endif %}
+                </label>
+                {{ form.paper|add_class:"form-control" }}
+                <small class="text-muted d-block mt-1">
+                    PDF, DOCX, or similar formats accepted.
+                    {% if form.paper.value %}
+                        <a href="{{ form.paper.value.url }}" target="_blank" class="ms-2">View current file</a>
+                    {% endif %}
+                </small>
+                {% if form.paper.errors %}
+                    <div class="invalid-feedback d-block">{{ form.paper.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

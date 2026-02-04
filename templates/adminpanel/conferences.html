@@ -1,0 +1,495 @@
+{% extends 'adminpanel/index.html' %}
+{% load static %}
+
+{% block title %}Conference Tracking{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/journal.css' %}">
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+<div class="welcome-box">
+    <h1 class="mb-4">Conference Tracking</h1>
+    <div class="progress mt-2" style="width: 75%; height: 10px;"></div>
+</div>
+
+<!-- Main Content -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1></h1>
+    <div class="d-flex">
+        <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addConferenceModal">
+            <i class="bi bi-plus-circle"></i> Add Conference
+        </button>
+        <div class="input-group" style="width: 250px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="searchInput" placeholder="Search conferences...">
+        </div>
+    </div>
+</div>
+
+<!-- Tabs for Internal/External Conferences -->
+<ul class="nav nav-tabs mb-4" id="conferenceTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="internal-tab" data-bs-toggle="tab" data-bs-target="#internal-conferences" type="button" role="tab">
+            <i class="bi bi-building"></i> Internal Conferences
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="external-tab" data-bs-toggle="tab" data-bs-target="#external-conferences" type="button" role="tab">
+            <i class="bi bi-globe"></i> External Conferences
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="conferenceTabsContent">
+    <!-- Internal Conferences Tab -->
+    <div class="tab-pane fade show active" id="internal-conferences" role="tabpanel">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table paper-table" id="internalTable">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Conference</th>
+                                <th>Authors</th>
+                                <th>Status</th>
+                                <th>Conf. Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="internalConferencesBody">
+                            {% for conference in internal_conferences %}
+                                <tr>
+                                    <td>{{ conference.title }}</td>
+                                    <td>{{ conference.conference_name }}</td>
+                                    <td>{{ conference.get_lead_author_display }}{% if conference.co_authors %}, {{ conference.co_authors }}{% endif %}</td>
+                                    <td>
+                                        {% if conference.status == 'draft' %}
+                                            <span class="badge bg-secondary">Draft</span>
+                                        {% elif conference.status == 'in-progress' %}
+                                            <span class="badge bg-primary">In Progress</span>
+                                        {% elif conference.status == 'submitted' %}
+                                            <span class="badge bg-info">Submitted</span>
+                                        {% elif conference.status == 'accepted' %}
+                                            <span class="badge bg-success">Accepted</span>
+                                        {% elif conference.status == 'presenting' %}
+                                            <span class="badge bg-warning">Presenting</span>
+                                        {% elif conference.status == 'presented' %}
+                                            <span class="badge bg-success">Presented</span>
+                                        {% elif conference.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ conference.status|capfirst }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ conference.conference_date|date:"Y-m-d" }}</td>
+                                    <td>
+                                        {% if conference.paper %}
+                                            <a href="{{ conference.paper.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <i class="bi bi-eye"></i> View
+                                            </a>
+                                        {% endif %}
+                                        <button 
+                                            class="btn btn-sm btn-warning editBtn"
+                                            data-id="{{ conference.id }}"
+                                            data-title="{{ conference.title }}"
+                                            data-conference="{{ conference.conference_name }}"
+                                            data-location="{{ conference.location }}"
+                                            data-status="{{ conference.status }}"
+                                            data-lead="{{ conference.lead_author }}"
+                                            data-co="{{ conference.co_authors }}"
+                                            data-abstract="{{ conference.abstract }}"
+                                            data-submission="{{ conference.submission_date }}"
+                                            data-confdate="{{ conference.conference_date }}"
+                                            data-type="{{ conference.internal_external }}"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editConferenceModal"
+                                        >
+                                            <i class="bi bi-pencil-square"></i> Edit
+                                        </button>
+                                        <form method="POST" action="{% url 'delete_conference' conference.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="6" class="text-center">No internal conferences found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Conferences Tab -->
+    <div class="tab-pane fade" id="external-conferences" role="tabpanel">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table paper-table" id="externalTable">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Conference</th>
+                                <th>Authors</th>
+                                <th>Status</th>
+                                <th>Submission Date</th>
+                                <th>Decision Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="externalConferencesBody">
+                            {% for conference in external_conferences %}
+                                <tr>
+                                    <td>{{ conference.title }}</td>
+                                    <td>{{ conference.conference_name }}</td>
+                                    <td>{{ conference.get_lead_author_display }}{% if conference.co_authors %}, {{ conference.co_authors }}{% endif %}</td>
+                                    <td>
+                                        {% if conference.status == 'draft' %}
+                                            <span class="badge bg-secondary">Draft</span>
+                                        {% elif conference.status == 'in-progress' %}
+                                            <span class="badge bg-primary">In Progress</span>
+                                        {% elif conference.status == 'submitted' %}
+                                            <span class="badge bg-info">Submitted</span>
+                                        {% elif conference.status == 'accepted' %}
+                                            <span class="badge bg-success">Accepted</span>
+                                        {% elif conference.status == 'presenting' %}
+                                            <span class="badge bg-warning">Presenting</span>
+                                        {% elif conference.status == 'presented' %}
+                                            <span class="badge bg-success">Presented</span>
+                                        {% elif conference.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ conference.status|capfirst }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ conference.submission_date|date:"Y-m-d" }}</td>
+                                    <td>{{ conference.decision_date|date:"Y-m-d" }}</td>
+                                    <td>
+                                        {% if conference.paper %}
+                                            <a href="{{ conference.paper.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <i class="bi bi-eye"></i> View
+                                            </a>
+                                        {% endif %}
+                                        <button 
+                                            class="btn btn-sm btn-warning editBtn"
+                                            data-id="{{ conference.id }}"
+                                            data-title="{{ conference.title }}"
+                                            data-conference="{{ conference.conference_name }}"
+                                            data-location="{{ conference.location }}"
+                                            data-status="{{ conference.status }}"
+                                            data-lead="{{ conference.lead_author }}"
+                                            data-co="{{ conference.co_authors }}"
+                                            data-abstract="{{ conference.abstract }}"
+                                            data-submission="{{ conference.submission_date }}"
+                                            data-confdate="{{ conference.conference_date }}"
+                                            data-type="{{ conference.internal_external }}"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editConferenceModal"
+                                        >
+                                            <i class="bi bi-pencil-square"></i> Edit
+                                        </button>
+                                        <form method="POST" action="{% url 'delete_conference' conference.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="7" class="text-center">No external conferences found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Conference Modal -->
+<div class="modal fade" id="addConferenceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form method="POST" action="{% url 'add_conference' %}" enctype="multipart/form-data" id="conferenceForm">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Conference</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="conferenceTitle" class="form-label">Paper Title *</label>
+                            <input type="text" class="form-control" id="conferenceTitle" name="conferenceTitle" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="conferenceType" class="form-label">Type *</label>
+                            <select class="form-select" name="conferenceType" id="conferenceType" required>
+                                <option value="">Select type</option>
+                                <option value="internal">Internal</option>
+                                <option value="external">External</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="conferenceName" class="form-label">Conference Name *</label>
+                            <input type="text" class="form-control" id="conferenceName" name="conferenceName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="conferenceLocation" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="conferenceLocation" name="conferenceLocation" placeholder="City, Country">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="conferenceStatus" class="form-label">Status *</label>
+                            <select class="form-select" id="conferenceStatus" name="conferenceStatus" required>
+                                <option value="draft">Draft</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="submitted">Submitted</option>
+                                <option value="accepted">Accepted</option>
+                                <option value="presenting">Presenting</option>
+                                <option value="presented">Presented</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="conferenceDate" class="form-label">Conference Date</label>
+                            <input type="date" class="form-control" id="conferenceDate" name="conferenceDate">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="leadAuthor" class="form-label">Lead Author *</label>
+                            <input type="text" class="form-control" id="leadAuthor" name="leadAuthor" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="coAuthors" class="form-label">Co-Authors</label>
+                            <input type="text" class="form-control" id="coAuthors" name="coAuthors" placeholder="Separate with commas">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3" id="submissionDateRow">
+                        <div class="col-md-6">
+                            <label for="submissionDate" class="form-label">Submission Date</label>
+                            <input type="date" class="form-control" id="submissionDate" name="submissionDate">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="decisionDate" class="form-label">Decision Date</label>
+                            <input type="date" class="form-control" id="decisionDate" name="decisionDate">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="conferenceAbstract" class="form-label">Abstract</label>
+                        <textarea class="form-control" id="conferenceAbstract" name="conferenceAbstract" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="conferenceFile" class="form-label">Upload Paper</label>
+                        <input class="form-control" type="file" id="conferenceFile" name="conferenceFile">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Conference</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Conference Modal -->
+<div class="modal fade" id="editConferenceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Conference</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editConferenceForm" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" id="editConferenceId" name="conference_id">
+                    
+                    <!-- Dynamic form will be inserted here by JavaScript -->
+                    <div id="editFormContainer">
+                        <p class="text-muted">Loading form...</p>
+                    </div>
+                    
+                    <div class="alert alert-danger d-none" id="editFormError"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="updateConferenceBtn">Update Conference</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const editButtons = document.querySelectorAll('.editBtn');
+
+        editButtons.forEach(button => {
+            button.addEventListener('click', async () => {
+                const conferenceId = button.dataset.id;
+                
+                // Fetch the form HTML
+                try {
+                    const formResponse = await fetch(`/adminpanel/conference/${conferenceId}/form-html/`);
+                    const formData = await formResponse.json();
+                    
+                    if (formData.success) {
+                        // Insert the form HTML into the modal
+                        document.getElementById('editFormContainer').innerHTML = formData.form_html;
+                        document.getElementById('editConferenceId').value = conferenceId;
+                        
+                        // Fetch the conference data to populate the form
+                        const dataResponse = await fetch(`/adminpanel/conference/${conferenceId}/data/`);
+                        const conferenceData = await dataResponse.json();
+                        
+                        if (conferenceData.success) {
+                            populateForm(conferenceData.data);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading form:', error);
+                    alert('Failed to load edit form');
+                }
+            });
+        });
+
+        // Function to populate form fields with conference data
+        function populateForm(data) {
+            // Text fields
+            const titleField = document.querySelector('[name="title"]');
+            if (titleField) titleField.value = data.title || '';
+            
+            const conferenceNameField = document.querySelector('[name="conference_name"]');
+            if (conferenceNameField) conferenceNameField.value = data.conference_name || '';
+            
+            const locationField = document.querySelector('[name="location"]');
+            if (locationField) locationField.value = data.location || '';
+            
+            const leadAuthorField = document.querySelector('[name="lead_author"]');
+            if (leadAuthorField) leadAuthorField.value = data.lead_author || '';
+            
+            const coAuthorsField = document.querySelector('[name="co_authors"]');
+            if (coAuthorsField) coAuthorsField.value = data.co_authors || '';
+            
+            const abstractField = document.querySelector('[name="abstract"]');
+            if (abstractField) abstractField.value = data.abstract || '';
+            
+            const submissionDateField = document.querySelector('[name="submission_date"]');
+            if (submissionDateField) submissionDateField.value = data.submission_date || '';
+            
+            const conferenceDateField = document.querySelector('[name="conference_date"]');
+            if (conferenceDateField) conferenceDateField.value = data.conference_date || '';
+            
+            const decisionDateField = document.querySelector('[name="decision_date"]');
+            if (decisionDateField) decisionDateField.value = data.decision_date || '';
+            
+            // Select fields
+            const internalExternalField = document.querySelector('[name="internal_external"]');
+            if (internalExternalField) internalExternalField.value = data.internal_external || '';
+            
+            const statusField = document.querySelector('[name="status"]');
+            if (statusField) statusField.value = data.status || '';
+            
+            // ForeignKey field (lead_author_user)
+            const leadAuthorUserField = document.querySelector('[name="lead_author_user"]');
+            if (leadAuthorUserField && data.lead_author_user) {
+                leadAuthorUserField.value = data.lead_author_user;
+            }
+            
+            // M2M fields (co_authors_users, assigned_reviewers)
+            if (data.co_authors_users && data.co_authors_users.length > 0) {
+                const coAuthorsCheckboxes = document.querySelectorAll('[name="co_authors_users"]');
+                coAuthorsCheckboxes.forEach(checkbox => {
+                    checkbox.checked = data.co_authors_users.includes(parseInt(checkbox.value));
+                });
+            }
+            
+            if (data.assigned_reviewers && data.assigned_reviewers.length > 0) {
+                const reviewersCheckboxes = document.querySelectorAll('[name="assigned_reviewers"]');
+                reviewersCheckboxes.forEach(checkbox => {
+                    checkbox.checked = data.assigned_reviewers.includes(parseInt(checkbox.value));
+                });
+            }
+        }
+    });
+
+    document.getElementById('updateConferenceBtn').addEventListener('click', async function () {
+        const form = document.getElementById('editConferenceForm');
+        const conferenceId = document.getElementById('editConferenceId').value;
+        
+        try {
+            const formData = new FormData(form);
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+            
+            const response = await fetch(`/adminpanel/edit-conference/${conferenceId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Close modal and reload
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editConferenceModal'));
+                if (modal) modal.hide();
+                location.reload();
+            } else {
+                // Show error messages
+                const errorDiv = document.getElementById('editFormError');
+                if (result.errors) {
+                    const errorMessages = Object.entries(result.errors)
+                        .map(([field, msg]) => `${field}: ${msg}`)
+                        .join('<br>');
+                    errorDiv.innerHTML = errorMessages;
+                } else {
+                    errorDiv.textContent = result.message || 'Failed to update conference';
+                }
+                errorDiv.classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            document.getElementById('editFormError').textContent = 'An error occurred while updating the conference';
+            document.getElementById('editFormError').classList.remove('d-none');
+        }
+    });
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('keyup', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const tables = document.querySelectorAll('[id*="Table"]');
+        
+        tables.forEach(table => {
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+    });
+</script>
+
+{% endblock %}

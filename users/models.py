@@ -25,10 +25,11 @@ class CustomUser(AbstractUser):
         ('admin', 'Admin'),
         ('supervisor', 'Supervisor'),
         ('manager', 'Project Manager'),
+        ('financialadmin', 'Financial Admin'),
         ('staff', 'Staff'),
         ('student', 'Student'),
     )
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='staff')
+    role = models.CharField(max_length=15, choices=ROLE_CHOICES, default='staff')
 
     # Use custom manager
     objects = CustomUserManager()

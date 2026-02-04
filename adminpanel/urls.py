@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import supervisors
+from . import notification_views
 from .clock_views import clock_in, clock_out, get_clock_status, clock_history
 
 urlpatterns = [
@@ -15,9 +16,18 @@ urlpatterns = [
     path('update-book-status/<int:book_id>/', views.update_book_status, name='update_book_status'),
     path('app_kanban/', views.app_kanban, name='app_kanban'),
     path('admin_journal/', views.admin_journal, name='admin_journal'),
+    path('paper/<int:paper_id>/move-external/', views.move_paper_external, name='move_paper_external'),
+    path('paper/<int:paper_id>/return-internal/', views.return_paper_internal, name='return_paper_internal'),
+    path('conferences/', views.admin_conferences, name='admin_conferences'),
+    path('add-conference/', views.add_conference, name='add_conference'),
+    path('edit-conference/<int:conference_id>/', views.edit_conference, name='edit_conference'),
+    path('delete-conference/<int:conference_id>/', views.delete_conference, name='delete_conference'),
+    path('conference/<int:conference_id>/form-html/', views.get_conference_form_html, name='get_conference_form_html'),
+    path('conference/<int:conference_id>/data/', views.get_conference_data, name='get_conference_data'),
     path('admin_ganttchart/', views.admin_ganttchart, name='admin_ganttchart'),
     path('overview/', views.overview, name='overview'),
     path('finance/', views.finance, name='finance'),
+    path('finance-readonly/', views.finance_readonly, name='finance_readonly'),
     path('admin_kanban/', views.admin_kanban, name='admin_kanban'),
     path('supervisor/', views.supervisor_dashboard, name='supervisor_dashboard'),
     path('supervisor/student/<int:student_id>/', views.student_detail_view, name='student_detail'),
@@ -53,6 +63,8 @@ urlpatterns = [
         path('load-student-manual/', views.load_student_manual, name='load_student_manual'),
     path('load-students-csv/', views.load_students_csv, name='load_students_csv'),
     path('notifications/create/', views.create_notification, name='create_notification'),
+    path('api/notifications/', notification_views.get_user_notifications, name='get_user_notifications'),
+    path('api/notifications/<int:notification_id>/read/', notification_views.mark_notification_read, name='mark_notification_read'),
     path('clock-in/', clock_in, name='clock_in'),
     path('clock-out/', clock_out, name='clock_out'),
     path('clock-status/', get_clock_status, name='clock_status'),

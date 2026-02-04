@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+        .changes {
+            margin: 20px 0;
+            border-left: 4px solid #9b59b6;
+            padding: 15px;
+            background-color: #ecf0f1;
+        }
+        .change-item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 3px;
+        }
+        .field-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .old-value {
+            color: #e74c3c;
+        }
+        .new-value {
+            color: #27ae60;
+        }
+        .footer {
+            background-color: #ecf0f1;
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #7f8c8d;
+            border-radius: 0 0 5px 5px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .button {
+            display: inline-block;
+            background-color: #9b59b6;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 3px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Conference Updated</h2>
+        </div>
+        
+        <div class="content">
+            <p>Hello,</p>
+            
+            <p>The conference "<strong>{{ object_title }}</strong>" has been updated.</p>
+            
+            <p><strong>Updated by:</strong> {{ changed_by_user.get_full_name|default:changed_by_user.username }}</p>
+            <p><strong>Update time:</strong> {{ changed_at|default:"Recently" }}</p>
+            
+            {% if changes %}
+            <div class="changes">
+                <h3>Changes Made:</h3>
+                {% for change in changes %}
+                <div class="change-item">
+                    <div class="field-label">{{ change.field_label }}</div>
+                    <div>
+                        <span class="old-value">Old: {{ change.old_value }}</span>
+                        <span> =&gt; </span>
+                        <span class="new-value">New: {{ change.new_value }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <p>Please review the changes and take any necessary action.</p>
+            
+            <a href="{{ site_url }}/adminpanel/conferences/" class="button">View Conference</a>
+            
+            <p>Best regards,<br>
+            Project Management System</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification. Please do not reply to this email.</p>
+            <p>&copy; 2026 Project Management. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

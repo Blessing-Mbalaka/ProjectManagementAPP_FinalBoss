@@ -47,6 +47,8 @@ def login_view(request):
             return redirect('supervisor_dashboard_portal') # Supervisor Portal
         elif user.role == 'manager':
             return redirect('manager_dashboard') # Project Manager
+        elif user.role == 'financialadmin':
+            return redirect('finance_readonly') # Financial Admin
         elif user.role == 'student':
             return redirect('student_dashboard')  # Student
         else:
