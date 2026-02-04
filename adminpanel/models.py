@@ -11,6 +11,7 @@ class CostCentre(models.Model):
     name = models.CharField(max_length=100, unique=True)
     total_received = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     total_spent = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    moa_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, null=True, blank=True, help_text="Memorandum of Understanding - Total expected/budgeted amount")
 
     def __str__(self):
         return self.name
@@ -21,6 +22,16 @@ class CostCentre(models.Model):
             received = self.get_total_received()
             spent = Decimal(str(self.total_spent)) if self.total_spent else Decimal('0.00')
             return received - spent
+        except (InvalidOperation, TypeError):
+            return Decimal('0.00')
+    
+    @property
+    def moa_outstanding(self):
+        """Calculate MOA Outstanding = MOA Amount - Total Received"""
+        try:
+            moa = Decimal(str(self.moa_amount)) if self.moa_amount else Decimal('0.00')
+            received = self.get_total_received()
+            return moa - received
         except (InvalidOperation, TypeError):
             return Decimal('0.00')
     
@@ -231,6 +242,58 @@ class Notification(models.Model):
 from django.db import models
 from users.models import CustomUser
 from datetime import timedelta
+
+class AuditLog(models.Model):
+    """Immutable audit trail for all finance transactions"""
+    
+    ACTION_CHOICES = [
+        ('create_cost_centre', 'Created Cost Centre'),
+        ('edit_cost_centre', 'Edited Cost Centre'),
+        ('delete_cost_centre', 'Deleted Cost Centre'),
+        ('create_expenditure', 'Created Expenditure'),
+        ('edit_expenditure', 'Edited Expenditure'),
+        ('delete_expenditure', 'Deleted Expenditure'),
+        ('create_payment', 'Created Payment'),
+        ('delete_payment', 'Deleted Payment'),
+    ]
+    
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    entity_type = models.CharField(max_length=50)  # 'CostCentre', 'Expenditure', 'Payment'
+    entity_id = models.PositiveIntegerField()  # ID of the affected object
+    entity_name = models.CharField(max_length=255)  # Readable name/description
+    
+    # User who made the change
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Previous and new values for edit operations
+    previous_values = models.JSONField(default=dict, blank=True)  # Stores old data
+    new_values = models.JSONField(default=dict, blank=True)  # Stores new data
+    
+    # Timestamp (immutable - set only at creation)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['-timestamp']),
+            models.Index(fields=['entity_type']),
+            models.Index(fields=['action']),
+        ]
+    
+    def __str__(self):
+        user_name = self.user.get_full_name() if self.user else "System"
+        return f"{self.get_action_display()} - {self.entity_name} by {user_name} at {self.timestamp}"
+    
+    def save(self, *args, **kwargs):
+        # Prevent modifications to existing records
+        if self.pk is not None:
+            raise ValidationError("Audit logs are immutable and cannot be modified")
+        super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        # Prevent deletion of audit logs
+        raise ValidationError("Audit logs are immutable and cannot be deleted")
+
 
 class ClockInRecord(models.Model):
     """Records employee clock in/out times"""

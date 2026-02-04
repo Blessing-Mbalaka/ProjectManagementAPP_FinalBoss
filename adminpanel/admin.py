@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CostCentre, Expenditure, Notification, SupervisorProfile, SupervisorFeedback, ClockInRecord
+from .models import CostCentre, Expenditure, Notification, SupervisorProfile, SupervisorFeedback, ClockInRecord, AuditLog
 
 from .media_models import SystemMedia
 
@@ -46,3 +46,43 @@ class ClockInRecordAdmin(admin.ModelAdmin):
     list_filter = ('status', 'clock_in_time')
     search_fields = ('employee__username',)
     readonly_fields = ('clock_in_time', 'duration_display')
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    """Read-only admin interface for immutable audit logs"""
+    list_display = ('timestamp', 'get_user_display', 'get_action_display', 'entity_type', 'entity_name')
+    list_filter = ('action', 'entity_type', 'timestamp')
+    search_fields = ('entity_name', 'user__first_name', 'user__last_name', 'user__username')
+    readonly_fields = ('action', 'entity_type', 'entity_id', 'entity_name', 'user', 'previous_values', 'new_values', 'timestamp')
+    ordering = ['-timestamp']
+    
+    def get_user_display(self, obj):
+        if obj.user:
+            return f"{obj.user.get_full_name() or obj.user.username}"
+        return "System"
+    get_user_display.short_description = 'User'
+    
+    def has_add_permission(self, request):
+        """Prevent manual creation of audit logs"""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of audit logs"""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Prevent modification of audit logs"""
+        return False
+    
+    fieldsets = (
+        ('Action Details', {
+            'fields': ('timestamp', 'user', 'action')
+        }),
+        ('Entity Information', {
+            'fields': ('entity_type', 'entity_id', 'entity_name')
+        }),
+        ('Changes', {
+            'fields': ('previous_values', 'new_values')
+        }),
+    )

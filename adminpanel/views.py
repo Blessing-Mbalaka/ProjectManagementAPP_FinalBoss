@@ -6,7 +6,12 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
 from manager.models import Book, Chapter
-from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedback, Notification
+from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedback, Notification, AuditLog
+from .audit_service import (
+    log_cost_centre_creation, log_cost_centre_edit, log_cost_centre_deletion,
+    log_expenditure_creation, log_expenditure_edit, log_expenditure_deletion,
+    log_payment_creation, log_payment_deletion
+)
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
@@ -405,9 +410,9 @@ def finance(request):
                 'payment_date': payment_date
             })
 
-        cursor.execute("SELECT id, name FROM adminpanel_costcentre ORDER BY name")
-        for cc_id, name in cursor.fetchall():
-            cost_centres_map[cc_id] = {'id': cc_id, 'name': name}
+        cursor.execute("SELECT id, name, moa_amount FROM adminpanel_costcentre ORDER BY name")
+        for cc_id, name, moa_amount in cursor.fetchall():
+            cost_centres_map[cc_id] = {'id': cc_id, 'name': name, 'moa_amount': safe_decimal(moa_amount)}
 
         cursor.execute("""
             SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance
@@ -445,25 +450,37 @@ def finance(request):
         total_received = payment_summary[cc_id]['total']
         total_spent = expenditure_summary[cc_id]
         total_remaining = total_received - total_spent
+        moa_amount = info.get('moa_amount', Decimal('0.00'))
+        moa_outstanding = moa_amount - total_received
 
         info.update({
             'total_received': decimal_to_float(total_received),
             'total_spent': decimal_to_float(total_spent),
             'total_remaining': decimal_to_float(total_remaining),
+            'moa_amount': decimal_to_float(moa_amount),
+            'moa_outstanding': decimal_to_float(moa_outstanding),
+            'get_total_received': decimal_to_float(total_received),
             'payment_count': payment_summary[cc_id]['count']
         })
         cost_centres.append(info)
 
-    category_totals = {}
-    monthly_totals = {}
+    category_totals_dict = {}
+    monthly_totals_dict = {}
     for exp in all_expenditures:
         category = exp['category']
-        category_totals.setdefault(category, 0)
-        category_totals[category] += exp['amount']
+        category_totals_dict.setdefault(category, 0)
+        category_totals_dict[category] += exp['amount']
 
         month = exp['month']
-        monthly_totals.setdefault(month, 0)
-        monthly_totals[month] += exp['amount']
+        monthly_totals_dict.setdefault(month, 0)
+        monthly_totals_dict[month] += exp['amount']
+
+    # Convert to list of dicts for template
+    category_totals = [{'category': cat, 'total': total} for cat, total in sorted(category_totals_dict.items())]
+    monthly_totals = [{'month': month, 'total': total} for month, total in sorted(monthly_totals_dict.items())]
+
+    # Fetch audit logs (most recent first)
+    audit_logs = AuditLog.objects.all().order_by('-timestamp')[:100]  # Get last 100 entries
 
     return render(request, 'adminpanel/finance.html', {
         'cost_centres': cost_centres,
@@ -472,15 +489,17 @@ def finance(request):
         'monthly_totals': monthly_totals,
         'category_choices': Expenditure.EXPENSE_CATEGORY_CHOICES,
         'payments_by_cc': payments_by_cc,
+        'audit_logs': audit_logs,
     })
 
 @login_required
 @login_required
 def add_cost_centre(request):
-    """Add a new cost centre with optional initial payment"""
+    """Add a new cost centre with optional initial payment and MOA amount"""
     if request.method == 'POST':
         name = request.POST.get('name')
         received = request.POST.get('received', '').strip()
+        moa_amount = request.POST.get('moa_amount', '').strip()
         
         if not name or not name.strip():
             messages.error(request, 'Cost Centre name is required')
@@ -488,11 +507,17 @@ def add_cost_centre(request):
         
         try:
             # Create cost centre with 0.00 initially
+            moa = Decimal(moa_amount) if moa_amount else Decimal('0.00')
+            
             cost_centre = CostCentre.objects.create(
                 name=name.strip(),
                 total_received=Decimal('0.00'),
-                total_spent=Decimal('0.00')
+                total_spent=Decimal('0.00'),
+                moa_amount=moa
             )
+            
+            # Log the cost centre creation
+            log_cost_centre_creation(cost_centre, request.user)
             
             # If initial amount provided, create a payment
             if received:
@@ -504,19 +529,30 @@ def add_cost_centre(request):
                     
                     if amount > Decimal('0.00'):
                         from adminpanel.models import CostCentrePayment
-                        CostCentrePayment.objects.create(
+                        payment = CostCentrePayment.objects.create(
                             cost_centre=cost_centre,
                             amount=amount,
                             description='Initial amount'
                         )
-                        messages.success(request, f'Cost Centre "{name}" created with initial payment of R {amount:.2f}')
+                        # Log the payment creation
+                        log_payment_creation(payment, request.user)
+                        if moa > Decimal('0.00'):
+                            messages.success(request, f'Cost Centre "{name}" created successfully! Initial payment: R {amount:.2f}, MOA Amount: R {moa:.2f}')
+                        else:
+                            messages.success(request, f'Cost Centre "{name}" created with initial payment of R {amount:.2f}')
                     else:
-                        messages.success(request, f'Cost Centre "{name}" created (no initial payment)')
+                        if moa > Decimal('0.00'):
+                            messages.success(request, f'Cost Centre "{name}" created successfully with MOA Amount: R {moa:.2f}')
+                        else:
+                            messages.success(request, f'Cost Centre "{name}" created (no initial payment)')
                 except (InvalidOperation, ValueError, TypeError):
                     messages.error(request, 'Invalid amount format')
                     return redirect('finance')
             else:
-                messages.success(request, f'Cost Centre "{name}" created successfully')
+                if moa > Decimal('0.00'):
+                    messages.success(request, f'Cost Centre "{name}" created successfully with MOA Amount: R {moa:.2f}')
+                else:
+                    messages.success(request, f'Cost Centre "{name}" created successfully')
             
             return redirect('finance')
         except Exception as e:
@@ -559,6 +595,9 @@ def add_expenditure(request):
             return redirect('finance')
 
         try:
+            # Get cost centre object first for audit logging
+            cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+            
             with connection.cursor() as cursor:
                 # Check if cost centre exists
                 cursor.execute("""
@@ -583,6 +622,10 @@ def add_expenditure(request):
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, [cost_centre_id, month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle)])
                 
+                # Get the ID of the newly inserted expenditure
+                cursor.execute("SELECT last_insert_id()")
+                expenditure_id = cursor.fetchone()[0]
+                
                 # Update cost centre total_spent
                 new_total = opening_balance + amount
                 cursor.execute("""
@@ -590,9 +633,13 @@ def add_expenditure(request):
                     SET total_spent = %s
                     WHERE id = %s
                 """, [str(new_total), cost_centre_id])
-                
-                messages.success(request, 'Expenditure added successfully')
-                return redirect('finance')
+            
+            # Get the created expenditure and log it
+            expenditure = Expenditure.objects.get(id=expenditure_id)
+            log_expenditure_creation(expenditure, request.user)
+            
+            messages.success(request, 'Expenditure added successfully')
+            return redirect('finance')
                 
         except InvalidOperation:
             messages.error(request, 'Error processing numbers: invalid format')
@@ -669,6 +716,9 @@ def delete_cost_centre(request, pk):
             cost_centre_id, cost_centre_name = row
             
             if request.method == 'POST':
+                # Log the deletion
+                log_cost_centre_deletion(cost_centre_id, cost_centre_name, request.user)
+                
                 # Delete associated expenditures first
                 cursor.execute("""
                     DELETE FROM adminpanel_expenditure WHERE cost_centre_id = %s
@@ -692,21 +742,36 @@ def delete_cost_centre(request, pk):
 
 @login_required
 def edit_cost_centre(request, pk):
-    """Edit a cost centre - now only allows name editing since total_received is calculated from payments"""
+    """Edit a cost centre - allows name and MOA amount editing"""
     try:
         cost_centre = CostCentre.objects.get(id=pk)
         
         if request.method == 'POST':
             name = request.POST.get('name', cost_centre.name)
+            moa_amount = request.POST.get('moa_amount', '').strip()
             
             if not name or name.strip() == '':
                 messages.error(request, 'Cost Centre name cannot be empty')
                 return redirect('finance')
             
             try:
+                # Store previous values for audit log
+                previous_values = {
+                    'name': cost_centre.name,
+                    'moa_amount': str(cost_centre.moa_amount)
+                }
+                
                 cost_centre.name = name
-                cost_centre.save(update_fields=['name'])
+                if moa_amount:
+                    cost_centre.moa_amount = Decimal(moa_amount)
+                cost_centre.save()
+                
+                # Log the edit
+                log_cost_centre_edit(cost_centre, request.user, previous_values)
+                
                 messages.success(request, 'Cost Centre updated successfully')
+            except (InvalidOperation, ValueError, TypeError):
+                messages.error(request, 'Invalid MOA amount format')
             except Exception as e:
                 messages.error(request, f'Error saving Cost Centre: {str(e)}')
             
@@ -743,11 +808,14 @@ def add_payment(request):
                 return redirect('finance')
             
             # Create payment
-            CostCentrePayment.objects.create(
+            payment = CostCentrePayment.objects.create(
                 cost_centre=cost_centre,
                 amount=amount,
                 description=description
             )
+            
+            # Log the payment creation
+            log_payment_creation(payment, request.user)
             
             messages.success(request, f'Payment of R {amount:.2f} added successfully')
         except CostCentre.DoesNotExist:
@@ -768,7 +836,12 @@ def delete_payment(request, payment_id):
         from adminpanel.models import CostCentrePayment
         payment = CostCentrePayment.objects.get(id=payment_id)
         cost_centre = payment.cost_centre
+        payment_description = f"{cost_centre.name} - R {payment.amount}"
+        
         payment.delete()
+        
+        # Log the payment deletion
+        log_payment_deletion(payment_id, payment_description, request.user)
         
         # Recalculate total_received
         total = CostCentrePayment.objects.filter(cost_centre=cost_centre).aggregate(
@@ -845,6 +918,14 @@ def edit_expenditure(request, pk):
                     return redirect('finance')
                 
                 try:
+                    # Store previous values for audit log
+                    previous_values = {
+                        'month': old_month,
+                        'name': old_name,
+                        'category': old_category,
+                        'amount': str(old_amount)
+                    }
+                    
                     # Calculate closing balance
                     opening_balance = Decimal(str(old_opening_balance))
                     closing_balance = opening_balance - amount
@@ -856,6 +937,10 @@ def edit_expenditure(request, pk):
                             opening_balance = %s, closing_balance = %s, oracle_balance = %s
                         WHERE id = %s
                     """, [month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle_balance), exp_id])
+                    
+                    # Get the updated expenditure for audit logging
+                    expenditure = Expenditure.objects.get(id=pk)
+                    log_expenditure_edit(expenditure, request.user, previous_values)
                     
                     messages.success(request, 'Expenditure updated successfully')
                 except InvalidOperation:
@@ -875,16 +960,23 @@ def delete_expenditure(request, pk):
     """Delete an expenditure using raw SQL"""
     try:
         with connection.cursor() as cursor:
-            # Check if expenditure exists
+            # Fetch expenditure details before deletion
             cursor.execute("""
-                SELECT id FROM adminpanel_expenditure WHERE id = %s
+                SELECT id, name, category, month FROM adminpanel_expenditure WHERE id = %s
             """, [pk])
             
-            if not cursor.fetchone():
+            row = cursor.fetchone()
+            if not row:
                 messages.error(request, 'Expenditure not found')
                 return redirect('finance')
             
+            exp_id, exp_name, exp_category, exp_month = row
+            
             if request.method == 'POST':
+                # Log the deletion with expenditure details
+                expenditure_name = f"{exp_name} ({exp_category}) - {exp_month}"
+                log_expenditure_deletion(exp_id, expenditure_name, request.user)
+                
                 cursor.execute("""
                     DELETE FROM adminpanel_expenditure WHERE id = %s
                 """, [pk])
@@ -1383,3 +1475,6 @@ def get_projects_json(request):
     """Get all projects as JSON for dropdown population"""
     projects = Project.objects.all().values('id', 'name', 'description', 'project_type', 'status', 'due_date').order_by('-created_at')
     return JsonResponse({'projects': list(projects)})
+
+
+

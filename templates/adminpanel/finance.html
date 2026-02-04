@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}"  media="screen">
 
-<div class="welcome-box">
+<div class="welcome-box" style="margin-bottom: 30px; position: relative; z-index: 5;">
     <h3>Finance Overview</h3>
     <p>Track cost centres and monthly expenditures</p>
     <div class="progress mt-2" style="width: 75%; height: 10px;">
@@ -17,18 +17,15 @@
     </div>
 </div>
 
-<div class="container-fluid py-4">
+<div class="container-fluid" style="padding-top: 50px; padding-left: 15px; padding-right: 15px; position: relative; z-index: 1;">
 
     <!-- Cost Centres Overview -->
-    <div class="card shadow mb-4">
+    <div class="card shadow mb-4" style="z-index: 2; margin-top: 20px;">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">💰 Cost Centres Overview</h5>
+            <h5 class="mb-0"> Cost Centres Overview</h5>
             <div class="d-flex gap-2">
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCostCentreModal">
                     ➕ Add Cost Centre
-                </button>
-                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addExpenditureModal">
-                    ➕ Add Expenditure
                 </button>
             </div>
         </div>
@@ -40,7 +37,9 @@
                         <th>Payments Received</th>
                         <th>Total Received</th>
                         <th>Total Spent</th>
-                        <th>Total Remaining</th>
+                        <th>Total Remaining (Received)</th>
+                        <th>Total MOA Amount</th>
+                        <th>Total MOA Outstanding</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -51,7 +50,7 @@
                             <td>
                                 <span class="badge bg-info">{{ cc.payment_count }} payment{{ cc.payment_count|pluralize }}</span>
                             </td>
-                            <td><span class="text-success fw-bold">R {{ cc.total_received|floatformat:2 }}</span></td>
+                            <td><span class="text-success fw-bold">R {{ cc.get_total_received|floatformat:2 }}</span></td>
                             <td><span class="text-danger">R {{ cc.total_spent|floatformat:2 }}</span></td>
                             <td>
                                 {% if cc.total_remaining >= 0 %}
@@ -60,15 +59,23 @@
                                     <span class="text-danger fw-bold">R {{ cc.total_remaining|floatformat:2 }}</span>
                                 {% endif %}
                             </td>
+                            <td><span class="text-info fw-bold">R {{ cc.moa_amount|floatformat:2 }}</span></td>
+                            <td>
+                                {% if cc.moa_outstanding >= 0 %}
+                                    <span class="text-success fw-bold">R {{ cc.moa_outstanding|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-danger fw-bold">R {{ cc.moa_outstanding|floatformat:2 }}</span>
+                                {% endif %}
+                            </td>
                             <td class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#addPaymentModal{{ cc.id }}" title="Add Payment">
-                                    ➕ Payment
+                                Add Payment
                                 </button>
                                 <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#paymentHistoryModal{{ cc.id }}" title="View Payment History">
-                                    📋 History
+                                     History
                                 </button>
                                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editCostCentreModal{{ cc.id }}">
-                                    ✏️ Edit
+                                     Edit
                                 </button>
                                 <form method="POST" action="{% url 'delete_cost_centre' cc.id %}" onsubmit="return confirm('Are you sure you want to delete this cost centre?');" style="display: inline;">
                                     {% csrf_token %}
@@ -78,28 +85,35 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted">No cost centres created yet.</td>
+                            <td colspan="8" class="text-center text-muted">No cost centres created yet.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-                </tbody>
-            </table>
-        </div>
-    </div>
 
     <!-- Monthly Expenditure Tracker -->
-    <div class="card shadow mb-5">
+    <div class="card shadow mb-5" style="z-index: 2; margin-top: 30px;">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">📊 Monthly Expenditure Tracker</h5>
-            <select id="costCentreDropdown" class="form-select w-auto">
-                <option value="">Show All Cost Centres</option>
-                {% for cc in cost_centres %}
-                    <option value="{{ cc.id }}">{{ cc.name }}</option>
-                {% endfor %}
-            </select>
+            <h5 class="mb-0"> Monthly Expenditure Tracker</h5>
+            <div class="d-flex gap-2 align-items-center">
+                <select id="costCentreDropdown" class="form-select w-auto">
+                    <option value="">Show All Cost Centres</option>
+                    {% for cc in cost_centres %}
+                        <option value="{{ cc.id }}">{{ cc.name }}</option>
+                    {% endfor %}
+                </select>
+                <select id="categoryFilterDropdown" class="form-select w-auto">
+                    <option value="">Show All Categories</option>
+                    {% for key, label in category_choices %}
+                        <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addExpenditureModal">
+                    ➕ Add Expenditure
+                </button>
+            </div>
         </div>
         <div class="card-body table-responsive">
             <table class="table table-bordered table-sm" id="expenditureTable">
@@ -108,38 +122,34 @@
                         <th>Month</th>
                         <th>Cost Centre</th>
                         <th>Name & Surname</th>
-                        <th>Salary</th>
-                        <th>Bursaries</th>
-                        <th>Invoices</th>
-                        <th>Fitness</th>
-                        <th>Equipment/Resources</th>
-                        <th>Travel</th>
+                        <th data-category-col="Salary">Salary</th>
+                        <th data-category-col="Bursaries">Bursaries</th>
+                        <th data-category-col="Invoices">Invoices</th>
+                        <th data-category-col="Fitness">Fitness</th>
+                        <th data-category-col="Equipment">Equipment/Resources</th>
+                        <th data-category-col="Travel">Travel</th>
                         <th>Total Expenses</th>
                         <th>Opening Balance</th>
-                        <th>Closing Balance</th>
-                        <th>Oracle Balance</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="expenditureTableBody">
                     {% for record in all_expenditures %}
-                        <tr data-cost-centre="{{ record.cost_centre_id }}">
+                        <tr data-cost-centre="{{ record.cost_centre_id }}" data-category="{{ record.category }}">
                             <td>{{ record.month }}</td>
                             <td>{{ record.cost_centre.name }}</td>
                             <td>{{ record.name }}</td>
-                            <td>{% if record.category == 'Salary' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td>{% if record.category == 'Bursaries' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td>{% if record.category == 'Invoices' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td>{% if record.category == 'Fitness' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td>{% if record.category == 'Equipment' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td>{% if record.category == 'Travel' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
+                            <td data-category-cell="Salary">{% if record.category == 'Salary' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
+                            <td data-category-cell="Bursaries">{% if record.category == 'Bursaries' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
+                            <td data-category-cell="Invoices">{% if record.category == 'Invoices' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
+                            <td data-category-cell="Fitness">{% if record.category == 'Fitness' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
+                            <td data-category-cell="Equipment">{% if record.category == 'Equipment' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
+                            <td data-category-cell="Travel">{% if record.category == 'Travel' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
                             <td><strong>R {{ record.amount|floatformat:2 }}</strong></td>
                             <td>R {{ record.opening_balance|floatformat:2 }}</td>
-                            <td>R {{ record.closing_balance|floatformat:2 }}</td>
-                            <td>R {{ record.oracle_balance|floatformat:2 }}</td>
                             <td class="d-flex gap-2">
                                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editExpenditureModal{{ record.id }}">
-                                    ✏️ Edit
+                                     Edit
                                 </button>
                                 <form method="POST" action="{% url 'delete_expenditure' record.id %}" onsubmit="return confirm('Are you sure you want to delete this expenditure?');" style="display:inline;">
                                     {% csrf_token %}
@@ -148,7 +158,7 @@
                             </td>
                         </tr>
                     {% empty %}
-                        <tr><td colspan="14" class="text-center text-muted">No expenditures recorded yet.</td></tr>
+                        <tr><td colspan="12" class="text-center text-muted">No expenditures recorded yet.</td></tr>
                     {% endfor %}
                 </tbody>
 
@@ -156,30 +166,86 @@
         </div>
     </div>
 
-    <div class="card mt-4 shadow">
+    <div class="card mt-4 shadow" style="z-index: 2;">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Cost Centre Spending Overview</h5>
+        <h5 class="mb-0"> Cost Centre Spending Overview</h5>
     </div>
     <div class="card-body">
         <canvas id="costCentreBarChart" style="max-height: 280px;"></canvas>
     </div>
 </div>
 
-<div class="card mt-4 shadow">
-    <div class="card-header">
-        <h5 class="mb-0">Category Distribution</h5>
+<div class="card mt-4 shadow" style="z-index: 2;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"> Category Distribution</h5>
     </div>
     <div class="card-body">
         <canvas id="categoryPieChart" style="max-height: 240px;"></canvas>
     </div>
 </div>
 
-<div class="card mt-4 shadow">
-    <div class="card-header">
-        <h5 class="mb-0">Monthly Spending Trend</h5>
+<div class="card mt-4 shadow mb-5" style="z-index: 2;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">🔐 Immutable Audit Trail</h5>
+        <small class="text-muted">Read-only record of all changes - Cannot be modified or deleted</small>
     </div>
-    <div class="card-body">
-        <canvas id="monthlyLineChart" style="max-height: 300px;"></canvas>
+    <div class="card-body table-responsive">
+        <table class="table table-bordered table-sm table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity Type</th>
+                    <th>Entity Name</th>
+                    <th>Previous Values</th>
+                    <th>New Values</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in audit_logs %}
+                    <tr>
+                        <td>
+                            <small>{{ log.timestamp|date:"Y-m-d H:i:s" }}</small>
+                        </td>
+                        <td>
+                            <small>{{ log.user.get_full_name|default:log.user.username }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ log.get_action_display }}</span>
+                        </td>
+                        <td>
+                            <small>{{ log.entity_type }}</small>
+                        </td>
+                        <td>
+                            <small><strong>{{ log.entity_name }}</strong></small>
+                        </td>
+                        <td>
+                            <small>
+                                {% if log.previous_values %}
+                                    <code style="display: block; max-width: 200px; white-space: pre-wrap; word-wrap: break-word;">{{ log.previous_values|safe }}</code>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            <small>
+                                {% if log.new_values %}
+                                    <code style="display: block; max-width: 200px; white-space: pre-wrap; word-wrap: break-word;">{{ log.new_values|safe }}</code>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </small>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">No audit logs recorded yet</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -207,6 +273,11 @@
                         <label for="initialAmount" class="form-label">Initial Amount Received (Optional)</label>
                         <input type="number" id="initialAmount" name="received" class="form-control" placeholder="0.00" step="0.01">
                         <small class="form-text text-muted">Leave blank to create empty cost centre. Add payments later using the "➕ Payment" button.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="moaAmount" class="form-label">MOA Amount (Optional)</label>
+                        <input type="number" id="moaAmount" name="moa_amount" class="form-control" placeholder="0.00" step="0.01">
+                        <small class="form-text text-muted">Memorandum of Understanding - Total expected/budgeted amount for this cost centre.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -238,8 +309,8 @@
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label">Month</label>
-            <input type="text" name="month" class="form-control" placeholder="e.g., January 2026" required>
+            <label class="form-label">Date</label>
+            <input type="date" name="month" class="form-control" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Name & Surname</label>
@@ -257,10 +328,6 @@
           <div class="mb-3">
             <label class="form-label">Amount (R)</label>
             <input type="number" step="0.01" name="amount" class="form-control" placeholder="0.00" required min="0">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Oracle Balance (Optional)</label>
-            <input type="number" step="0.01" name="oracle_balance" class="form-control" placeholder="0.00" value="0.00">
           </div>
         </div>
         <div class="modal-footer">
@@ -287,6 +354,11 @@
           <div class="mb-3">
             <label class="form-label">Cost Centre Name</label>
             <input type="text" name="name" class="form-control" value="{{ cc.name }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">MOA Amount (Optional)</label>
+            <input type="number" name="moa_amount" class="form-control" placeholder="0.00" step="0.01" value="{% if cc.moa_amount %}{{ cc.moa_amount }}{% endif %}">
+            <small class="form-text text-muted">Memorandum of Understanding - Total expected/budgeted amount.</small>
           </div>
           <div class="alert alert-info">
             <small><strong>Note:</strong> Total Received is calculated from all payments. Use the "➕ Payment" button to add funds.</small>
@@ -392,8 +464,8 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label>Month</label>
-            <input type="text" name="month" class="form-control" value="{{ record.month }}" required>
+            <label>Date</label>
+            <input type="date" name="month" class="form-control" value="{{ record.month }}" required>
           </div>
           <div class="mb-3">
             <label>Name</label>
@@ -410,10 +482,6 @@
           <div class="mb-3">
             <label>Amount</label>
             <input type="number" step="0.01" name="amount" class="form-control" value="{{ record.amount }}" required>
-          </div>
-          <div class="mb-3">
-            <label>Oracle Balance</label>
-            <input type="number" step="0.01" name="oracle_balance" class="form-control" value="{{ record.oracle_balance }}">
           </div>
         </div>
         <div class="modal-footer">
@@ -438,8 +506,54 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
     const costCentreDropdown = document.getElementById("costCentreDropdown");
+    const categoryFilterDropdown = document.getElementById("categoryFilterDropdown");
     const addCostCentreForm = document.getElementById("addCostCentreForm");
     const expenditureTable = document.querySelector("#expenditureTable tbody");
+
+    // ✅ Combined filter function for both Cost Centre and Category
+    function applyFilters() {
+        const selectedCostCentre = costCentreDropdown ? costCentreDropdown.value : "";
+        const selectedCategory = categoryFilterDropdown ? categoryFilterDropdown.value : "";
+        const rows = document.querySelectorAll("#expenditureTableBody tr");
+        let visibleRowCount = 0;
+
+        // Show/hide rows based on filters
+        rows.forEach(row => {
+            const rowCostCentreId = row.getAttribute("data-cost-centre");
+            const rowCategory = row.getAttribute("data-category");
+            
+            const costCentreMatch = selectedCostCentre === "" || rowCostCentreId === selectedCostCentre;
+            const categoryMatch = selectedCategory === "" || rowCategory === selectedCategory;
+            
+            if (costCentreMatch && categoryMatch) {
+                row.style.display = "";
+                visibleRowCount++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        // Show/hide category columns based on category filter
+        const table = document.getElementById('expenditureTable');
+        const allCells = table.querySelectorAll('td[data-category-cell], th[data-category-col]');
+        
+        if (selectedCategory === "") {
+            // Show all category columns
+            allCells.forEach(cell => {
+                cell.style.display = "";
+            });
+        } else {
+            // Show only the selected category column
+            allCells.forEach(cell => {
+                const cellCategory = cell.getAttribute("data-category-cell") || cell.getAttribute("data-category-col");
+                if (cellCategory === selectedCategory) {
+                    cell.style.display = "";
+                } else {
+                    cell.style.display = "none";
+                }
+            });
+        }
+    }
 
     // ✅ Corrected AJAX Form Submission for Cost Centre
     addCostCentreForm.addEventListener('submit', function (e) {
@@ -469,22 +583,13 @@
         });
     });
 
-    // ✅ Fetch expenditures for selected cost centre
+    // ✅ Apply filters when either dropdown changes
     if (costCentreDropdown) {
-        costCentreDropdown.addEventListener("change", function () {
-    const selectedId = this.value;
-    const rows = document.querySelectorAll("#expenditureTableBody tr");
-
-    rows.forEach(row => {
-        const rowCostCentreId = row.getAttribute("data-cost-centre");
-        if (selectedId === "" || rowCostCentreId === selectedId) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    });
-});
-
+        costCentreDropdown.addEventListener("change", applyFilters);
+    }
+    
+    if (categoryFilterDropdown) {
+        categoryFilterDropdown.addEventListener("change", applyFilters);
     }
 
     // ✅ Expenditure Table Loader
