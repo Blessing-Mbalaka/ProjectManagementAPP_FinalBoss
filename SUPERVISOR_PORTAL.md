@@ -3,7 +3,7 @@
 ## Overview
 A dedicated supervisor portal has been created with complete isolation from the admin panel. Supervisors are now routed to their own dedicated interface with limited navigation.
 
-## Portal Structure
+## Portal Structure -----
 
 ### Navigation (2 Items Only)
 1. **Dashboard** - View all supervised students
