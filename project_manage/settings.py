@@ -30,6 +30,7 @@ DEBUG=True
 ALLOWED_HOSTS = [
     '127.0.0.1', 
     'localhost', 
+    'testserver',
     'project_manage.onrender.com',
 ]
 

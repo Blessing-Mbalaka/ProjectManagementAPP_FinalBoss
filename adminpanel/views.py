@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
 from manager.models import Book, Chapter
-from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedback, Notification, AuditLog
+from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord
 from .audit_service import (
     log_cost_centre_creation, log_cost_centre_edit, log_cost_centre_deletion,
     log_expenditure_creation, log_expenditure_edit, log_expenditure_deletion,
@@ -38,6 +38,7 @@ from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 from projects.models import StudentProfile
 import csv
+from datetime import datetime, timedelta
 import io
 
 
@@ -168,6 +169,7 @@ def manage_users(request):
     role_filter = request.GET.get('role', '')
 
     users = CustomUser.objects.exclude(role='admin')
+    all_users = CustomUser.objects.exclude(role='admin')  # All users for filter dropdown
 
     if search:
         users = users.filter(Q(username__icontains=search) | Q(email__icontains=search))
@@ -182,6 +184,7 @@ def manage_users(request):
 
     return render(request, 'adminpanel/manage_users.html', {
         'users': users,
+        'all_users': all_users,
         'form': CustomUserCreationForm(),
         'edit_forms': edit_forms,
         'role_totals': role_totals,
@@ -1475,6 +1478,174 @@ def get_projects_json(request):
     """Get all projects as JSON for dropdown population"""
     projects = Project.objects.all().values('id', 'name', 'description', 'project_type', 'status', 'due_date').order_by('-created_at')
     return JsonResponse({'projects': list(projects)})
+
+
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+@csrf_exempt
+def user_activity_api(request):
+    """API endpoint for user activity data (clock-in, tasks, etc.)"""
+    from datetime import datetime, timedelta
+    
+    employee_id = request.GET.get('employee_id', '')
+    date_range = request.GET.get('date_range', '30')
+    view_type = request.GET.get('view_type', 'overview')
+    
+    # Calculate date range
+    today = timezone.now().date()
+    if date_range == 'all':
+        start_date = None
+    else:
+        days = int(date_range) if date_range.isdigit() else 30
+        start_date = today - timedelta(days=days)
+    
+    # DEBUG: Log filter parameters
+    print(f"\n🔍 [user_activity_api] Filtering:")
+    print(f"   Today: {today}")
+    print(f"   Date range: {date_range} days")
+    print(f"   Start date: {start_date}")
+    print(f"   Employee ID: {employee_id or 'All'}")
+    
+    # Filter clock records
+    clock_records = ClockInRecord.objects.all()
+    print(f"   Total records before filter: {clock_records.count()}")
+    
+    if employee_id:
+        clock_records = clock_records.filter(employee_id=employee_id)
+    if start_date:
+        clock_records = clock_records.filter(clock_in_time__date__gte=start_date)
+    
+    filtered_count = clock_records.count()
+    print(f"   Records after date filter: {filtered_count}")
+    
+    clock_records = clock_records.order_by('-clock_in_time')[:100]
+    print(f"   Records for processing: {len(clock_records)} (limited to 100)")
+    
+    # Calculate metrics
+    total_hours = Decimal('0.00')
+    days_present = set()
+    hours_by_date = {}
+    day_distribution = {'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0}
+    
+    for record in clock_records:
+        if record.clock_out_time:
+            duration = record.clock_out_time - record.clock_in_time
+            hours = duration.total_seconds() / 3600
+            total_hours += Decimal(str(hours))
+            
+            date_key = record.clock_in_time.strftime('%Y-%m-%d')
+            hours_by_date[date_key] = hours_by_date.get(date_key, 0) + hours
+            
+            date_obj = record.clock_in_time.date()
+            days_present.add(date_obj)
+            
+            day_name = record.clock_in_time.strftime('%A')
+            day_distribution[day_name] += 1
+    
+    days_present_count = len(days_present)
+    avg_daily_hours = float(total_hours) / max(days_present_count, 1) if days_present_count > 0 else 0
+    
+    # Get task progress
+    tasks = Task.objects.all()
+    if employee_id:
+        tasks = tasks.filter(assigned_to_id=employee_id)
+    
+    if start_date:
+        tasks = tasks.filter(created_at__date__gte=start_date)
+    
+    task_progress = []
+    active_tasks_count = 0
+    
+    for task in tasks[:10]:  # Limit to 10 tasks
+        progress = task.progress_percentage if hasattr(task, 'progress_percentage') else 0
+        status = 'completed' if progress == 100 else ('in_progress' if progress > 0 else 'pending')
+        
+        if status in ['in_progress', 'pending']:
+            active_tasks_count += 1
+        
+        task_progress.append({
+            'name': task.title[:30],
+            'progress': progress,
+            'status': status,
+            'start_day': 0,
+            'duration': 5
+        })
+    
+    # Weekly summary
+    weekly_summary = []
+    week_start = today - timedelta(days=today.weekday())
+    
+    for week_offset in range(4):
+        current_week_start = week_start - timedelta(weeks=week_offset)
+        current_week_end = current_week_start + timedelta(days=6)
+        
+        week_records = [r for r in clock_records if current_week_start <= r.clock_in_time.date() <= current_week_end]
+        
+        week_hours = Decimal('0.00')
+        week_days = set()
+        
+        for record in week_records:
+            if record.clock_out_time:
+                duration = record.clock_out_time - record.clock_in_time
+                week_hours += Decimal(str(duration.total_seconds() / 3600))
+                week_days.add(record.clock_in_time.date())
+        
+        week_number = current_week_start.isocalendar()[1]
+        avg_week_hours = float(week_hours) / max(len(week_days), 1) if len(week_days) > 0 else 0
+        
+        weekly_summary.append({
+            'week_number': week_number,
+            'date_range': f"{current_week_start.strftime('%b %d')} - {current_week_end.strftime('%b %d')}",
+            'days_worked': len(week_days),
+            'total_hours': float(week_hours),
+            'avg_daily_hours': avg_week_hours
+        })
+    
+    # Recent records for display
+    recent_records = []
+    for record in clock_records[:20]:
+        recent_records.append({
+            'date': record.clock_in_time.strftime('%Y-%m-%d'),
+            'employee': record.employee.get_full_name() or record.employee.username,
+            'clock_in': record.clock_in_time.strftime('%H:%M:%S'),
+            'clock_out': record.clock_out_time.strftime('%H:%M:%S') if record.clock_out_time else '--',
+            'duration': record.duration_display,
+            'status': record.status
+        })
+    
+    # Heatmap data (hours by day and hour)
+    heatmap_data = {
+        'Monday': [0] * 24,
+        'Tuesday': [0] * 24,
+        'Wednesday': [0] * 24,
+        'Thursday': [0] * 24,
+        'Friday': [0] * 24
+    }
+    
+    for record in clock_records:
+        if record.clock_out_time:
+            day_name = record.clock_in_time.strftime('%A')
+            hour = record.clock_in_time.hour
+            
+            if day_name in heatmap_data:
+                duration = (record.clock_out_time - record.clock_in_time).total_seconds() / 3600
+                heatmap_data[day_name][hour] += duration
+    
+    # Prepare response
+    response_data = {
+        'avg_daily_hours': avg_daily_hours,
+        'total_hours': float(total_hours),
+        'days_present': days_present_count,
+        'active_tasks': active_tasks_count,
+        'hours_by_date': [{'date': date, 'hours': hours} for date, hours in sorted(hours_by_date.items())],
+        'day_distribution': day_distribution,
+        'task_progress': task_progress,
+        'weekly_summary': weekly_summary,
+        'recent_records': recent_records,
+        'heatmap_data': heatmap_data
+    }
+    
+    return JsonResponse(response_data)
 
 
 

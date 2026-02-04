@@ -309,7 +309,7 @@ class ClockInRecord(models.Model):
         related_name='clock_records'
     )
     
-    clock_in_time = models.DateTimeField(auto_now_add=True)
+    clock_in_time = models.DateTimeField()
     clock_out_time = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='clocked_in')
     notes = models.TextField(blank=True)

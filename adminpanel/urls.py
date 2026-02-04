@@ -48,6 +48,7 @@ urlpatterns = [
     path('delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
     path('edit-user/<int:user_id>/', views.edit_user, name='edit_user'),
     path('edit-user/<int:user_id>/', views.edit_user, name='edit_user'),
+    path('api/user-activity/', views.user_activity_api, name='user_activity_api'),
     path('register_users/',views.register_users,name='register_users'),
         path('load-student-manual/', views.load_student_manual, name='load_student_manual'),
     path('load-students-csv/', views.load_students_csv, name='load_students_csv'),

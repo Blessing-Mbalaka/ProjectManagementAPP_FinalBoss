@@ -1,0 +1,532 @@
+{% load static %}
+
+<!-- User Activity Dashboard Partial -->
+<div class="card shadow mt-5" style="margin-bottom: 50px;">
+    <div class="card-header bg-gradient p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <h5 class="mb-0 text-white">👤 User Activity Analytics</h5>
+        <small class="text-white-50">Clock-in records, hours tracking, and task progress</small>
+    </div>
+    
+    <!-- Filters Section -->
+    <div class="card-body">
+        <div class="row mb-4 g-3">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">📅 Filter by Employee</label>
+                <select id="activityEmployeeFilter" class="form-select">
+                    <option value="">All Employees</option>
+                    {% for user in all_users %}
+                        <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">📅 Date Range</label>
+                <select id="activityDateRange" class="form-select">
+                    <option value="30">Last 30 Days</option>
+                    <option value="60">Last 60 Days</option>
+                    <option value="90">Last 90 Days</option>
+                    <option value="365">Last Year</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">📊 View</label>
+                <select id="activityView" class="form-select">
+                    <option value="overview">📊 Overview</option>
+                    <option value="daily">📅 Daily Breakdown</option>
+                    <option value="weekly">📆 Weekly Summary</option>
+                    <option value="monthly">📈 Monthly Trends</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="applyActivityFilters()">🔄 Apply Filters</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="card-body border-top">
+        <h6 class="fw-bold mb-3">📊 Key Performance Indicators</h6>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="card bg-light border-0">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Average Daily Hours</h6>
+                        <h4 class="text-primary" id="avgDailyHours">--</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light border-0">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Total Hours (Period)</h6>
+                        <h4 class="text-success" id="totalHoursPeriod">--</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light border-0">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Days Present</h6>
+                        <h4 class="text-info" id="daysPresent">--</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light border-0">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Active Tasks</h6>
+                        <h4 class="text-warning" id="activeTasks">--</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clock-in Analytics Section -->
+    <div class="card-body border-top">
+        <h6 class="fw-bold mb-3">⏰ Clock-In Analytics</h6>
+        <div class="row">
+            <div class="col-lg-8">
+                <div style="position: relative; height: 300px;">
+                    <canvas id="hoursWorkedChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <h6 class="fw-bold mb-2">📋 Day Distribution</h6>
+                <div style="position: relative; height: 300px;">
+                    <canvas id="dayDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Summary -->
+    <div class="card-body border-top">
+        <h6 class="fw-bold mb-3">📆 Weekly Summary</h6>
+        <table class="table table-sm table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Week</th>
+                    <th>Mon-Sun</th>
+                    <th>Days Worked</th>
+                    <th>Total Hours</th>
+                    <th>Avg Daily Hours</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="weeklySummaryBody">
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        <small>Select filters and click "Apply" to view data</small>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Task Progress (Gantt-style) -->
+    <div class="card-body border-top">
+        <h6 class="fw-bold mb-3">📊 Task Progress Timeline</h6>
+        <div style="position: relative; height: 400px; overflow-x: auto;">
+            <canvas id="taskProgressChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Recent Clock Records -->
+    <div class="card-body border-top">
+        <h6 class="fw-bold mb-3">⏱️ Recent Clock Records</h6>
+        <table class="table table-sm table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Employee</th>
+                    <th>Clock In</th>
+                    <th>Clock Out</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="recentRecordsBody">
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        <small>No clock records found</small>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Activity Heatmap -->
+    <div class="card-body border-top">
+        <h6 class="fw-bold mb-3">🔥 Activity Heatmap (Hours by Day & Time)</h6>
+        <div id="heatmapContainer" style="position: relative; height: 250px;">
+            <canvas id="heatmapChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@latest"></script>
+
+<script>
+    // Global chart instances
+    let hoursWorkedChart = null;
+    let dayDistributionChart = null;
+    let taskProgressChart = null;
+    let heatmapChart = null;
+
+    // Apply filters and load data
+    function applyActivityFilters() {
+        console.log('🔄 Applying activity filters...');
+        
+        const employeeId = document.getElementById('activityEmployeeFilter').value;
+        const dateRange = document.getElementById('activityDateRange').value;
+        const viewType = document.getElementById('activityView').value;
+
+        console.log(`   Employee: ${employeeId || 'All'}, Range: ${dateRange}, View: ${viewType}`);
+
+        // Fetch activity data from server
+        const url = `/adminpanel/api/user-activity/?employee_id=${employeeId}&date_range=${dateRange}&view_type=${viewType}`;
+        console.log(`   Fetching: ${url}`);
+        
+        fetch(url)
+            .then(response => {
+                console.log(`   Response status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                console.log('✅ Data received:', data);
+                updateActivityDashboard(data, viewType);
+            })
+            .catch(error => {
+                console.error('❌ Error fetching activity data:', error);
+                showActivityError(error.message);
+            });
+    }
+    
+    // Show error message
+    function showActivityError(message) {
+        console.error('Error:', message);
+        const tbody = document.getElementById('recentRecordsBody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger"><strong>Error:</strong> ${message}</td></tr>`;
+        }
+    }
+
+    // Update dashboard with fetched data
+    function updateActivityDashboard(data, viewType) {
+        // Update KPI Cards
+        document.getElementById('avgDailyHours').textContent = (data.avg_daily_hours || 0).toFixed(1) + 'h';
+        document.getElementById('totalHoursPeriod').textContent = (data.total_hours || 0).toFixed(1) + 'h';
+        document.getElementById('daysPresent').textContent = data.days_present || 0;
+        document.getElementById('activeTasks').textContent = data.active_tasks || 0;
+
+        // Update Charts
+        updateHoursWorkedChart(data.hours_by_date || []);
+        updateDayDistributionChart(data.day_distribution || {});
+        updateWeeklySummary(data.weekly_summary || []);
+        updateTaskProgressChart(data.task_progress || []);
+        updateRecentRecords(data.recent_records || []);
+        updateHeatmap(data.heatmap_data || {});
+    }
+
+    // Hours Worked Chart (Bar)
+    function updateHoursWorkedChart(hoursData) {
+        const canvasElement = document.getElementById('hoursWorkedChart');
+        if (!canvasElement) return;
+        
+        const ctx = canvasElement.getContext('2d');
+        
+        if (hoursWorkedChart) {
+            hoursWorkedChart.destroy();
+            hoursWorkedChart = null;
+        }
+
+        const dates = hoursData.map(d => d.date);
+        const hours = hoursData.map(d => d.hours);
+
+        hoursWorkedChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Hours Worked',
+                    data: hours,
+                    backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 12,
+                        ticks: {
+                            callback: function(value) {
+                                return value + 'h';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // Day Distribution Chart (Pie)
+    function updateDayDistributionChart(dayData) {
+        const canvasElement = document.getElementById('dayDistributionChart');
+        if (!canvasElement) return;
+        
+        const ctx = canvasElement.getContext('2d');
+        
+        if (dayDistributionChart) {
+            dayDistributionChart.destroy();
+            dayDistributionChart = null;
+        }
+
+        const days = Object.keys(dayData);
+        const counts = Object.values(dayData);
+        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384'];
+
+        dayDistributionChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: days,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: colors.slice(0, days.length)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    // Update weekly summary table
+    function updateWeeklySummary(weeklySummary) {
+        const tbody = document.getElementById('weeklySummaryBody');
+        tbody.innerHTML = '';
+
+        if (weeklySummary.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No data available</td></tr>';
+            return;
+        }
+
+        weeklySummary.forEach(week => {
+            const status = week.total_hours >= 35 ? '✅ Full' : '⚠️ Partial';
+            const statusColor = week.total_hours >= 35 ? 'success' : 'warning';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>Week ${week.week_number}</strong></td>
+                    <td><small>${week.date_range}</small></td>
+                    <td>${week.days_worked}</td>
+                    <td>${week.total_hours.toFixed(1)}h</td>
+                    <td>${week.avg_daily_hours.toFixed(1)}h</td>
+                    <td><span class="badge bg-${statusColor}">${status}</span></td>
+                </tr>
+            `;
+        });
+    }
+
+    // Task Progress Chart (Gantt-style)
+    function updateTaskProgressChart(taskProgress) {
+        const canvasElement = document.getElementById('taskProgressChart');
+        if (!canvasElement) return;
+        
+        const ctx = canvasElement.getContext('2d');
+        
+        if (taskProgressChart) {
+            taskProgressChart.destroy();
+            taskProgressChart = null;
+        }
+
+        const taskNames = taskProgress.map(t => t.name);
+        const startDays = taskProgress.map(t => t.start_day);
+        const durations = taskProgress.map(t => t.duration);
+        const progress = taskProgress.map(t => t.progress);
+        const colors = taskProgress.map(t => {
+            if (t.status === 'completed') return '#28a745';
+            if (t.status === 'in_progress') return '#007bff';
+            return '#ffc107';
+        });
+
+        taskProgressChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: taskNames,
+                datasets: [{
+                    label: 'Progress %',
+                    data: progress,
+                    backgroundColor: colors,
+                    borderRadius: 3
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // Update recent records table
+    function updateRecentRecords(recentRecords) {
+        const tbody = document.getElementById('recentRecordsBody');
+        tbody.innerHTML = '';
+
+        if (recentRecords.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No records found</td></tr>';
+            return;
+        }
+
+        recentRecords.forEach(record => {
+            const statusBadge = record.status === 'clocked_in' 
+                ? '<span class="badge bg-success">⏱️ Active</span>'
+                : '<span class="badge bg-secondary">✓ Completed</span>';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><small>${record.date}</small></td>
+                    <td>${record.employee}</td>
+                    <td><small>${record.clock_in}</small></td>
+                    <td><small>${record.clock_out || '--'}</small></td>
+                    <td><strong>${record.duration}</strong></td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        });
+    }
+
+    // Activity Heatmap - Grid/Bar Chart showing hours by day and hour
+    function updateHeatmap(heatmapData) {
+        const canvasElement = document.getElementById('heatmapChart');
+        if (!canvasElement) return;
+        
+        const ctx = canvasElement.getContext('2d');
+        
+        if (heatmapChart) {
+            heatmapChart.destroy();
+            heatmapChart = null;
+        }
+
+        console.log('🔥 Creating heatmap with data:', heatmapData);
+
+        // Prepare stacked bar data for hours (show morning, afternoon, evening)
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const timeSlots = [
+            { label: '🌅 Morning (6-12)', start: 6, end: 12 },
+            { label: '☀️ Afternoon (12-18)', start: 12, end: 18 },
+            { label: '🌙 Evening (18-24)', start: 18, end: 24 }
+        ];
+
+        const datasets = timeSlots.map((slot, idx) => {
+            const colors = [
+                'rgba(255, 193, 7, 0.7)',  // Morning - Amber
+                'rgba(76, 175, 80, 0.7)',   // Afternoon - Green
+                'rgba(156, 39, 176, 0.7)'   // Evening - Purple
+            ];
+
+            return {
+                label: slot.label,
+                data: days.map(day => {
+                    const dayHours = heatmapData[day] || [];
+                    const slotHours = dayHours.slice(slot.start, slot.end).reduce((a, b) => a + b, 0);
+                    return slotHours.toFixed(1);
+                }),
+                backgroundColor: colors[idx],
+                borderColor: colors[idx].replace('0.7', '1'),
+                borderWidth: 1
+            };
+        });
+
+        heatmapChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: days,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Hours'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + 'h';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + 'h';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📊 Initializing User Activity Dashboard...');
+        applyActivityFilters();
+    });
+    
+    // Also initialize immediately if DOM is already loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyActivityFilters);
+    } else {
+        console.log('📊 DOM already loaded, initializing immediately...');
+        applyActivityFilters();
+    }
+</script>
