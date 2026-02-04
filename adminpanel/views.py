@@ -20,7 +20,7 @@ from projects.forms import ChatForm
 from django.http import JsonResponse, HttpResponseBadRequest
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum, Count, Q
-from collections import Counter
+from collections import Counter, defaultdict
 from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
 from manager.models import Paper
@@ -34,6 +34,26 @@ from django.views.decorators.http import require_http_methods
 from projects.models import StudentProfile
 import csv
 import io
+
+
+def safe_decimal(value, default=Decimal('0.00')):
+    if value is None:
+        return default
+
+    try:
+        dec = value if isinstance(value, Decimal) else Decimal(str(value))
+        if dec.is_nan() or dec.is_infinite():
+            return default
+        return dec
+    except (InvalidOperation, TypeError, ValueError):
+        return default
+
+
+def decimal_to_float(value):
+    try:
+        return float(safe_decimal(value))
+    except (TypeError, ValueError, InvalidOperation, OverflowError):
+        return 0.0
 
 
 @login_required
@@ -356,83 +376,93 @@ def update_task_progress(request, task_id):
     return JsonResponse({"error": "Invalid request"}, status=400)
 
 @login_required
+@login_required
+@login_required
 def finance(request):
     from django.db import connection
-    
-    # Use raw SQL to avoid decimal conversion errors
+
+    payment_summary = defaultdict(lambda: {'count': 0, 'total': Decimal('0.00')})
+    payments_by_cc = defaultdict(list)
+    cost_centres_map = {}
+    all_expenditures = []
+    expenditure_summary = defaultdict(lambda: Decimal('0.00'))
+
     with connection.cursor() as cursor:
-        # Fetch cost centres
         cursor.execute("""
-            SELECT id, name, total_received, total_spent 
-            FROM adminpanel_costcentre
+            SELECT id, cost_centre_id, amount, description, payment_date
+            FROM adminpanel_costcentrepayment
+            ORDER BY payment_date DESC
         """)
-        cost_centre_rows = cursor.fetchall()
-        cost_centres = []
-        for row in cost_centre_rows:
-            cc_id, name, total_received, total_spent = row
-            try:
-                total_received = float(total_received) if total_received else 0
-                total_spent = float(total_spent) if total_spent else 0
-            except (ValueError, TypeError):
-                total_received = 0
-                total_spent = 0
-            
-            cost_centres.append({
-                'id': cc_id,
-                'name': name,
-                'total_received': total_received,
-                'total_spent': total_spent,
-                'total_remaining': total_received - total_spent
+        for payment_id, cc_id, amount, description, payment_date in cursor.fetchall():
+            amount_dec = safe_decimal(amount)
+            summary = payment_summary[cc_id]
+            summary['count'] += 1
+            summary['total'] += amount_dec
+            payments_by_cc[cc_id].append({
+                'id': payment_id,
+                'amount': decimal_to_float(amount_dec),
+                'description': description,
+                'payment_date': payment_date
             })
-        
-        # Fetch expenditures
+
+        cursor.execute("SELECT id, name FROM adminpanel_costcentre ORDER BY name")
+        for cc_id, name in cursor.fetchall():
+            cost_centres_map[cc_id] = {'id': cc_id, 'name': name}
+
         cursor.execute("""
-            SELECT id, cost_centre_id, month, name, category, amount, 
-                   opening_balance, closing_balance, oracle_balance
+            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance
             FROM adminpanel_expenditure
+            ORDER BY id DESC
         """)
-        expenditure_rows = cursor.fetchall()
-        all_expenditures = []
-        for row in expenditure_rows:
-            exp_id, cc_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance = row
-            try:
-                amount = float(amount) if amount else 0
-                opening_balance = float(opening_balance) if opening_balance else 0
-                closing_balance = float(closing_balance) if closing_balance else 0
-                oracle_balance = float(oracle_balance) if oracle_balance else 0
-            except (ValueError, TypeError):
-                amount = opening_balance = closing_balance = oracle_balance = 0
-            
-            # Find cost centre
-            cc = next((c for c in cost_centres if c['id'] == cc_id), None)
-            
+        for exp_id, cc_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance in cursor.fetchall():
+            amount_dec = safe_decimal(amount)
+            opening_dec = safe_decimal(opening_balance)
+            closing_dec = safe_decimal(closing_balance)
+            oracle_dec = safe_decimal(oracle_balance)
+
+            expenditure_summary[cc_id] += amount_dec
+
+            cc_info = cost_centres_map.get(cc_id)
+            if not cc_info:
+                cc_info = {'id': cc_id, 'name': 'Unknown'}
+                cost_centres_map[cc_id] = cc_info
+
             all_expenditures.append({
                 'id': exp_id,
-                'cost_centre': cc,
+                'cost_centre': cc_info,
                 'cost_centre_id': cc_id,
                 'month': month,
                 'name': name,
                 'category': category,
-                'amount': amount,
-                'opening_balance': opening_balance,
-                'closing_balance': closing_balance,
-                'oracle_balance': oracle_balance
+                'amount': decimal_to_float(amount_dec),
+                'opening_balance': decimal_to_float(opening_dec),
+                'closing_balance': decimal_to_float(closing_dec),
+                'oracle_balance': decimal_to_float(oracle_dec)
             })
-    
-    # Calculate category totals
+
+    cost_centres = []
+    for cc_id, info in cost_centres_map.items():
+        total_received = payment_summary[cc_id]['total']
+        total_spent = expenditure_summary[cc_id]
+        total_remaining = total_received - total_spent
+
+        info.update({
+            'total_received': decimal_to_float(total_received),
+            'total_spent': decimal_to_float(total_spent),
+            'total_remaining': decimal_to_float(total_remaining),
+            'payment_count': payment_summary[cc_id]['count']
+        })
+        cost_centres.append(info)
+
     category_totals = {}
-    for exp in all_expenditures:
-        category = exp['category']
-        if category not in category_totals:
-            category_totals[category] = 0
-        category_totals[category] += exp['amount']
-    
-    # Calculate monthly totals
     monthly_totals = {}
     for exp in all_expenditures:
+        category = exp['category']
+        category_totals.setdefault(category, 0)
+        category_totals[category] += exp['amount']
+
         month = exp['month']
-        if month not in monthly_totals:
-            monthly_totals[month] = 0
+        monthly_totals.setdefault(month, 0)
         monthly_totals[month] += exp['amount']
 
     return render(request, 'adminpanel/finance.html', {
@@ -441,36 +471,60 @@ def finance(request):
         'category_totals': category_totals,
         'monthly_totals': monthly_totals,
         'category_choices': Expenditure.EXPENSE_CATEGORY_CHOICES,
+        'payments_by_cc': payments_by_cc,
     })
 
 @login_required
+@login_required
 def add_cost_centre(request):
-    """Add a new cost centre using raw SQL to avoid decimal conversion errors"""
+    """Add a new cost centre with optional initial payment"""
     if request.method == 'POST':
         name = request.POST.get('name')
-        received = request.POST.get('received')
-        if name and received:
-            try:
-                # Validate decimal conversion
-                total_received = Decimal(received)
-                if total_received.as_tuple().exponent < -2:
-                    return HttpResponseBadRequest('Please enter a valid number with up to 2 decimal places')
-            except (InvalidOperation, ValueError, TypeError):
-                return HttpResponseBadRequest("Invalid number format")
+        received = request.POST.get('received', '').strip()
+        
+        if not name or not name.strip():
+            messages.error(request, 'Cost Centre name is required')
+            return redirect('finance')
+        
+        try:
+            # Create cost centre with 0.00 initially
+            cost_centre = CostCentre.objects.create(
+                name=name.strip(),
+                total_received=Decimal('0.00'),
+                total_spent=Decimal('0.00')
+            )
             
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute("""
-                        INSERT INTO adminpanel_costcentre (name, total_received, total_spent)
-                        VALUES (%s, %s, %s)
-                    """, [name, str(total_received), '0.00'])
-                return JsonResponse({'message': 'Cost Centre added successfully'})
-            except Exception as e:
-                return HttpResponseBadRequest(f'Error adding cost centre: {str(e)}')
-        return HttpResponseBadRequest('Missing fields')
-    return HttpResponseBadRequest('Invalid request')
+            # If initial amount provided, create a payment
+            if received:
+                try:
+                    amount = Decimal(received)
+                    if amount.as_tuple().exponent < -2:
+                        messages.error(request, 'Amount must have at most 2 decimal places')
+                        return redirect('finance')
+                    
+                    if amount > Decimal('0.00'):
+                        from adminpanel.models import CostCentrePayment
+                        CostCentrePayment.objects.create(
+                            cost_centre=cost_centre,
+                            amount=amount,
+                            description='Initial amount'
+                        )
+                        messages.success(request, f'Cost Centre "{name}" created with initial payment of R {amount:.2f}')
+                    else:
+                        messages.success(request, f'Cost Centre "{name}" created (no initial payment)')
+                except (InvalidOperation, ValueError, TypeError):
+                    messages.error(request, 'Invalid amount format')
+                    return redirect('finance')
+            else:
+                messages.success(request, f'Cost Centre "{name}" created successfully')
+            
+            return redirect('finance')
+        except Exception as e:
+            messages.error(request, f'Error creating cost centre: {str(e)}')
+            return redirect('finance')
     
-@login_required
+    return redirect('finance')
+    
 @login_required
 def add_expenditure(request):
     if request.method == 'POST':
@@ -519,7 +573,7 @@ def add_expenditure(request):
                 cc_id, total_spent = cc_row
                 
                 # Calculate opening balance for expenditure
-                opening_balance = Decimal(str(total_spent)) if total_spent else Decimal('0')
+                opening_balance = safe_decimal(total_spent, Decimal('0'))
                 closing_balance = opening_balance - amount
                 
                 # Insert expenditure
@@ -638,61 +692,96 @@ def delete_cost_centre(request, pk):
 
 @login_required
 def edit_cost_centre(request, pk):
-    """Edit a cost centre using raw SQL"""
+    """Edit a cost centre - now only allows name editing since total_received is calculated from payments"""
     try:
-        with connection.cursor() as cursor:
-            # Fetch cost centre
-            cursor.execute("""
-                SELECT id, name, total_received FROM adminpanel_costcentre WHERE id = %s
-            """, [pk])
-            row = cursor.fetchone()
+        cost_centre = CostCentre.objects.get(id=pk)
+        
+        if request.method == 'POST':
+            name = request.POST.get('name', cost_centre.name)
             
-            if not row:
-                messages.error(request, 'Cost centre not found')
+            if not name or name.strip() == '':
+                messages.error(request, 'Cost Centre name cannot be empty')
                 return redirect('finance')
             
-            cost_centre_id, old_name, old_total_received = row
-            
-            if request.method == 'POST':
-                name = request.POST.get('name', old_name)
-                
-                # Validate and convert total_received with error handling
-                try:
-                    total_received_str = request.POST.get('total_received', str(old_total_received))
-                    if not total_received_str or total_received_str.strip() == '':
-                        total_received_str = '0.00'
-                    total_received = Decimal(total_received_str)
-                    
-                    # Validate decimal places (max 2)
-                    if total_received.as_tuple().exponent < -2:
-                        messages.error(request, 'Please enter a valid number with up to 2 decimal places')
-                        return redirect('finance')
-                        
-                except InvalidOperation:
-                    messages.error(request, 'Invalid amount: please enter a valid number')
-                    return redirect('finance')
-                except (ValueError, TypeError):
-                    messages.error(request, 'Invalid amount format')
-                    return redirect('finance')
-                
-                try:
-                    # Update cost centre
-                    cursor.execute("""
-                        UPDATE adminpanel_costcentre 
-                        SET name = %s, total_received = %s
-                        WHERE id = %s
-                    """, [name, str(total_received), cost_centre_id])
-                    
-                    messages.success(request, 'Cost Centre updated successfully')
-                except Exception as e:
-                    messages.error(request, f'Error saving Cost Centre: {str(e)}')
-                
-                return redirect('finance')
+            try:
+                cost_centre.name = name
+                cost_centre.save(update_fields=['name'])
+                messages.success(request, 'Cost Centre updated successfully')
+            except Exception as e:
+                messages.error(request, f'Error saving Cost Centre: {str(e)}')
             
             return redirect('finance')
+        
+        return redirect('finance')
+    except CostCentre.DoesNotExist:
+        messages.error(request, 'Cost Centre not found')
+        return redirect('finance')
     except Exception as e:
         messages.error(request, f'Error processing cost centre: {str(e)}')
         return redirect('finance')
+
+@login_required
+def add_payment(request):
+    """Add an incremental payment to a cost centre"""
+    if request.method == 'POST':
+        cost_centre_id = request.POST.get('cost_centre_id')
+        amount_str = request.POST.get('amount')
+        description = request.POST.get('description', '')
+        
+        if not cost_centre_id or not amount_str:
+            messages.error(request, 'Cost Centre and Amount are required')
+            return redirect('finance')
+        
+        try:
+            cost_centre = CostCentre.objects.get(id=cost_centre_id)
+            from adminpanel.models import CostCentrePayment
+            
+            # Validate and convert amount
+            amount = Decimal(amount_str)
+            if amount.as_tuple().exponent < -2:
+                messages.error(request, 'Amount must have at most 2 decimal places')
+                return redirect('finance')
+            
+            # Create payment
+            CostCentrePayment.objects.create(
+                cost_centre=cost_centre,
+                amount=amount,
+                description=description
+            )
+            
+            messages.success(request, f'Payment of R {amount:.2f} added successfully')
+        except CostCentre.DoesNotExist:
+            messages.error(request, 'Cost Centre not found')
+        except (InvalidOperation, ValueError, TypeError):
+            messages.error(request, 'Invalid amount format')
+        except Exception as e:
+            messages.error(request, f'Error adding payment: {str(e)}')
+        
+        return redirect('finance')
+    
+    return redirect('finance')
+
+@login_required
+def delete_payment(request, payment_id):
+    """Delete a payment from cost centre"""
+    try:
+        from adminpanel.models import CostCentrePayment
+        payment = CostCentrePayment.objects.get(id=payment_id)
+        cost_centre = payment.cost_centre
+        payment.delete()
+        
+        # Recalculate total_received
+        total = CostCentrePayment.objects.filter(cost_centre=cost_centre).aggregate(
+            total=models.Sum('amount')
+        )['total'] or Decimal('0.00')
+        cost_centre.total_received = Decimal(str(total))
+        cost_centre.save(update_fields=['total_received'])
+        
+        messages.success(request, 'Payment deleted successfully')
+    except Exception as e:
+        messages.error(request, f'Error deleting payment: {str(e)}')
+    
+    return redirect('finance')
 
 @login_required
 def edit_expenditure(request, pk):

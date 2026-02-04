@@ -1,0 +1,420 @@
+<!-- Expenditure Analytics Partial -->
+<div class="card shadow mt-5">
+    <div class="card-header">
+        <h5 class="mb-0">📊 Expenditure Analytics & Visualizations</h5>
+    </div>
+    <div class="card-body">
+        <!-- Filters Section -->
+        <div class="row g-3 mb-4 p-3 bg-light rounded">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Cost Centre</label>
+                <select id="analyticsFilterCostCentre" class="form-select">
+                    <option value="">All Cost Centres</option>
+                    {% for cc in cost_centres %}
+                        <option value="{{ cc.id }}">{{ cc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Category</label>
+                <select id="analyticsFilterCategory" class="form-select">
+                    <option value="">All Categories</option>
+                    {% for code, label in category_choices %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Month Range</label>
+                <input type="text" id="analyticsFilterMonth" class="form-control" placeholder="e.g., June 2025">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-primary w-100" id="applyAnalyticsFilters">
+                    🔍 Apply Filters
+                </button>
+            </div>
+        </div>
+
+        <!-- Visualization Options -->
+        <div class="mb-4">
+            <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="vizOption" id="vizPie" value="pie" checked>
+                <label class="btn btn-outline-primary" for="vizPie">📈 Pie Chart</label>
+
+                <input type="radio" class="btn-check" name="vizOption" id="vizBar" value="bar">
+                <label class="btn btn-outline-primary" for="vizBar">📊 Bar Chart</label>
+
+                <input type="radio" class="btn-check" name="vizOption" id="vizTable" value="table">
+                <label class="btn btn-outline-primary" for="vizTable">📋 Table View</label>
+
+                <input type="radio" class="btn-check" name="vizOption" id="vizTrend" value="trend">
+                <label class="btn btn-outline-primary" for="vizTrend">📉 Trend Chart</label>
+            </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div id="analyticsChartContainer" class="position-relative" style="height: 400px;">
+            <canvas id="analyticsChart"></canvas>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="row mt-5">
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <p class="text-muted mb-2">Total Expenditure</p>
+                        <h4 class="text-primary mb-0" id="statTotalExp">R 0.00</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <p class="text-muted mb-2">Average per Month</p>
+                        <h4 class="text-success mb-0" id="statAvgMonth">R 0.00</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <p class="text-muted mb-2">Highest Category</p>
+                        <h4 class="text-warning mb-0" id="statHighestCat">-</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <p class="text-muted mb-2">Records Count</p>
+                        <h4 class="text-info mb-0" id="statRecordCount">0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table View Container (hidden by default) -->
+        <div id="analyticsTableContainer" class="mt-4" style="display:none;">
+            <div class="table-responsive">
+                <table class="table table-striped" id="analyticsDetailTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Month</th>
+                            <th>Cost Centre</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th>Opening Balance</th>
+                            <th>Closing Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analyticsDetailTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let analyticsChart = null;
+    let allExpenditures = {{ all_expenditures|safe }};
+    let costCentres = {{ cost_centres|safe }};
+
+    // Debug: convert cost_centres objects to lookup format
+    let ccMap = {};
+    costCentres.forEach(cc => {
+        ccMap[cc.id] = cc.name;
+    });
+
+    // Initialize analytics on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        renderAnalytics();
+        setupEventListeners();
+    });
+
+    function setupEventListeners() {
+        document.getElementById('applyAnalyticsFilters').addEventListener('click', renderAnalytics);
+        
+        document.querySelectorAll('input[name="vizOption"]').forEach(radio => {
+            radio.addEventListener('change', renderAnalytics);
+        });
+    }
+
+    function getFilteredData() {
+        let costCentreFilter = document.getElementById('analyticsFilterCostCentre').value;
+        let categoryFilter = document.getElementById('analyticsFilterCategory').value;
+        let monthFilter = document.getElementById('analyticsFilterMonth').value.toLowerCase();
+
+        return allExpenditures.filter(exp => {
+            let matchCC = !costCentreFilter || exp.cost_centre_id == costCentreFilter;
+            let matchCategory = !categoryFilter || exp.category === categoryFilter;
+            let matchMonth = !monthFilter || exp.month.toLowerCase().includes(monthFilter);
+            return matchCC && matchCategory && matchMonth;
+        });
+    }
+
+    function getVisualizationType() {
+        return document.querySelector('input[name="vizOption"]:checked').value;
+    }
+
+    function renderAnalytics() {
+        let filtered = getFilteredData();
+        let vizType = getVisualizationType();
+
+        // Update summary stats
+        updateSummaryStats(filtered);
+
+        // Show/hide appropriate containers
+        if (vizType === 'table') {
+            document.getElementById('analyticsChartContainer').style.display = 'none';
+            document.getElementById('analyticsTableContainer').style.display = 'block';
+            renderTableView(filtered);
+        } else {
+            document.getElementById('analyticsChartContainer').style.display = 'block';
+            document.getElementById('analyticsTableContainer').style.display = 'none';
+            renderChart(filtered, vizType);
+        }
+    }
+
+    function updateSummaryStats(filtered) {
+        if (filtered.length === 0) {
+            document.getElementById('statTotalExp').textContent = 'R 0.00';
+            document.getElementById('statAvgMonth').textContent = 'R 0.00';
+            document.getElementById('statHighestCat').textContent = '-';
+            document.getElementById('statRecordCount').textContent = '0';
+            return;
+        }
+
+        let totalExp = filtered.reduce((sum, exp) => sum + exp.amount, 0);
+        let months = new Set(filtered.map(exp => exp.month));
+        let avgMonth = totalExp / (months.size || 1);
+
+        // Group by category
+        let categoryTotals = {};
+        filtered.forEach(exp => {
+            categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+        });
+
+        let highestCat = Object.keys(categoryTotals).reduce((max, cat) =>
+            categoryTotals[cat] > (categoryTotals[max] || 0) ? cat : max, '');
+
+        document.getElementById('statTotalExp').textContent = 'R ' + totalExp.toFixed(2);
+        document.getElementById('statAvgMonth').textContent = 'R ' + avgMonth.toFixed(2);
+        document.getElementById('statHighestCat').textContent = highestCat || '-';
+        document.getElementById('statRecordCount').textContent = filtered.length;
+    }
+
+    function renderChart(filtered, vizType) {
+        let ctx = document.getElementById('analyticsChart').getContext('2d');
+        
+        if (analyticsChart) {
+            analyticsChart.destroy();
+        }
+
+        let chartConfig = {};
+
+        if (vizType === 'pie') {
+            chartConfig = getPieChartConfig(filtered);
+        } else if (vizType === 'bar') {
+            chartConfig = getBarChartConfig(filtered);
+        } else if (vizType === 'trend') {
+            chartConfig = getTrendChartConfig(filtered);
+        }
+
+        analyticsChart = new Chart(ctx, chartConfig);
+    }
+
+    function getPieChartConfig(filtered) {
+        let categoryTotals = {};
+        filtered.forEach(exp => {
+            categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+        });
+
+        let colors = [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+        ];
+
+        return {
+            type: 'pie',
+            data: {
+                labels: Object.keys(categoryTotals),
+                datasets: [{
+                    data: Object.values(categoryTotals),
+                    backgroundColor: colors.slice(0, Object.keys(categoryTotals).length),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let value = context.parsed;
+                                let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                let percentage = ((value / total) * 100).toFixed(1);
+                                return context.label + ': R ' + value.toFixed(2) + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    function getBarChartConfig(filtered) {
+        let categoryTotals = {};
+        filtered.forEach(exp => {
+            categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+        });
+
+        return {
+            type: 'bar',
+            data: {
+                labels: Object.keys(categoryTotals),
+                datasets: [{
+                    label: 'Amount Spent (R)',
+                    data: Object.values(categoryTotals),
+                    backgroundColor: '#36A2EB',
+                    borderColor: '#36A2EB',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R ' + value.toFixed(0);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    function getTrendChartConfig(filtered) {
+        // Group by month
+        let monthTotals = {};
+        filtered.forEach(exp => {
+            monthTotals[exp.month] = (monthTotals[exp.month] || 0) + exp.amount;
+        });
+
+        // Sort months chronologically
+        let months = Object.keys(monthTotals).sort();
+
+        return {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Monthly Spending (R)',
+                    data: months.map(m => monthTotals[m]),
+                    borderColor: '#4BC0C0',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#4BC0C0'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R ' + value.toFixed(0);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    function renderTableView(filtered) {
+        let tbody = document.getElementById('analyticsDetailTableBody');
+        tbody.innerHTML = '';
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No records match the filters</td></tr>';
+            return;
+        }
+
+        filtered.forEach(exp => {
+            let ccName = ccMap[exp.cost_centre_id] || '-';
+            let row = `
+                <tr>
+                    <td>${exp.month}</td>
+                    <td>${ccName}</td>
+                    <td>${exp.name}</td>
+                    <td><span class="badge bg-info">${exp.category}</span></td>
+                    <td><strong>R ${exp.amount.toFixed(2)}</strong></td>
+                    <td>R ${exp.opening_balance.toFixed(2)}</td>
+                    <td>R ${exp.closing_balance.toFixed(2)}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+</script>
+
+<style>
+    #analyticsChartContainer {
+        position: relative;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+
+    .btn-group {
+        border-radius: 0.375rem;
+    }
+
+    .btn-group .btn-check + .btn {
+        border-radius: 0.375rem;
+        margin-right: 0.5rem;
+    }
+
+    .card.bg-light {
+        border-left: 4px solid #007bff;
+    }
+
+    .card.bg-light:nth-child(2) {
+        border-left-color: #28a745;
+    }
+
+    .card.bg-light:nth-child(3) {
+        border-left-color: #ffc107;
+    }
+
+    .card.bg-light:nth-child(4) {
+        border-left-color: #17a2b8;
+    }
+</style>

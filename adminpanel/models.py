@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 
 class CostCentre(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    total_received = models.DecimalField(max_digits=12, decimal_places=2)
+    total_received = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     total_spent = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
     def __str__(self):
@@ -17,7 +17,63 @@ class CostCentre(models.Model):
 
     @property
     def total_remaining(self):
-        return self.total_received - self.total_spent
+        try:
+            received = self.get_total_received()
+            spent = Decimal(str(self.total_spent)) if self.total_spent else Decimal('0.00')
+            return received - spent
+        except (InvalidOperation, TypeError):
+            return Decimal('0.00')
+    
+    def get_total_received(self):
+        """Calculate total received from sum of all payments"""
+        try:
+            total = self.payments.aggregate(total=models.Sum('amount'))['total']
+            if total is None:
+                return Decimal('0.00')
+            return Decimal(str(total))
+        except (InvalidOperation, TypeError):
+            return Decimal('0.00')
+    
+    def payment_count(self):
+        """Get number of payments received"""
+        return self.payments.count()
+
+
+class CostCentrePayment(models.Model):
+    """Track incremental payments received for a cost centre"""
+    cost_centre = models.ForeignKey(CostCentre, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.CharField(max_length=255, blank=True, help_text="e.g., Project Name, Phase 1")
+    payment_date = models.DateField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-payment_date', '-created_at']
+    
+    def __str__(self):
+        return f"{self.cost_centre.name} - R {self.amount} ({self.payment_date})"
+    
+    def save(self, *args, **kwargs):
+        try:
+            # Validate decimal places
+            self.amount = Decimal(str(self.amount))
+            if self.amount.as_tuple().exponent < -2:
+                raise ValidationError('Amount must have at most 2 decimal places')
+        except (InvalidOperation, ValueError, TypeError) as e:
+            raise ValidationError(f'Invalid amount: {e}')
+        
+        super().save(*args, **kwargs)
+        
+        # Update cost centre's total_received by summing all payments
+        try:
+            total = CostCentrePayment.objects.filter(cost_centre=self.cost_centre).aggregate(
+                total=models.Sum('amount')
+            )['total'] or Decimal('0.00')
+            self.cost_centre.total_received = Decimal(str(total))
+            self.cost_centre.save(update_fields=['total_received'])
+        except (InvalidOperation, Exception) as e:
+            # Log but don't fail
+            pass
 
 
 class Expenditure(models.Model):
