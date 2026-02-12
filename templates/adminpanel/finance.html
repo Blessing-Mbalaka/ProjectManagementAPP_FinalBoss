@@ -34,12 +34,15 @@
                 <thead class="table-light">
                     <tr>
                         <th>Cost Centre</th>
-                        <th>Payments Received</th>
-                        <th>Total Received</th>
-                        <th>Total Spent</th>
-                        <th>Total Remaining (Received)</th>
+
                         <th>Total MOA Amount</th>
                         <th>Total MOA Outstanding</th>
+<!-- Requested shift I just moved the MOA columns to be more prominent and before the payment/expenditure columns, as they represent the budgeted/expected amounts which are crucial for financial oversight. The received/spent/remaining columns now follow, allowing for a clearer comparison between expected and actual figures. -->
+
+                        <th>Tranche Payment</th>
+                        <th>Total Received</th>
+                        <th>Total Spent</th>
+                        <th>Total Remaining</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -47,18 +50,6 @@
                     {% for cc in cost_centres %}
                         <tr>
                             <td><strong>{{ cc.name }}</strong></td>
-                            <td>
-                                <span class="badge bg-info">{{ cc.payment_count }} payment{{ cc.payment_count|pluralize }}</span>
-                            </td>
-                            <td><span class="text-success fw-bold">R {{ cc.get_total_received|floatformat:2 }}</span></td>
-                            <td><span class="text-danger">R {{ cc.total_spent|floatformat:2 }}</span></td>
-                            <td>
-                                {% if cc.total_remaining >= 0 %}
-                                    <span class="text-success fw-bold">R {{ cc.total_remaining|floatformat:2 }}</span>
-                                {% else %}
-                                    <span class="text-danger fw-bold">R {{ cc.total_remaining|floatformat:2 }}</span>
-                                {% endif %}
-                            </td>
                             <td><span class="text-info fw-bold">R {{ cc.moa_amount|floatformat:2 }}</span></td>
                             <td>
                                 {% if cc.moa_outstanding >= 0 %}
@@ -67,20 +58,45 @@
                                     <span class="text-danger fw-bold">R {{ cc.moa_outstanding|floatformat:2 }}</span>
                                 {% endif %}
                             </td>
+
+                            <td>
+                                <span class="badge bg-info">{{ cc.payment_count }} payment{{ cc.payment_count|pluralize }}</span>
+
+ <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#paymentHistoryModal{{ cc.id }}" title="View Payment History">
+                                     History
+                                </button>
+
+                            </td>
+                            <td><span class="text-success fw-bold">R {{ cc.get_total_received|floatformat:2 }}</span>
+
+  
+</td>
+
+                            <td><span class="text-danger">R {{ cc.total_spent|floatformat:2 }}</span></td>
+                            <td>
+                                {% if cc.total_remaining >= 0 %}
+                                    <span class="text-success fw-bold">R {{ cc.total_remaining|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-danger fw-bold">R {{ cc.total_remaining|floatformat:2 }}</span>
+                                {% endif %}
+                            </td>
+
+
+
+
+
                             <td class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#addPaymentModal{{ cc.id }}" title="Add Payment">
                                 Add Payment
                                 </button>
-                                <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#paymentHistoryModal{{ cc.id }}" title="View Payment History">
-                                     History
-                                </button>
+                             
                                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editCostCentreModal{{ cc.id }}">
                                      Edit
                                 </button>
-                                <form method="POST" action="{% url 'delete_cost_centre' cc.id %}" onsubmit="return confirm('Are you sure you want to delete this cost centre?');" style="display: inline;">
+                                <!-- <form method="POST" action="{% url 'delete_cost_centre' cc.id %}" onsubmit="return confirm('Are you sure you want to delete this cost centre?');" style="display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-danger">🗑️ Delete</button>
-                                </form>
+                                </form> -->
                             </td>
                         </tr>
                     {% empty %}
@@ -151,10 +167,10 @@
                                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editExpenditureModal{{ record.id }}">
                                      Edit
                                 </button>
-                                <form method="POST" action="{% url 'delete_expenditure' record.id %}" onsubmit="return confirm('Are you sure you want to delete this expenditure?');" style="display:inline;">
+                                <!-- <form method="POST" action="{% url 'delete_expenditure' record.id %}" onsubmit="return confirm('Are you sure you want to delete this expenditure?');" style="display:inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-danger">🗑️ Delete</button>
-                                </form>
+                                </form> -->
                             </td>
                         </tr>
                     {% empty %}
@@ -555,7 +571,7 @@
         }
     }
 
-    // ✅ Corrected AJAX Form Submission for Cost Centre
+    // Corrected AJAX Form Submission for Cost Centre
     addCostCentreForm.addEventListener('submit', function (e) {
         e.preventDefault();
 
@@ -659,7 +675,7 @@ const barChart = new Chart(ctx, {
             backgroundColor: 'rgba(54, 162, 235, 0.6)',
             borderColor: 'rgba(54, 162, 235, 1)',
             borderWidth: 1
-        }]
+         }]
     },
     options: {
         responsive: true,
