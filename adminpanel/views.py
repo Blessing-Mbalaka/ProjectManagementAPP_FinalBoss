@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import connection
 
 #Here  is the Default Django User_ROLE_VALIDATION.
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -36,6 +37,7 @@ from django.utils import timezone
 from django.db import models, connection
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
+from django.apps import apps
 from projects.models import StudentProfile
 import csv
 from datetime import datetime, timedelta
@@ -1117,6 +1119,266 @@ def delete_expenditure(request, pk):
         messages.error(request, f'Error deleting expenditure: {str(e)}')
         return redirect('finance')
 
+
+# ===========================
+# BUDGET FORECAST VIEWS
+# ===========================
+
+@login_required
+@login_required
+def add_budget_forecast(request):
+    """Add a new budget forecast"""
+    if request.method == 'POST':
+        print("\n=== BUDGET FORECAST RECEIVED ===")
+        print(f"POST data: {request.POST}")
+        
+        cost_centre_id = request.POST.get('cost_centre_id')
+        date_from_str = request.POST.get('date_from')
+        date_to_str = request.POST.get('date_to')
+        name = request.POST.get('name')
+        category = request.POST.get('category')
+        amount_str = request.POST.get('amount')
+        
+        # Pad dates with "-01" if missing day (yyyy-MM format → yyyy-MM-01)
+        if date_from_str and len(date_from_str) == 7:
+            date_from_str = date_from_str + '-01'
+            print(f"Padded date_from: {date_from_str}")
+        if date_to_str and len(date_to_str) == 7:
+            date_to_str = date_to_str + '-01'
+            print(f"Padded date_to: {date_to_str}")
+        
+        print(f"cost_centre_id: {cost_centre_id}")
+        print(f"date_from: {date_from_str}")
+        print(f"date_to: {date_to_str}")
+        print(f"name: {name}")
+        print(f"category: {category}")
+        print(f"amount: {amount_str}")
+
+        try:
+            amount_str = amount_str or '0.00'
+            amount = Decimal(amount_str)
+            
+            if amount.as_tuple().exponent < -2:
+                messages.error(request, 'Please enter a valid number with up to 2 decimal places')
+                return redirect('finance')
+                
+        except (InvalidOperation, ValueError, TypeError) as e:
+            print(f"ERROR parsing amount: {e}")
+            messages.error(request, 'Invalid number format')
+            return redirect('finance')
+
+        try:
+            # Validate cost centre
+            if not cost_centre_id:
+                print("ERROR: No cost centre ID provided")
+                messages.error(request, 'Please select a cost centre')
+                return redirect('finance')
+            
+            # Try to fetch cost centre - handle decimal conversion errors
+            try:
+                cost_centre = CostCentre.objects.get(id=cost_centre_id)
+                print(f"✅ Cost centre found: {cost_centre.name}")
+            except Exception as e:
+                print(f"⚠️ Error fetching cost centre via ORM: {e}")
+                # Fallback: fetch using raw SQL to bypass decimal issues
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT id, name FROM adminpanel_costcentre WHERE id = %s", [cost_centre_id])
+                    row = cursor.fetchone()
+                    if row:
+                        # Create a temporary object with just id and name
+                        cost_centre = CostCentre(id=row[0], name=row[1])
+                        print(f"✅ Cost centre found (via raw SQL): {cost_centre.name}")
+                    else:
+                        print(f"ERROR: Cost centre {cost_centre_id} not found")
+                        messages.error(request, 'Cost centre not found')
+                        return redirect('finance')
+            
+            # Parse dates
+            date_from = None
+            date_to = None
+            if date_from_str:
+                date_from = parse_date(date_from_str)
+                print(f"✅ Parsed date_from: {date_from}")
+            if date_to_str:
+                date_to = parse_date(date_to_str)
+                print(f"✅ Parsed date_to: {date_to}")
+            
+            # Extract month from date_from
+            month = None
+            if date_from:
+                month = date_from.strftime('%Y-%m-%d')
+                print(f"✅ Month set to: {month}")
+            
+            # Create budget forecast (not released yet)
+            BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
+            forecast = BudgetForecast.objects.create(
+                cost_centre=cost_centre,
+                month=month,
+                date_from=date_from,
+                date_to=date_to,
+                name=name,
+                category=category,
+                amount=amount,
+                is_released=False
+            )
+            
+            print(f"✅ SUCCESS: Forecast created with ID {forecast.id}")
+            print("=== END FORECAST DATA ===\n")
+            messages.success(request, 'Budget forecast added successfully')
+            return redirect('finance')
+                
+        except Exception as e:
+            import traceback
+            print(f"❌ ERROR creating forecast: {e}")
+            traceback.print_exc()
+            print("=== END FORECAST DATA ===\n")
+            messages.error(request, f'Error adding forecast: {str(e)}')
+            return redirect('finance')
+    
+    return redirect('finance')
+
+
+@login_required
+def get_budget_forecasts(request, cost_centre_id):
+    """Get budget forecasts for a cost centre as JSON"""
+    try:
+        BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
+        forecasts = BudgetForecast.objects.filter(
+            cost_centre_id=cost_centre_id,
+            is_released=False
+        ).values(
+            'id', 'month', 'name', 'category', 'amount', 'date_from', 'date_to', 'created_at', 'cost_centre_id'
+        )
+        
+        data = []
+        for forecast in forecasts:
+            # Calculate months
+            if forecast['date_from'] and forecast['date_to']:
+                date_from = forecast['date_from']
+                date_to = forecast['date_to']
+                days_diff = (date_to - date_from).days
+                months = max(1, round(days_diff / 30))
+            else:
+                months = 1
+            
+            total_cost = float(forecast['amount']) * months
+            
+            data.append({
+                'id': forecast['id'],
+                'month': forecast['month'],
+                'name': forecast['name'],
+                'category': forecast['category'],
+                'amount': float(forecast['amount']),
+                'date_from': str(forecast['date_from']) if forecast['date_from'] else None,
+                'date_to': str(forecast['date_to']) if forecast['date_to'] else None,
+                'months': months,
+                'total_cost': total_cost,
+                'cost_centre_id': forecast['cost_centre_id']
+            })
+        
+        return JsonResponse({'forecasts': data}, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_budget_forecast(request, pk):
+    """Delete a budget forecast"""
+    try:
+        BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
+        forecast = get_object_or_404(BudgetForecast, id=pk)
+        forecast.delete()
+        messages.success(request, 'Budget forecast deleted successfully')
+        return redirect('finance')
+    except Exception as e:
+        messages.error(request, f'Error deleting forecast: {str(e)}')
+        return redirect('finance')
+
+
+@login_required
+@require_http_methods(["POST"])
+def release_budget_forecasts(request, cost_centre_id):
+    """Release budget forecasts to Monthly Expenditure Tracker - supports both all and selected"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=400)
+    
+    try:
+        import json
+        body = json.loads(request.body) if request.body else {}
+        forecast_ids = body.get('forecast_ids', [])
+        
+        cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+        BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
+        Expenditure = apps.get_model('adminpanel', 'Expenditure')
+        
+        # If no specific IDs provided, release all unreleased forecasts
+        if not forecast_ids:
+            forecasts = BudgetForecast.objects.filter(
+                cost_centre=cost_centre,
+                is_released=False
+            )
+        else:
+            forecasts = BudgetForecast.objects.filter(
+                id__in=forecast_ids,
+                cost_centre=cost_centre,
+                is_released=False
+            )
+        
+        forecasts_list = list(forecasts)
+        forecast_count = len(forecasts_list)
+        
+        with connection.cursor() as cursor:
+            for forecast in forecasts_list:
+                # Get current balance
+                cursor.execute("""
+                    SELECT total_spent FROM adminpanel_costcentre WHERE id = %s
+                """, [cost_centre_id])
+                cc_row = cursor.fetchone()
+                current_spent = safe_decimal(cc_row[0] if cc_row else 0, Decimal('0'))
+                
+                # Calculate closing balance
+                opening_balance = current_spent
+                closing_balance = opening_balance - forecast.amount
+                
+                # Insert into expenditure
+                cursor.execute("""
+                    INSERT INTO adminpanel_expenditure 
+                    (cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, date_from, date_to)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, [
+                    cost_centre_id,
+                    forecast.month,
+                    forecast.name,
+                    forecast.category,
+                    str(forecast.amount),
+                    str(opening_balance),
+                    str(closing_balance),
+                    '0.00',
+                    forecast.date_from,
+                    forecast.date_to
+                ])
+                
+                # Update cost centre total_spent
+                new_total = opening_balance + forecast.amount
+                cursor.execute("""
+                    UPDATE adminpanel_costcentre 
+                    SET total_spent = %s
+                    WHERE id = %s
+                """, [str(new_total), cost_centre_id])
+                
+                # Mark forecast as released
+                forecast.is_released = True
+                forecast.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Released {forecast_count} forecast(s) to Monthly Expenditure Tracker'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
 def admin_kanban(request):

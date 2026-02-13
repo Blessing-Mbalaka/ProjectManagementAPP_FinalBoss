@@ -38,14 +38,13 @@
             background-image: url(./images/2.png);
             color: var(--text-primary);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden; /* Prevent any scrolling */
         }
 
         .mega-container {
             background-color: #ffffffdc;
             margin-top: -24px;
             height: 100vh; /* Full viewport height */
-            overflow: hidden; /* Prevent any scrolling */
+            overflow-y: auto; /* Allow vertical scrolling for modals */
         }
 
         /* Sidebar Styling from Code 1 */

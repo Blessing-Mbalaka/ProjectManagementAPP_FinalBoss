@@ -165,6 +165,54 @@ class Expenditure(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.category}) - {self.month}"
+
+
+class BudgetForecast(models.Model):
+    """Forecast/draft expenditures before they are released to Monthly Expenditure Tracker"""
+    EXPENSE_CATEGORY_CHOICES = [
+        ('Salary', 'Salary'),
+        ('Bursaries', 'Bursaries'),
+        ('Invoices', 'Invoices'),
+        ('Fitness', 'Fitness'),
+        ('Equipment', 'Equipment/Office Resources'),
+        ('Travel', 'Travel'),
+    ]
+
+    cost_centre = models.ForeignKey(CostCentre, on_delete=models.CASCADE, related_name='budget_forecasts')
+    month = models.CharField(max_length=20, blank=True, null=True, help_text="Legacy field - use date_from and date_to instead")
+    date_from = models.DateField(blank=True, null=True, help_text="Start date of salary/expenditure period")
+    date_to = models.DateField(blank=True, null=True, help_text="End date of salary/expenditure period")
+    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=50, choices=EXPENSE_CATEGORY_CHOICES)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    is_released = models.BooleanField(default=False, help_text="True when released to Monthly Expenditure Tracker")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def months_count(self):
+        """Calculate number of months between date_from and date_to"""
+        if self.date_from and self.date_to:
+            days_diff = (self.date_to - self.date_from).days
+            months = max(1, round(days_diff / 30))
+            return months
+        return 1
+    
+    @property
+    def total_cost(self):
+        """Calculate total cost: amount × months"""
+        try:
+            return Decimal(str(self.amount)) * Decimal(str(self.months_count))
+        except (InvalidOperation, TypeError):
+            return Decimal(str(self.amount))
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Budget Forecast"
+        verbose_name_plural = "Budget Forecasts"
+
+    def __str__(self):
+        return f"{self.name} ({self.category}) - Forecast {self.created_at.date()}"
         
 
 class SupervisorProfile(models.Model):

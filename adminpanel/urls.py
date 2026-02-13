@@ -44,6 +44,13 @@ urlpatterns = [
     path('finance/edit-cost-centre/<int:pk>/', views.edit_cost_centre, name='edit_cost_centre'),
     path('finance/edit-expenditure/<int:pk>/', views.edit_expenditure, name='edit_expenditure'),
     path('finance/delete-expenditure/<int:pk>/', views.delete_expenditure, name='delete_expenditure'),
+    
+    # Budget Forecast Routes
+    path('finance/add-budget-forecast/', views.add_budget_forecast, name='add_budget_forecast'),
+    path('finance/forecasts/<int:cost_centre_id>/', views.get_budget_forecasts, name='get_budget_forecasts'),
+    path('finance/delete-budget-forecast/<int:pk>/', views.delete_budget_forecast, name='delete_budget_forecast'),
+    path('finance/release-forecasts/<int:cost_centre_id>/', views.release_budget_forecasts, name='release_budget_forecasts'),
+    
     path('user-kanban/<int:user_id>/', views.admin_user_kanban, name='admin_user_kanban'),
     path('assign-project/', views.assign_project, name='admin_assign_project'),
     path('create-project/', views.create_project, name='admin_create_project'),

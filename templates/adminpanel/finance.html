@@ -107,6 +107,9 @@
         </div>
     </div>
 
+    <!-- Budget Forecasting Section (Partial) -->
+    {% include 'adminpanel/budget_forecasting.html' %}
+
     <!-- Monthly Expenditure Tracker -->
     <div class="card shadow mb-5" style="z-index: 2; margin-top: 30px;">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -778,23 +781,25 @@ const pieChart = new Chart(pieCtx, {
         {% endfor %}
     ];
 
-    const lineCtx = document.getElementById('monthlyLineChart').getContext('2d');
+    const lineChartElement = document.getElementById('monthlyLineChart');
+    if (lineChartElement) {
+        const lineCtx = lineChartElement.getContext('2d');
 
-const lineChart = new Chart(lineCtx, {
-    type: 'line',
-    data: {
-        labels: monthlyLabels,
-        datasets: [{
-            label: 'Monthly Expenditure (ZAR)',
-            data: monthlyData,
-            fill: true,
-            borderColor: '#42a5f5',
-            tension: 0.4,
-            backgroundColor: 'rgba(66, 165, 245, 0.1)'
-        }]
-    },
-    options: {
-        responsive: true,
+        const lineChart = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: monthlyLabels,
+                datasets: [{
+                    label: 'Monthly Expenditure (ZAR)',
+                    data: monthlyData,
+                    fill: true,
+                    borderColor: '#42a5f5',
+                    tension: 0.4,
+                    backgroundColor: 'rgba(66, 165, 245, 0.1)'
+                }]
+            },
+            options: {
+                responsive: true,
         scales: {
             y: {
                 beginAtZero: true,
@@ -807,11 +812,130 @@ const lineChart = new Chart(lineCtx, {
         }
     }
 });
-
+    }
 
 
 
 </script>
+
+<!-- Add Budget Forecast Modal -->
+<div class="modal fade" id="addForecastModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="addBudgetForecastForm" method="POST" action="{% url 'add_budget_forecast' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Budget Forecast</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Cost Centre</label>
+            <select name="cost_centre_id" class="form-select forecast-cost-centre" required>
+              <option value="">-- Select Cost Centre --</option>
+              {% for cc in cost_centres %}
+              <option value="{{ cc.id }}" data-moa="{{ cc.moa_amount }}">{{ cc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Date Range</label>
+            <div class="input-group">
+              <input type="date" name="date_from" class="form-control forecast-date-from" placeholder="Start date" required>
+              <span class="input-group-text">to</span>
+              <input type="date" name="date_to" class="form-control forecast-date-to" placeholder="End date" required>
+            </div>
+            <small class="form-text text-muted">Select forecast period dates</small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Name & Surname</label>
+            <input type="text" name="name" class="form-control" placeholder="Person/Item responsible" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select" required>
+              <option value="">-- Select Category --</option>
+              <option value="Salary">Salary</option>
+              <option value="Bursaries">Bursaries</option>
+              <option value="Invoices">Invoices</option>
+              <option value="Fitness">Fitness</option>
+              <option value="Equipment">Equipment/Office Resources</option>
+              <option value="Travel">Travel</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount (R)</label>
+            <input type="number" step="0.01" name="amount" class="form-control forecast-amount" placeholder="0.00" required min="0">
+          </div>
+          
+          <!-- Calculated Fields Display -->
+          <div class="card bg-light mb-3">
+            <div class="card-body p-3">
+              <div class="row mb-2">
+                <div class="col-6">
+                  <small class="text-muted">Months:</small>
+                  <div class="fw-bold forecast-months-display">0</div>
+                </div>
+                <div class="col-6">
+                  <small class="text-muted">Total Cost:</small>
+                  <div class="fw-bold forecast-total-cost-display">R 0.00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Forecast</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Archive Forecasts Modal -->
+<div class="modal fade" id="archiveForecastsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">📋 Budget Forecasts Archive</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="archiveCostCentreFilter" class="form-label">Filter by Cost Centre:</label>
+          <select id="archiveCostCentreFilter" class="form-select">
+            <option value="">All Cost Centres</option>
+          </select>
+        </div>
+        <table class="table table-bordered table-hover" id="archiveTable">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 30px;"><input type="checkbox" id="selectAllArchive"></th>
+              <th>Period</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Months</th>
+              <th>Total Cost</th>
+            </tr>
+          </thead>
+          <tbody id="archiveTableBody">
+            <tr><td colspan="7" class="text-center text-muted">Loading forecasts...</td></tr>
+          </tbody>
+        </table>
+        <div class="alert alert-info mt-3" id="archiveSummary" style="display: none;">
+          <strong>Selected Total:</strong> <span id="selectedTotal">R 0.00</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-success" id="releaseSelectedBtn">✅ Release Selected</button>
+        <button type="button" class="btn btn-primary" id="releaseAllArchiveBtn">✅ Release All</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% include 'adminpanel/partials/expenditure_analytics.html' %}
 

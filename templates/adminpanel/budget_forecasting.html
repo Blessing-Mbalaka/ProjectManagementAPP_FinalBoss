@@ -1,0 +1,36 @@
+<!-- Budget Forecasting Section -->
+<div class="card shadow mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">📊 Budget Forecasting</h5>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addForecastModal">
+                ➕ Add Forecast
+            </button>
+            <button class="btn btn-sm btn-info" id="viewArchiveBtn" data-bs-toggle="modal" data-bs-target="#archiveForecastsModal">
+                📋 View Archive
+            </button>
+            <button class="btn btn-sm btn-success" id="releaseForecastsBtn" style="display: none;">
+                ✅ Release All to Tracker
+            </button>
+        </div>
+    </div>
+    <div class="card-body table-responsive">
+        <table class="table table-bordered table-hover table-sm" id="forecastTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Period</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Monthly Amount</th>
+                    <th>Months</th>
+                    <th>Total Cost</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="forecastTableBody">
+                <tr><td colspan="8" class="text-center text-muted">Select a cost centre to view forecasts</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
