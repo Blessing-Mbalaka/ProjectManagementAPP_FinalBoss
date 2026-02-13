@@ -100,13 +100,33 @@ class Expenditure(models.Model):
     ]
 
     cost_centre = models.ForeignKey(CostCentre, on_delete=models.CASCADE, related_name='expenditures')
-    month = models.CharField(max_length=20)
+    month = models.CharField(max_length=20, blank=True, null=True, help_text="Legacy field - use date_from and date_to instead")
+    date_from = models.DateField(blank=True, null=True, help_text="Start date of salary/expenditure period")
+    date_to = models.DateField(blank=True, null=True, help_text="End date of salary/expenditure period")
     name = models.CharField(max_length=100)
     category = models.CharField(max_length=50, choices=EXPENSE_CATEGORY_CHOICES)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     closing_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     oracle_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    @property
+    def months_count(self):
+        """Calculate number of months between date_from and date_to"""
+        if self.date_from and self.date_to:
+            # Calculate months between dates (using day difference / 30 for months)
+            days_diff = (self.date_to - self.date_from).days
+            months = max(1, round(days_diff / 30))  # Min 1 month
+            return months
+        return 1
+    
+    @property
+    def total_cost(self):
+        """Calculate total cost: amount × months"""
+        try:
+            return Decimal(str(self.amount)) * Decimal(str(self.months_count))
+        except (InvalidOperation, TypeError):
+            return Decimal(str(self.amount))
 
     def save(self, *args, **kwargs):
         try:

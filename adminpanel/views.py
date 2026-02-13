@@ -679,7 +679,9 @@ def add_cost_centre(request):
 def add_expenditure(request):
     if request.method == 'POST':
         cost_centre_id = request.POST.get('cost_centre_id')
-        month = request.POST.get('month')
+        date_from_str = request.POST.get('date_from')  # New date range field
+        date_to_str = request.POST.get('date_to')      # New date range field
+        month = request.POST.get('month')              # Legacy field, set from date_from if not provided
         name = request.POST.get('name')
         category = request.POST.get('category')
 
@@ -712,6 +714,18 @@ def add_expenditure(request):
             # Get cost centre object first for audit logging
             cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
             
+            # Parse date range if provided
+            date_from = None
+            date_to = None
+            if date_from_str:
+                date_from = parse_date(date_from_str)
+            if date_to_str:
+                date_to = parse_date(date_to_str)
+            
+            # If month not set, use date_from for legacy compatibility
+            if not month and date_from:
+                month = date_from.strftime('%Y-%m')
+            
             with connection.cursor() as cursor:
                 # Check if cost centre exists
                 cursor.execute("""
@@ -729,12 +743,12 @@ def add_expenditure(request):
                 opening_balance = safe_decimal(total_spent, Decimal('0'))
                 closing_balance = opening_balance - amount
                 
-                # Insert expenditure
+                # Insert expenditure with date range support
                 cursor.execute("""
                     INSERT INTO adminpanel_expenditure 
-                    (cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, [cost_centre_id, month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle)])
+                    (cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, date_from, date_to)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, [cost_centre_id, month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle), date_from, date_to])
                 
                 # Get the ID of the newly inserted expenditure
                 cursor.execute("SELECT last_insert_id()")
