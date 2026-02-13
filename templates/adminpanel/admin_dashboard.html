@@ -1,494 +1,529 @@
 {% extends 'adminpanel/index.html' %}
 {% load static %}
 
-
-{% block title %}Dashboard | Admin{% endblock %}
+{% block title %}Overview{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 
-
-    <div class="welcome-box">
-        <h3>Welcome Back, {{ request.user.username }}!</h3>
-
-        <!-- <p class="text-muted">Boss</p> -->
-
-        <p>You have 3 tasks to complete today. Let's make progress!</p>
-        <div class="progress mt-2" style="width: 75%; height: 10px;">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 75%"></div>
-        </div>
-    </div>
-
-    <!-- Top Metrics Row -->
-    <div class="dashboard-box">
-        <div class="metric-box">
-            <div>Total Projects</div>
-            <div class="metric-value">12</div>
-            <!-- <div class="text-muted">+2 this week</div> -->
-        </div>
-
-        <div class="metric-box">
-            <div>Completed</div>
-            <div class="metric-value">8</div>
-            <div class="progress-bar bg-success" style="width: 75%"></div>
-
-            <!-- <div class="text-muted">67%</div> -->
-        </div>
-
-        <div class="metric-box">
-            <div>Progress</div>
-            <div class="metric-value">75%</div>
-            <div class="progress mt-2" style="height: 6px;">
-                <div class="progress-bar bg-success" style="width: 75%"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Content Boxes Row -->
-    <div class="dashboard-box">
-        <div class="content-box">
-            <h5>Today's Tasks</h5>
-            <div class="task-input-container">
-                <input type="text" class="task-input" placeholder="New task...">
-                <button class="btn btn-primary btn-sm" id="add-task-btn">Add</button>
-            </div>
-            <div id="tasks-list">
-                <div class="task-item">
-                    <span>Complete project proposal</span>
-                    <div class="task-actions">
-                        <i class="bi-check-circle text-success" title="Mark as done"></i>
-                        <i class="bi-trash text-danger" title="Delete"></i>
-                    </div>
-                </div>
-                <div class="task-item">
-                    <span>Review team submissions</span>
-                    <div class="task-actions">
-                        <i class="bi-check-circle text-success" title="Mark as done"></i>
-                        <i class="bi-trash text-danger" title="Delete"></i>
-                    </div>
-                </div>
-                <div class="task-item">
-                    <span>Client meeting at 2pm</span>
-                    <div class="task-actions">
-                        <i class="bi-check-circle text-success" title="Mark as done"></i>
-                        <i class="bi-trash text-danger" title="Delete"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-box">
-            <h5>Recent Uploads</h5>
-            <button class="btn btn-primary btn-sm w-100 mb-3" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                <i class="bi-upload"></i> Upload File
-            </button>
-            <div id="uploads-list">
-                <div class="upload-item">
-                    <span>Project.pdf</span>
-                    <div class="upload-actions">
-                        <i class="bi-pencil text-primary" title="Rename"></i>
-                        <i class="bi-trash text-danger" title="Delete"></i>
-                    </div>
-                </div>
-                <div class="upload-item">
-                    <span>Report.docx</span>
-                    <div class="upload-actions">
-                        <i class="bi-pencil text-primary" title="Rename"></i>
-                        <i class="bi-trash text-danger" title="Delete"></i>
-                    </div>
-                </div>
-                <div class="upload-item">
-                    <span>Presentation.pptx</span>
-                    <div class="upload-actions">
-                        <i class="bi-pencil text-primary" title="Rename"></i>
-                        <i class="bi-trash text-danger" title="Delete"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-box">
-            <div id="calendar"></div>
-            <button class="btn btn-primary btn-sm w-100 mt-3" id="add-event-btn">
-                <i class="bi-plus-circle"></i> Add Event
-            </button>
-        </div>
-    </div>
+<!-- Welcome Box -->
+<div class="welcome-box">
+  <h3>Projects Overview</h3>
+  <p>Check the status of all Projects</p>
+  <div class="progress mt-2" style="width: 75%; height: 10px;">
+    <div class="progress-bar" style="width: 100%"></div>
+  </div>
 </div>
 
-<!-- Upload Modal -->
-<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Upload File</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+{% if messages %}
+  <div class="container-fluid mt-3">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+
+<div class="container-fluid py-4">
+
+  <!-- Filters -->
+  <div class="dashboard-header d-flex justify-content-end gap-2 mb-3">
+    <select id="statusFilter" class="form-select form-select-sm" style="width: 150px;">
+      <option value="all">All Statuses</option>
+      <option value="planning">Planning</option>
+      <option value="in-progress">In Progress</option>
+      <option value="on-hold">On Hold</option>
+      <option value="completed">Completed</option>
+    </select>
+    <select id="userFilter" class="form-select form-select-sm" style="width: 150px;">
+      <option value="all">All Users</option>
+      {% for user in users %}
+        <option value="{{ user.username }}">{{ user.username }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Recent Notifications -->
+  <div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Recent Notifications</h5>
+      <!-- New Notification Button -->
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createNotificationModal">
+    <i class="bi bi-megaphone"></i> New Notification
+  </button>
+
+  </div>
+  <div class="card-body">
+    {% if recent_notifications %}
+      <ul class="list-group">
+        {% for n in recent_notifications %}
+          <li class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <strong>{{ n.title }}</strong>
+              <span class="badge 
+                {% if n.priority == 'urgent' %} bg-danger
+                {% elif n.priority == 'high' %} bg-warning text-dark
+                {% else %} bg-secondary
+                {% endif %}">
+                {{ n.get_priority_display }}
+              </span>
             </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="file-name" class="form-label">File Name</label>
-                    <input type="text" class="form-control" id="file-name" placeholder="Enter file name">
-                </div>
-                <div class="mb-3">
-                    <label for="file-upload" class="form-label">Select File</label>
-                    <input class="form-control" type="file" id="file-upload">
-                </div>
-                <div class="file-name-display" id="selected-file-name"></div>
+            <div class="small text-muted">
+              {{ n.created_at|date:"Y-m-d H:i" }}
+              • by {{ n.created_by.get_full_name|default:n.created_by.username }}
+              {% if n.audience == 'all' %} • Audience: All
+              {% elif n.audience == 'role' %} • Role: {{ n.audience_role|title }}
+              {% else %} • Specific recipients
+              {% endif %}
+              {% if n.is_pinned %} • 📌 Pinned{% endif %}
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirm-upload">Upload</button>
-            </div>
-        </div>
+            <p class="mb-0 mt-1">{{ n.body }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted mb-0">No notifications yet.</p>
+    {% endif %}
+  </div>
+
+  </div>
+
+  <!-- Assign Projects and Project Managers -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Assign Projects</h5>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#assignProjectModal">
+          <i class="bi bi-arrow-left-right"></i> Assign to Staff
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProjectsModal">
+          <i class="bi bi-gear"></i> Manage Projects
+        </button>
+      </div>
     </div>
+    <div class="card-body">
+      <p>Create projects in "Manage Projects", then assign them to staff members using "Assign to Staff".</p>
+    </div>
+    </div>
+    <br>
+
+
+  <!-- Projects Table -->
+<div class="card mb-4">
+    <div class="table-responsive">
+    <table class="table table-bordered table-hover" id="projectsTable">
+      <thead class="table-light">
+        <tr>
+          <th>Project Name</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Progress</th>
+          <th>Assigned User</th>
+          <th>Due Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="projectTableBody">
+{% for project in projects %}
+<tr data-project="{{ project.name }}"
+    data-user="{% if project.assigned_user %}{{ project.assigned_user.username }}{% else %}{{ project.created_by.username }}{% endif %}"
+
+    data-status="{{ project.status }}">
+  <td>{{ project.name }}</td>
+  <td>{{ project.get_project_type_display }}</td>
+  <td>
+    <span class="badge
+      {% if project.status == 'completed' %} bg-success
+      {% elif project.status == 'in-progress' %} bg-primary
+      {% elif project.status == 'on-hold' %} bg-warning text-dark
+      {% elif project.status == 'planning' %} bg-secondary
+      {% else %} bg-secondary
+      {% endif %}">
+      {{ project.get_status_display }}
+    </span>
+  </td>
+  <td>
+    <div class="progress" style="height: 8px;">
+      <div class="progress-bar" style="width: {{ project.progress}}%"></div>
+    </div>
+    <small>{{ project.progress }}%</small>
+  </td>
+  <!-- <td>{{ project.created_by.username }}</td> -->
+  <td>
+    {% if project.assigned_user %}
+      {{ project.assigned_user.get_full_name|default:project.assigned_user.username }}
+    {% else %}
+      {{ project.created_by.get_full_name|default:project.created_by.username }}
+    {% endif %}
+  </td>
+
+  <td>{{ project.due_date|date:"Y-m-d" }}</td>
+  <td>
+   <button class="btn btn-sm btn-outline-primary view-gantt-btn"
+        data-project-name="{{ project.name }}"
+        data-progress="{{ project.progress }}"
+        data-tasks='[
+          {% for task in project.tasks.all %}
+            {
+              "title": "{{ task.title|escapejs }}",
+              "progress": {{ task.progress }},
+              "due": "{{ task.due_date }}"
+            }{% if not forloop.last %},{% endif %}
+          {% endfor %}
+        ]'>
+  View Gantt
+</button>
+
+  </td>
+</tr>
+{% endfor %}
+
+      </tbody>
+    </table>
+  </div>
 </div>
 
-<!-- Add Event Modal -->
-<div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add Event</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="event-title" class="form-label">Event Title</label>
-                    <input type="text" class="form-control" id="event-title" placeholder="Enter event title">
-                </div>
-                <div class="mb-3">
-                    <label for="event-date" class="form-label">Date</label>
-                    <input type="date" class="form-control" id="event-date">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirm-event">Add Event</button>
-            </div>
-        </div>
+  <!-- View Team Member Kanban  -->
+
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Team Member Kanban Board</h5>
+      <select id="kanbanUserSelect" class="form-select" style="width: 300px;">
+  <option value="">-- Select User --</option>
+  {% for user in users %}
+    <option value="{{ user.id }}">
+      {{ user.get_full_name|default:user.username }}
+    </option>
+  {% empty %}
+    <option disabled>No users found</option>
+  {% endfor %}
+</select>
+
     </div>
+    <div class="card-body" id="kanbanBoardArea">
+      <!-- Kanban board will be loaded here -->
+    </div>
+  </div>
+
+
+  <!-- Project Insights Chart -->
+  <div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Project Insights</h5>
+      <select id="chartSelector" class="form-select form-select-sm" style="width: 200px;">
+        <option value="status">Projects by Status</option>
+        <option value="type">Projects by Type</option>
+        <option value="progress">Progress Distribution</option>
+      </select>
+    </div>
+    <div class="card-body">
+      <canvas id="projectChart" height="80"></canvas>
+    </div>
+  </div>
+
 </div>
+
+<!-- Gantt Chart Modal -->
+<div class="modal fade" id="ganttModal" tabindex="-1" aria-labelledby="ganttModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="ganttModalLabel">Project Gantt Chart</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="ganttProjectTitle" class="mb-4"></div>
+        <div class="progress" style="height: 30px;">
+          <div id="ganttProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+               role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100">
+          </div>
+        </div>
+        <div id="ganttProgressPercent" class="text-center mt-2"></div>
+      </div>
+    </div>
+  </div>
 </div>
-<!-- JavaScript Libraries -->
+<div class="content-box">
+  <h5>Time Tracking</h5>
+  {% include 'adminpanel/partials/clock_widget.html' %}
+</div>
+<!-- Assign Project Modal -->
+<div class="modal fade" id="assignProjectModal" tabindex="-1" aria-labelledby="assignProjectModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'admin_assign_project' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="assignProjectModalLabel">Assign Project to Staff</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body row g-3">
+          <div class="col-md-12">
+            <label for="projectId" class="form-label fw-bold">Project <span class="text-danger">*</span></label>
+            <select name="project_id" class="form-select" id="projectId" required>
+              <option value="">-- Select a project --</option>
+              {% for p in projects %}
+                <option value="{{ p.id }}">{{ p.name }} ({{ p.get_status_display }})</option>
+              {% endfor %}
+            </select>
+            <small class="form-text text-muted">Create projects in "Manage Projects" first</small>
+          </div>
+          <div class="col-md-12">
+            <label for="assignedUser" class="form-label fw-bold">Assign to Staff <span class="text-danger">*</span></label>
+            <select name="assigned_user" class="form-select" id="assignedUser" required>
+              <option value="">-- Select staff member --</option>
+              {% for user in users %}
+                <option value="{{ user.id }}">
+                  {{ user.get_full_name|default:user.username }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-12">
+            <label for="description" class="form-label fw-bold">Description (Optional)</label>
+            <textarea name="description" class="form-control" id="description" rows="2" placeholder="Add any notes or requirements..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Assign Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Create Notification Modal -->
+<div class="modal fade" id="createNotificationModal" tabindex="-1" aria-labelledby="createNotificationLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'create_notification' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="createNotificationLabel">Create Notification</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Title</label>
+              <input name="title" class="form-control" maxlength="200" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Priority</label>
+              <select name="priority" class="form-select">
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Message</label>
+              <textarea name="body" class="form-control" rows="4" required></textarea>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Audience</label>
+              <select name="audience" id="audienceSelect" class="form-select">
+                <option value="all">All Users</option>
+                <option value="role">By Role</option>
+                <option value="specific">Specific Users</option>
+              </select>
+            </div>
+
+            <div class="col-md-4 audience-role d-none">
+              <label class="form-label">Role</label>
+              <select name="audience_role" class="form-select">
+                <option value="">-- Select Role --</option>
+                <option value="manager">Project Manager</option>
+                <option value="staff">Staff</option>
+                <option value="student">Student</option>
+              </select>
+            </div>
+
+            <div class="col-md-4 audience-specific d-none">
+              <label class="form-label">Recipients</label>
+              <select name="recipients" class="form-select" multiple size="6">
+                {% for u in users %}
+                  <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
+                {% endfor %}
+              </select>
+              <small class="text-muted">Hold Ctrl / Cmd to select multiple.</small>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Schedule (optional)</label>
+              <input type="datetime-local" name="scheduled_at" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Expires (optional)</label>
+              <input type="datetime-local" name="expires_at" class="form-control">
+            </div>
+
+            <div class="col-md-4 d-flex align-items-center gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_pinned" id="pinCheck">
+                <label class="form-check-label" for="pinCheck">Pin</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="send_email" id="emailCheck">
+                <label class="form-check-label" for="emailCheck">Send Email</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/project.js' %}"></script>
 
 <script>
-    // Initialize Calendar
-    document.addEventListener('DOMContentLoaded', function () {
-        var calendarEl = document.getElementById('calendar');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: ''
-            },
-            height: 'auto',
-            events: [
-                {
-                    title: 'Project Deadline',
-                    start: new Date(),
-                    color: '#F26522'
-                },
-                {
-                    title: 'Team Meeting',
-                    start: new Date(new Date().setDate(new Date().getDate() + 2)),
-                    color: '#3498db'
-                }
-            ]
-        });
-        calendar.render();
+    // Toggle role/recipients sections based on audience
+  document.addEventListener('DOMContentLoaded', function () {
+    const audience = document.getElementById('audienceSelect');
+    if (!audience) return;
+    const roleBox = document.querySelector('.audience-role');
+    const specBox = document.querySelector('.audience-specific');
 
-        // Store calendar instance for later use
-        window.calendar = calendar;
-    });
-
-    // Sidebar Toggle Functionality
-    const toggleBtn = document.getElementById('toggleBtn');
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
-    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-
-    toggleBtn.addEventListener('click', function () {
-        sidebar.classList.toggle('collapsed');
-        mainContent.classList.toggle('expanded');
-
-        // Change the icon based on state
-        const icon = toggleBtn.querySelector('i');
-        if (sidebar.classList.contains('collapsed')) {
-            icon.classList.remove('bi-chevron-left');
-            icon.classList.add('bi-chevron-right');
-        } else {
-            icon.classList.remove('bi-chevron-right');
-            icon.classList.add('bi-chevron-left');
-        }
-    });
-
-    // Mobile Menu Toggle
-    mobileMenuBtn.addEventListener('click', function () {
-        sidebar.classList.toggle('show');
-    });
-
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function (event) {
-        if (window.innerWidth <= 768 && !sidebar.contains(event.target) && event.target !== mobileMenuBtn) {
-            sidebar.classList.remove('show');
-        }
-    });
-
-    // Task Management
-    document.getElementById('add-task-btn').addEventListener('click', function () {
-        const taskInput = document.querySelector('.task-input');
-        const taskText = taskInput.value.trim();
-
-        if (taskText) {
-            const taskId = 'task-' + Date.now();
-            const taskItem = document.createElement('div');
-            taskItem.className = 'task-item';
-            taskItem.id = taskId;
-            taskItem.innerHTML = `
-                    <span>${taskText}</span>
-                    <div class="task-actions">
-                        <i class="bi-check-circle text-success" title="Mark as done" onclick="completeTask('${taskId}')"></i>
-                        <i class="bi-trash text-danger" title="Delete" onclick="removeTask('${taskId}')"></i>
-                    </div>
-                `;
-            document.getElementById('tasks-list').appendChild(taskItem);
-            taskInput.value = '';
-            saveTasks();
-        }
-    });
-
-    // Allow pressing Enter to add task
-    document.querySelector('.task-input').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            document.getElementById('add-task-btn').click();
-        }
-    });
-
-    // Complete task with animation
-    function completeTask(taskId) {
-        const taskItem = document.getElementById(taskId);
-        taskItem.style.textDecoration = 'line-through';
-        taskItem.style.opacity = '0.6';
-
-        // Create confetti effect
-        createConfetti();
-
-        // Remove task after animation
-        setTimeout(() => {
-            taskItem.remove();
-            saveTasks();
-        }, 1000);
+    function refreshAudienceUI() {
+      const val = audience.value;
+      roleBox.classList.toggle('d-none', val !== 'role');
+      specBox.classList.toggle('d-none', val !== 'specific');
     }
 
-    // Remove task
-    function removeTask(taskId) {
-        document.getElementById(taskId).remove();
-        saveTasks();
+    audience.addEventListener('change', refreshAudienceUI);
+    refreshAudienceUI();
+  });
+  
+  document.getElementById('kanbanUserSelect').addEventListener('change', function() {
+    const userId = this.value;
+    const boardArea = document.getElementById('kanbanBoardArea');
+    if (!userId) {
+      boardArea.innerHTML = '';
+      return;
     }
 
-    // Save tasks to localStorage
-    function saveTasks() {
-        const tasks = [];
-        document.querySelectorAll('#tasks-list .task-item').forEach(task => {
-            tasks.push({
-                text: task.querySelector('span').textContent,
-                completed: task.style.textDecoration === 'line-through'
-            });
-        });
-        localStorage.setItem('dashboard-tasks', JSON.stringify(tasks));
+    fetch(`/adminpanel/user-kanban/${userId}/`)
+      .then(response => response.text())
+      .then(html => {
+        boardArea.innerHTML = html;
+      });
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const userSelect = document.getElementById('kanbanUserSelect');
+    const boardArea = document.getElementById('kanbanBoardArea');
+
+  userSelect.addEventListener('change', function () {
+    const userId = this.value;
+
+    if (!userId) {
+      boardArea.innerHTML = '<p class="text-muted">Please select a user to view their tasks.</p>';
+      return;
     }
 
-    // Load tasks from localStorage
-    function loadTasks() {
-        const savedTasks = JSON.parse(localStorage.getItem('dashboard-tasks')) || [];
-        const tasksList = document.getElementById('tasks-list');
-        tasksList.innerHTML = '';
+    fetch(`/adminpanel/user-kanban/${userId}/`)
+      .then(response => {
+        if (!response.ok) throw new Error('Network error');
+        return response.text();
+      })
+      .then(html => {
+        boardArea.innerHTML = html;
+      })
+      .catch(error => {
+        boardArea.innerHTML = '<div class="alert alert-danger">Error loading task board.</div>';
+        console.error(error);
+      });
+  });
+});
 
-        savedTasks.forEach(task => {
-            const taskId = 'task-' + Date.now();
-            const taskItem = document.createElement('div');
-            taskItem.className = 'task-item';
-            taskItem.id = taskId;
-            taskItem.innerHTML = `
-                    <span>${task.text}</span>
-                    <div class="task-actions">
-                        <i class="bi-check-circle text-success" title="Mark as done" onclick="completeTask('${taskId}')"></i>
-                        <i class="bi-trash text-danger" title="Delete" onclick="removeTask('${taskId}')"></i>
-                    </div>
-                `;
+(function() {
+  if (!document.getElementById('projectChart')) return;
 
-            if (task.completed) {
-                taskItem.style.textDecoration = 'line-through';
-                taskItem.style.opacity = '0.6';
-            }
+  const INSIGHTS = JSON.parse('{{ insights_json|escapejs }}');
+  const ctx = document.getElementById('projectChart').getContext('2d');
+  const picker = document.getElementById('chartSelector');
 
-            tasksList.appendChild(taskItem);
-        });
+  function titleCase(s) {
+    return s.replace(/-/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  let chart;
+
+  function render(kind) {
+    let labels = [], data = [], label = '';
+
+    if (kind === 'status') {
+      const obj = INSIGHTS.by_status || {};
+      labels = Object.keys(obj).map(titleCase);
+      data   = Object.values(obj);
+      label  = 'Projects by Status';
+    } else if (kind === 'type') {
+      const obj = INSIGHTS.by_type || {};
+      // Show friendly names for types
+      const DISPLAY = { software: 'Software', paper: 'Paper', book: 'Book' };
+      labels = Object.keys(obj).map(k => DISPLAY[k] || titleCase(k));
+      data   = Object.values(obj);
+      label  = 'Projects by Type';
+    } else {
+      const obj = INSIGHTS.progress_hist || {};
+      labels = Object.keys(obj);
+      data   = Object.values(obj);
+      label  = 'Progress Distribution';
     }
 
-    // File Upload Management
-    document.getElementById('file-upload').addEventListener('change', function (e) {
-        const fileName = e.target.files[0]?.name || 'No file selected';
-        document.getElementById('selected-file-name').textContent = `Selected: ${fileName}`;
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label, data }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
     });
+  }
 
-    document.getElementById('confirm-upload').addEventListener('click', function () {
-        const fileNameInput = document.getElementById('file-name');
-        const fileUpload = document.getElementById('file-upload');
-        const fileName = fileNameInput.value.trim() || fileUpload.files[0]?.name || 'Untitled';
-
-        if (fileUpload.files.length > 0) {
-            const fileId = 'file-' + Date.now();
-            const uploadItem = document.createElement('div');
-            uploadItem.className = 'upload-item';
-            uploadItem.id = fileId;
-            uploadItem.innerHTML = `
-                    <span>${fileName}</span>
-                    <div class="upload-actions">
-                        <i class="bi-pencil text-primary" title="Rename" onclick="renameFile('${fileId}')"></i>
-                        <i class="bi-trash text-danger" title="Delete" onclick="removeFile('${fileId}')"></i>
-                    </div>
-                `;
-            document.getElementById('uploads-list').appendChild(uploadItem);
-
-            // Reset form
-            fileNameInput.value = '';
-            fileUpload.value = '';
-            document.getElementById('selected-file-name').textContent = '';
-
-            // Close modal
-            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
-
-            saveUploads();
-        } else {
-            alert('Please select a file to upload');
-        }
-    });
-
-    // Rename file
-    function renameFile(fileId) {
-        const fileItem = document.getElementById(fileId);
-        const currentName = fileItem.querySelector('span').textContent;
-        const newName = prompt('Enter new file name:', currentName);
-
-        if (newName && newName !== currentName) {
-            fileItem.querySelector('span').textContent = newName;
-            saveUploads();
-        }
-    }
-
-    // Remove file
-    function removeFile(fileId) {
-        if (confirm('Are you sure you want to delete this file?')) {
-            document.getElementById(fileId).remove();
-            saveUploads();
-        }
-    }
-
-    // Save uploads to localStorage
-    function saveUploads() {
-        const uploads = [];
-        document.querySelectorAll('#uploads-list .upload-item').forEach(upload => {
-            uploads.push({
-                name: upload.querySelector('span').textContent
-            });
-        });
-        localStorage.setItem('dashboard-uploads', JSON.stringify(uploads));
-    }
-
-    // Load uploads from localStorage
-    function loadUploads() {
-        const savedUploads = JSON.parse(localStorage.getItem('dashboard-uploads')) || [];
-        const uploadsList = document.getElementById('uploads-list');
-        uploadsList.innerHTML = '';
-
-        savedUploads.forEach(upload => {
-            const fileId = 'file-' + Date.now();
-            const uploadItem = document.createElement('div');
-            uploadItem.className = 'upload-item';
-            uploadItem.id = fileId;
-            uploadItem.innerHTML = `
-                    <span>${upload.name}</span>
-                    <div class="upload-actions">
-                        <i class="bi-pencil text-primary" title="Rename" onclick="renameFile('${fileId}')"></i>
-                        <i class="bi-trash text-danger" title="Delete" onclick="removeFile('${fileId}')"></i>
-                    </div>
-                `;
-            uploadsList.appendChild(uploadItem);
-        });
-    }
-
-    // Calendar Event Management
-    document.getElementById('add-event-btn').addEventListener('click', function () {
-        const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
-        document.getElementById('event-title').value = '';
-        document.getElementById('event-date').valueAsDate = new Date();
-        eventModal.show();
-    });
-
-    document.getElementById('confirm-event').addEventListener('click', function () {
-        const eventTitle = document.getElementById('event-title').value.trim();
-        const eventDate = document.getElementById('event-date').value;
-
-        if (eventTitle && eventDate) {
-            window.calendar.addEvent({
-                title: eventTitle,
-                start: eventDate,
-                color: '#e74c3c'
-            });
-
-            // Close modal
-            bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
-        } else {
-            alert('Please enter both event title and date');
-        }
-    });
-
-    // Confetti animation
-    function createConfetti() {
-        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c'];
-
-        for (let i = 0; i < 50; i++) {
-            const confetti = document.createElement('div');
-            confetti.className = 'confetti';
-            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-            confetti.style.left = Math.random() * 100 + 'vw';
-            confetti.style.top = '100vh';
-            confetti.style.width = Math.random() * 10 + 5 + 'px';
-            confetti.style.height = Math.random() * 10 + 5 + 'px';
-            confetti.style.animationDuration = Math.random() * 1 + 0.5 + 's';
-            document.body.appendChild(confetti);
-
-            // Remove confetti after animation
-            setTimeout(() => {
-                confetti.remove();
-            }, 1000);
-        }
-    }
-
-    // Initialize on load
-    window.addEventListener('load', function () {
-        loadTasks();
-        loadUploads();
-
-        // Initialize sidebar state based on screen size
-        if (window.innerWidth <= 768) {
-            sidebar.classList.remove('collapsed');
-            sidebar.classList.remove('show');
-            mainContent.classList.remove('expanded');
-        }
-    });
-
-    // Handle window resize
-    window.addEventListener('resize', function () {
-        if (window.innerWidth > 768) {
-            sidebar.classList.remove('show');
-        }
-    });
+  render(picker.value || 'status');
+  picker.addEventListener('change', e => render(e.target.value));
+})();
 </script>
-<!-- Add this in a sidebar or widget area -->
+
+{% include 'adminpanel/partials/_load_students.html' %}
+
+
+<!-- Manage Projects Partial -->
+{% include "adminpanel/partials/addprojects.html" %}
+
+<style>
+  /* Ensure modals appear above navbar */
+  .modal {
+    z-index: 2000 !important;
+  }
+  .modal-backdrop {
+    z-index: 1999 !important;
+  }
+</style>
 
 {% endblock %}

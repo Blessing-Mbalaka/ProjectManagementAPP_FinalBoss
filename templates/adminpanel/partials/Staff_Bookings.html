@@ -92,7 +92,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         padding-bottom: 1rem;
         border-bottom: 2px solid var(--border);
     }
@@ -108,19 +108,23 @@
     /* Calendar Styles */
     .calendar-container {
         grid-column: 1 / -1;
+        padding: 2rem;
+        overflow: visible;
     }
 
     .calendar-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 2rem;
+        margin-bottom: 2.5rem;
     }
 
     .calendar-nav {
         display: flex;
-        gap: 1rem;
+        gap: 1.5rem;
         align-items: center;
+        justify-content: center;
+        width: 100%;
     }
 
     .calendar-nav button {
@@ -140,17 +144,20 @@
     }
 
     .current-month {
-        font-size: 1.25rem;
-        font-weight: 600;
+        font-size: 1.5rem;
+        font-weight: 700;
         color: var(--primary);
-        min-width: 200px;
+        min-width: 250px;
         text-align: center;
+        margin: 0 1rem;
     }
 
     .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 0.5rem;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 1rem 0;
     }
 
     .calendar-day-header {
@@ -161,10 +168,12 @@
         font-size: 0.875rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        background: var(--bg-secondary);
+        border-radius: 0.5rem;
     }
 
     .calendar-day {
-        aspect-ratio: 1;
+        aspect-ratio: 1 / 1;
         border: 1px solid var(--border);
         border-radius: 0.5rem;
         padding: 0.5rem;
@@ -174,7 +183,8 @@
         background: white;
         display: flex;
         flex-direction: column;
-        min-height: 100px;
+        min-height: 120px;
+        overflow: hidden;
     }
 
     .calendar-day:hover {
@@ -205,10 +215,50 @@
     }
 
     .day-number {
-        font-weight: 600;
+        font-weight: 700;
         color: var(--primary);
-        font-size: 0.875rem;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        line-height: 1;
+    }
+
+    .day-unavailable {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
         margin-bottom: 0.25rem;
+        font-size: 0.65rem;
+    }
+
+    .unavailable-member {
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: white;
+        font-size: 0.65rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .unavailable-member:hover {
+        transform: scale(1.15);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .unavailable-member.status-unavailable {
+        background: #ef4444;
+    }
+
+    .unavailable-member.status-meeting {
+        background: #3b82f6;
+    }
+
+    .unavailable-member.status-leave {
+        background: #f59e0b;
     }
 
     .day-events {
@@ -397,6 +447,12 @@
         border-radius: 1rem;
         font-size: 0.75rem;
         font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .status-badge:hover {
+        transform: scale(1.05);
     }
 
     .status-available {
@@ -412,6 +468,217 @@
     .status-meeting {
         background: rgba(59, 130, 246, 0.2);
         color: #1e40af;
+    }
+
+    /* Modal Styles */
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99998;
+    }
+
+    .modal-backdrop.active {
+        display: block;
+        animation: fadeIn 0.25s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .status-modal {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--bg-card);
+        border-radius: 1rem;
+        box-shadow: var(--shadow-lg);
+        z-index: 99999;
+        max-width: 500px;
+        width: 90%;
+        border: 1px solid var(--border);
+    }
+
+    .status-modal.active {
+        display: block;
+        animation: slideUpIntoPlace 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .status-modal.closing {
+        animation: slideDownOutOfPlace 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes slideUpIntoPlace {
+        from {
+            transform: translate(-50%, calc(-50% + 60px));
+            opacity: 0;
+            scale: 0.95;
+        }
+        to {
+            transform: translate(-50%, -50%);
+            opacity: 1;
+            scale: 1;
+        }
+    }
+
+    @keyframes slideDownOutOfPlace {
+        from {
+            transform: translate(-50%, -50%);
+            opacity: 1;
+            scale: 1;
+        }
+        to {
+            transform: translate(-50%, calc(-50% + 60px));
+            opacity: 0;
+            scale: 0.95;
+        }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin: 0;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+        padding: 0;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .modal-close:hover {
+        color: var(--primary);
+        background: var(--bg-main);
+        border-radius: 0.5rem;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .modal-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .modal-value {
+        font-size: 1rem;
+        color: var(--primary);
+        font-weight: 500;
+    }
+
+    .member-status-large {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .member-avatar-large {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: var(--accent);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
+
+    .member-name-section h3 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 1.125rem;
+    }
+
+    .member-name-section p {
+        margin: 0.25rem 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .status-badge-modal {
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .status-badge-modal.available {
+        background: rgba(16, 185, 129, 0.2);
+        color: #047857;
+    }
+
+    .status-badge-modal.unavailable {
+        background: rgba(239, 68, 68, 0.2);
+        color: #b91c1c;
+    }
+
+    .status-badge-modal.meeting {
+        background: rgba(59, 130, 246, 0.2);
+        color: #1e40af;
+    }
+
+    .status-badge-modal.leave {
+        background: rgba(245, 158, 11, 0.2);
+        color: #b45309;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     /* Leave Requests */
@@ -623,6 +890,10 @@
     </div>
 
     <style>
+
+        #messages-content {
+    margin-top: -120px !important;
+}
         .tab-button {
             background: none;
             border: none;
@@ -650,6 +921,8 @@
 
         .tab-content {
             display: none;
+            padding:0;
+            margin:0;
         }
 
         .tab-content.active {
@@ -676,15 +949,25 @@
         <!-- Availability & Leave Form -->
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Update Availability</h2>
+                <div style="flex-grow: 1;">
+                    <h2 class="card-title">Update Availability</h2>
+                    <p style="color: #6b7280; font-size: 0.875rem; margin: 0.5rem 0 0 0;">
+                        Current time (SAST): <strong id="currentTime">--:--</strong>
+                    </p>
+                </div>
             </div>
             
             <form id="availabilityForm" method="post">
                 {% csrf_token %}
                 
                 <div class="form-group">
-                    <label class="form-label">Date</label>
-                    <input type="date" name="date" class="form-input" required id="availabilityDate">
+                    <label class="form-label">From Date</label>
+                    <input type="date" name="start_date" class="form-input" required id="startDate">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">To Date</label>
+                    <input type="date" name="end_date" class="form-input" required id="endDate">
                 </div>
 
                 <div class="form-group">
@@ -699,12 +982,12 @@
 
                 <div class="time-inputs" id="timeInputs">
                     <div class="form-group">
-                        <label class="form-label">Start Time</label>
+                        <label class="form-label">Start Time (Optional)</label>
                         <input type="time" name="start_time" class="form-input" id="startTime">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">End Time</label>
+                        <label class="form-label">End Time (Optional)</label>
                         <input type="time" name="end_time" class="form-input" id="endTime">
                     </div>
                 </div>
@@ -747,6 +1030,49 @@
             <div class="team-list" id="teamList">
                 <!-- Team members will be populated here via JavaScript from API -->
             </div>
+
+            <!-- Status Modal -->
+            <div class="modal-backdrop" id="statusModalBackdrop"></div>
+            <div class="status-modal" id="statusModal">
+                <div class="modal-header">
+                    <h3 class="modal-title">Availability Details</h3>
+                    <button class="modal-close" id="statusModalClose">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="member-status-large">
+                        <div class="member-avatar-large" id="modalAvatar">AB</div>
+                        <div class="member-name-section">
+                            <h3 id="modalMemberName">John Doe</h3>
+                            <p id="modalMemberRole">Staff</p>
+                        </div>
+                    </div>
+
+                    <div class="modal-section">
+                        <span class="modal-label">Status</span>
+                        <span class="status-badge-modal" id="modalStatus">Available</span>
+                    </div>
+
+                    <div class="modal-section" id="dateSection" style="display: none;">
+                        <span class="modal-label">Date(s)</span>
+                        <p class="modal-value" id="modalDate">No date specified</p>
+                    </div>
+
+                    <div class="modal-section" id="timeRangeSection" style="display: none;">
+                        <span class="modal-label">Time Range</span>
+                        <p class="modal-value" id="modalTimeRange">09:00 - 17:00</p>
+                    </div>
+
+                    <div class="modal-section" id="reasonSection" style="display: none;">
+                        <span class="modal-label">Reason</span>
+                        <p class="modal-value" id="modalReason">No reason provided</p>
+                    </div>
+
+                    <div class="modal-section" id="meetingSection" style="display: none;">
+                        <span class="modal-label">Meeting Title</span>
+                        <p class="modal-value" id="modalMeetingTitle">No meeting specified</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -770,7 +1096,7 @@
             </div>
         </div>
 
-        <div class="calendar-grid">
+        <div class="calendar-grid" id="calendarGrid">
             <div class="calendar-day-header">Sun</div>
             <div class="calendar-day-header">Mon</div>
             <div class="calendar-day-header">Tue</div>
@@ -780,7 +1106,6 @@
             <div class="calendar-day-header">Sat</div>
             
             <!-- Calendar days will be generated by JavaScript -->
-            <div id="calendarDays"></div>
         </div>
     </div>
         </div>
@@ -789,7 +1114,9 @@
 
     <!-- Messages Tab -->
     <div id="messages-content" class="tab-content">
-        {% include "adminpanel/partials/staff_messages_inbox.html" %}
+        <div class="card">
+            {% include "adminpanel/partials/staff_messages_inbox.html" %}
+        </div>
     </div>
     <!-- End Messages Tab -->
 
@@ -843,6 +1170,7 @@
     let currentDate = new Date();
     let selectedDate = null;
     let events = {}; // Will be populated by API calls
+    let teamAvailability = {}; // Will store team availability by date
     
     // Initialize API base URL (check if already defined to prevent redeclaration errors)
     if (typeof window.API_BASE === 'undefined') {
@@ -859,35 +1187,49 @@
                            'July', 'August', 'September', 'October', 'November', 'December'];
         document.getElementById('currentMonth').textContent = `${monthNames[month]} ${year}`;
         
-        // Fetch month events from API
-        fetchMonthEvents(year, month);
+        // Clear teamAvailability for new month
+        teamAvailability = {};
+        
+        // Fetch month events and team availability from API
+        Promise.all([
+            fetchMonthEvents(year, month),
+            fetchMonthTeamAvailability(year, month)
+        ]).then(() => {
+            doRenderCalendar(year, month);
+        });
+    }
+    
+    function doRenderCalendar(year, month) {
         
         // Get first day of month and number of days
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const daysInPrevMonth = new Date(year, month, 0).getDate();
         
-        const calendarDays = document.getElementById('calendarDays');
-        calendarDays.innerHTML = '';
+        const calendarGrid = document.getElementById('calendarGrid');
+        // Remove only day elements, keep headers (first 7 children)
+        while (calendarGrid.children.length > 7) {
+            calendarGrid.removeChild(calendarGrid.lastChild);
+        }
         
         // Previous month days
         for (let i = firstDay - 1; i >= 0; i--) {
             const day = daysInPrevMonth - i;
             const dayEl = createDayElement(day, true, year, month - 1);
-            calendarDays.appendChild(dayEl);
+            calendarGrid.appendChild(dayEl);
         }
         
         // Current month days
         for (let day = 1; day <= daysInMonth; day++) {
             const dayEl = createDayElement(day, false, year, month);
-            calendarDays.appendChild(dayEl);
+            calendarGrid.appendChild(dayEl);
         }
         
         // Next month days
         const remainingDays = 42 - (firstDay + daysInMonth);
         for (let day = 1; day <= remainingDays; day++) {
             const dayEl = createDayElement(day, true, year, month + 1);
-            calendarDays.appendChild(dayEl);
+            calendarGrid.appendChild(dayEl);
         }
     }
     
@@ -910,6 +1252,22 @@
         dayNumber.className = 'day-number';
         dayNumber.textContent = day;
         dayEl.appendChild(dayNumber);
+        
+        // Add unavailable team members for this date
+        if (teamAvailability[dateStr]) {
+            const unavailableContainer = document.createElement('div');
+            unavailableContainer.className = 'day-unavailable';
+            
+            teamAvailability[dateStr].forEach(member => {
+                const memberBadge = document.createElement('div');
+                memberBadge.className = `unavailable-member status-${member.status}`;
+                memberBadge.textContent = member.initials;
+                memberBadge.title = `${member.name} - ${member.status}`;
+                unavailableContainer.appendChild(memberBadge);
+            });
+            
+            dayEl.appendChild(unavailableContainer);
+        }
         
         // Add events
         if (events[dateStr]) {
@@ -937,15 +1295,48 @@
         const monthStr = String(month + 1).padStart(2, '0');
         const url = `${window.API_BASE}month-events/${year}/${monthStr}/`;
         
-        fetch(url)
+        return fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     events = { ...events, ...data.events };
-                    renderCalendar();
                 }
             })
             .catch(error => console.error('Error fetching month events:', error));
+    }
+
+    // Fetch team availability for the entire month
+    function fetchMonthTeamAvailability(year, month) {
+        // Get all days in the month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const promises = [];
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+            const monthStr = String(month + 1).padStart(2, '0');
+            const dayStr = String(day).padStart(2, '0');
+            const dateStr = `${year}-${monthStr}-${dayStr}`;
+            const url = `${window.API_BASE}team-availability/${dateStr}/`;
+            
+            promises.push(
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.team_members) {
+                            // Filter to show only unavailable, meeting, or leave status
+                            const unavailable = data.team_members.filter(m => 
+                                m.status !== 'available'
+                            );
+                            
+                            if (unavailable.length > 0) {
+                                teamAvailability[dateStr] = unavailable;
+                            }
+                        }
+                    })
+                    .catch(error => console.error(`Error fetching availability for ${dateStr}:`, error))
+            );
+        }
+        
+        return Promise.all(promises);
     }
     
     function showDayEvents(dateStr, dayEvents) {
@@ -1050,17 +1441,19 @@
         e.preventDefault();
         
         const formData = new FormData(e.target);
-        const date = formData.get('date');
+        const startDate = formData.get('start_date');
+        const endDate = formData.get('end_date');
         const status = formData.get('status');
         const startTime = formData.get('start_time') || '09:00';
         const endTime = formData.get('end_time') || '17:00';
         
         // Debug logging
-        if (window.addDebug) window.addDebug(`Saving availability: ${status} on ${date}`, 'info');
+        if (window.addDebug) window.addDebug(`Saving availability: ${status} from ${startDate} to ${endDate}`, 'info');
         
         // Prepare data for API
         const data = {
-            date: date,
+            start_date: startDate,
+            end_date: endDate,
             status: status,
             start_time: startTime,
             end_time: endTime,
@@ -1084,6 +1477,7 @@
                 if (window.addDebug) window.addDebug('✓ Availability saved successfully', 'success');
                 showAlert('success', 'Availability updated successfully!');
                 renderCalendar();
+                loadTeamAvailability();
                 e.target.reset();
                 document.getElementById('reasonGroup').style.display = 'none';
                 document.getElementById('meetingGroup').style.display = 'none';
@@ -1146,14 +1540,84 @@
         const teamList = document.getElementById('teamList');
         teamList.innerHTML = '';
         
-        teamMembers.forEach(member => {
-            const statusClass = member.status === 'available' ? 'available' : 
-                               member.status === 'meeting' ? 'meeting' : 'unavailable';
+        // Get current time in South Africa timezone
+        function getCurrentTimeInSouthAfrica() {
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en-ZA', {
+                timeZone: 'Africa/Johannesburg',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
             
-            const statusText = member.status === 'available' ? 'Available' :
-                              member.status === 'meeting' ? `In Meeting (${member.time_range})` :
-                              member.status === 'leave' ? 'On Leave' :
-                              member.status === 'unavailable' ? 'Unavailable' : 'Off Hours';
+            const timeStr = formatter.format(now);
+            const [hours, minutes, seconds] = timeStr.split(':');
+            return {
+                hours: parseInt(hours),
+                minutes: parseInt(minutes),
+                seconds: parseInt(seconds),
+                totalMinutes: parseInt(hours) * 60 + parseInt(minutes)
+            };
+        }
+        
+        // Parse time string "HH:MM" to minutes
+        function timeToMinutes(timeStr) {
+            if (!timeStr) return null;
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+        
+        // Check if current time falls within availability window
+        function getStatusBasedOnTime(member) {
+            const currentTime = getCurrentTimeInSouthAfrica();
+            
+            // Only check time-based status if member has time_range set
+            if (member.start_time && member.end_time) {
+                const startMinutes = timeToMinutes(member.start_time);
+                const endMinutes = timeToMinutes(member.end_time);
+                
+                if (startMinutes !== null && endMinutes !== null) {
+                    // Check if current time is within the availability window
+                    if (currentTime.totalMinutes >= startMinutes && currentTime.totalMinutes <= endMinutes) {
+                        // Current time is within the window, use saved status
+                        return member.status;
+                    } else {
+                        // Current time is outside the window, show as available
+                        return 'available';
+                    }
+                }
+            }
+            
+            // If no time set, use saved status
+            return member.status;
+        }
+        
+        // Sort members by status: unavailable first, then on leave/meeting, then available
+        const statusPriority = {
+            'unavailable': 0,
+            'leave': 1,
+            'meeting': 2,
+            'available': 3
+        };
+        
+        teamMembers.sort((a, b) => {
+            const statusA = getStatusBasedOnTime(a);
+            const statusB = getStatusBasedOnTime(b);
+            return (statusPriority[statusA] || 4) - (statusPriority[statusB] || 4);
+        });
+        
+        teamMembers.forEach(member => {
+            // Get real-time status based on current time
+            const currentStatus = getStatusBasedOnTime(member);
+            
+            const statusClass = currentStatus === 'available' ? 'available' : 
+                               currentStatus === 'meeting' ? 'meeting' : 'unavailable';
+            
+            const statusText = currentStatus === 'available' ? 'Available' :
+                              currentStatus === 'meeting' ? `In Meeting (${member.time_range})` :
+                              currentStatus === 'leave' ? 'On Leave' :
+                              currentStatus === 'unavailable' ? 'Unavailable' : 'Off Hours';
             
             const projectsHtml = member.projects.length > 0 
                 ? `<p style="color: var(--text-secondary); font-size: 0.75rem; margin: 0.25rem 0;">Projects: ${member.projects.join(', ')}</p>`
@@ -1172,8 +1636,120 @@
                 </div>
                 <span class="status-badge status-${statusClass}">${statusText}</span>
             `;
+            
+            // Add click handler to status badge
+            const statusBadge = memberEl.querySelector('.status-badge');
+            statusBadge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openStatusModal(member);
+            });
+            
             teamList.appendChild(memberEl);
         });
+    }
+
+    // Open status modal with member details
+    function openStatusModal(member) {
+        const modal = document.getElementById('statusModal');
+        const backdrop = document.getElementById('statusModalBackdrop');
+
+        // Populate modal with member data
+        document.getElementById('modalAvatar').textContent = member.initials;
+        document.getElementById('modalMemberName').textContent = member.name;
+        document.getElementById('modalMemberRole').textContent = member.role;
+
+        // Set status badge
+        const statusBadge = document.getElementById('modalStatus');
+        statusBadge.className = 'status-badge-modal ' + (member.status || 'available');
+        statusBadge.textContent = member.status === 'available' ? 'Available' :
+                                 member.status === 'meeting' ? 'In Meeting' :
+                                 member.status === 'leave' ? 'On Leave' :
+                                 member.status === 'unavailable' ? 'Unavailable' : 'Off Hours';
+
+        // Handle date display
+        const dateSection = document.getElementById('dateSection');
+        if (member.status !== 'available' && (member.date || member.start_date || member.end_date)) {
+            dateSection.style.display = 'block';
+            let dateText = '';
+            
+            // Format date helper
+            function formatDate(dateStr) {
+                if (!dateStr) return '';
+                const date = new Date(dateStr + 'T00:00:00');
+                return date.toLocaleDateString('en-ZA', { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            }
+            
+            if (member.start_date && member.end_date) {
+                const startDate = formatDate(member.start_date);
+                const endDate = formatDate(member.end_date);
+                dateText = startDate === endDate ? startDate : `${startDate} - ${endDate}`;
+            } else if (member.date) {
+                dateText = formatDate(member.date);
+            } else if (member.start_date) {
+                dateText = formatDate(member.start_date);
+            }
+            
+            document.getElementById('modalDate').textContent = dateText || 'No date specified';
+        } else {
+            dateSection.style.display = 'none';
+        }
+
+        // Handle time range
+        const timeRangeSection = document.getElementById('timeRangeSection');
+        if (member.time_range && member.status !== 'available') {
+            timeRangeSection.style.display = 'block';
+            document.getElementById('modalTimeRange').textContent = member.time_range;
+        } else {
+            timeRangeSection.style.display = 'none';
+        }
+
+        // Handle reason
+        const reasonSection = document.getElementById('reasonSection');
+        if (member.reason && member.status !== 'available') {
+            reasonSection.style.display = 'block';
+            document.getElementById('modalReason').textContent = member.reason || 'No reason provided';
+        } else {
+            reasonSection.style.display = 'none';
+        }
+
+        // Handle meeting title
+        const meetingSection = document.getElementById('meetingSection');
+        if (member.meeting_title && member.status === 'meeting') {
+            meetingSection.style.display = 'block';
+            document.getElementById('modalMeetingTitle').textContent = member.meeting_title;
+        } else {
+            meetingSection.style.display = 'none';
+        }
+
+        // Show modal
+        modal.classList.add('active');
+        backdrop.classList.add('active');
+        
+        // Auto-scroll modal into view
+        setTimeout(() => {
+            modal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+    }
+
+    // Close status modal
+    function closeStatusModal() {
+        const modal = document.getElementById('statusModal');
+        const backdrop = document.getElementById('statusModalBackdrop');
+        
+        // Add closing animation
+        modal.classList.add('closing');
+        backdrop.classList.remove('active');
+        
+        // Remove classes after animation completes
+        setTimeout(() => {
+            modal.classList.remove('active');
+            modal.classList.remove('closing');
+        }, 300);
     }
     
     // Helper function to get CSRF token
@@ -1200,11 +1776,77 @@
     document.getElementById('messages-tab').addEventListener('click', () => {
         switchTab('messages');
     });
+
+    // Modal close handlers - wrapped in function to ensure DOM is ready
+    function setupModalHandlers() {
+        const closeBtn = document.getElementById('statusModalClose');
+        const backdrop = document.getElementById('statusModalBackdrop');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeStatusModal();
+            });
+        }
+        
+        if (backdrop) {
+            backdrop.addEventListener('click', (e) => {
+                e.preventDefault();
+                closeStatusModal();
+            });
+        }
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeStatusModal();
+        }
+    });
+    
+    // South Africa timezone - display current time and auto-refresh
+    function updateSouthAfricaTime() {
+        // South Africa Standard Time is UTC+2 (Africa/Johannesburg)
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-ZA', {
+            timeZone: 'Africa/Johannesburg',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        const currentTimeEl = document.getElementById('currentTime');
+        if (currentTimeEl) {
+            const timeStr = formatter.format(now);
+            currentTimeEl.textContent = timeStr;
+        }
+    }
+    
+    // Initialize current time display
+    updateSouthAfricaTime();
+    
+    // Update time every 10 seconds
+    setInterval(updateSouthAfricaTime, 10000);
+    
+    // Auto-refresh team availability every 5 minutes
+    setInterval(() => {
+        loadTeamAvailability();
+    }, 5 * 60 * 1000);
+    
+    // Set default dates to today
+    const today = new Date().toISOString().split('T')[0];
+    const startDateEl = document.getElementById('startDate');
+    const endDateEl = document.getElementById('endDate');
+    if (startDateEl) startDateEl.value = today;
+    if (endDateEl) endDateEl.value = today;
     
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
         renderCalendar();
         loadTeamAvailability();
+        setupModalHandlers();
     });
     
     // Team list refresh

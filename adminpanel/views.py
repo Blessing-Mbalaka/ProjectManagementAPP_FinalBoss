@@ -64,11 +64,11 @@ def decimal_to_float(value):
 
 @login_required
 def admin_dashboard(request):
-    return render(request, 'adminpanel/admin_dashboard.html')
+    return render(request, 'adminpanel/overview.html')
 
 @login_required
 def communique(request):
-    allowed_roles = ['staff', 'manager', 'admin', 'financialadmin']
+    allowed_roles = ['staff', 'manager', 'admin', 'financialadmin', 'student', 'supervisor']
     if request.user.role not in allowed_roles:
         messages.error(request, "You do not have access to the Communique page.")
         return redirect('dashboard')

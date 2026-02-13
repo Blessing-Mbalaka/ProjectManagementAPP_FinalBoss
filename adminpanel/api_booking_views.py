@@ -22,11 +22,9 @@ def get_team_availability(request, date):
         # Parse date
         availability_date = datetime.strptime(date, '%Y-%m-%d').date()
         
-        # Get all active users except current user
+        # Get all active users (including current user so they see themselves in the list)
         team_members = CustomUser.objects.filter(
             is_active=True
-        ).exclude(
-            id=request.user.id
         ).order_by('first_name', 'last_name')
         
         team_data = []
@@ -101,22 +99,38 @@ def get_team_availability(request, date):
 @login_required
 @require_http_methods(["POST"])
 def update_availability(request):
-    """Create or update user availability"""
+    """Create or update user availability for a date range"""
     try:
+        from datetime import timedelta
         data = json.loads(request.body)
         
         # Validate required fields
-        date_str = data.get('date')
+        start_date_str = data.get('start_date') or data.get('date')  # Support both formats
+        end_date_str = data.get('end_date') or data.get('date')
         status = data.get('status')
         
-        if not date_str or not status:
+        if not start_date_str or not end_date_str or not status:
             return JsonResponse({
                 'success': False,
-                'message': 'Date and status are required'
+                'message': 'Start date, end date, and status are required'
             }, status=400)
         
-        # Parse date
-        availability_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        # Parse dates
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid date format. Use YYYY-MM-DD'
+            }, status=400)
+        
+        # Validate date range
+        if start_date > end_date:
+            return JsonResponse({
+                'success': False,
+                'message': 'Start date must be before or equal to end date'
+            }, status=400)
         
         # Validate status
         valid_statuses = ['available', 'unavailable', 'meeting', 'leave', 'off-hours']
@@ -139,46 +153,59 @@ def update_availability(request):
                 'message': 'Invalid time format. Use HH:MM'
             }, status=400)
         
-        # Check for conflicts if status is 'meeting'
-        if status == 'meeting':
-            conflict = UserAvailability.check_conflict(
-                request.user,
-                availability_date,
-                start_time_obj,
-                end_time_obj
-            )
-            if conflict:
-                return JsonResponse({
-                    'success': True,
-                    'warning': 'Scheduling conflict detected. You have overlapping meeting on this date.',
-                    'conflict': True
-                }, status=200)
+        # Create or update availability for each day in range
+        current_date = start_date
+        created_count = 0
+        updated_count = 0
         
-        # Create or update availability
-        availability, created = UserAvailability.objects.update_or_create(
-            user=request.user,
-            date=availability_date,
-            defaults={
-                'status': status,
-                'start_time': start_time_obj,
-                'end_time': end_time_obj,
-                'meeting_title': data.get('meeting_title', ''),
-                'reason': data.get('reason', ''),
-                'is_personal': data.get('is_personal', False),
-                'created_by': request.user,
-            }
-        )
+        while current_date <= end_date:
+            # Check for conflicts if status is 'meeting'
+            if status == 'meeting':
+                conflict = UserAvailability.check_conflict(
+                    request.user,
+                    current_date,
+                    start_time_obj,
+                    end_time_obj
+                )
+                if conflict:
+                    return JsonResponse({
+                        'success': True,
+                        'warning': f'Scheduling conflict detected on {current_date}. You have overlapping meeting on this date.',
+                        'conflict': True
+                    }, status=200)
+            
+            # Create or update availability for this date
+            availability, created = UserAvailability.objects.update_or_create(
+                user=request.user,
+                date=current_date,
+                defaults={
+                    'status': status,
+                    'start_time': start_time_obj,
+                    'end_time': end_time_obj,
+                    'meeting_title': data.get('meeting_title', ''),
+                    'reason': data.get('reason', ''),
+                    'is_personal': data.get('is_personal', False),
+                    'created_by': request.user,
+                }
+            )
+            
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+            
+            # Move to next day
+            current_date += timedelta(days=1)
+        
+        total_days = (end_date - start_date).days + 1
+        message = f'Availability updated for {total_days} day{"s" if total_days != 1 else ""}'
         
         return JsonResponse({
             'success': True,
-            'message': f'Availability {"created" if created else "updated"} successfully',
-            'availability': {
-                'id': availability.id,
-                'date': availability.date.isoformat(),
-                'status': availability.status,
-                'start_time': availability.start_time.isoformat(),
-                'end_time': availability.end_time.isoformat(),
-            }
+            'message': message,
+            'created_count': created_count,
+            'updated_count': updated_count,
+            'total_days': total_days
         })
     
     except json.JSONDecodeError:

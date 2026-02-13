@@ -1,10 +1,17 @@
-{% extends "adminpanel/index.html" %}
 {% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Communique - Staff Booking & Messaging</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+</head>
+<body style="background-image: url('{% static 'img/2.png' %}'); background-size: cover;">
 
-{% block title %}Communique - Staff Booking & Messaging{% endblock %}
-
-{% block content %}
-<div style="padding: 2rem;">
+<div style="padding: 2rem; background: rgba(255, 255, 255, 0.95); min-height: 100vh; margin: 0;">
     <!-- Debug Panel -->
     <div style="background: #1f2937; color: #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-bottom: 2rem; max-height: 200px; overflow-y: auto; border: 1px solid #374151; font-family: monospace; font-size: 0.75rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #374151;">
@@ -17,13 +24,18 @@
     </div>
 
     <!-- Status Info -->
-    <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-left: 4px solid #10b981; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem;">
-        <p style="color: #10b981; font-weight: 600; margin: 0; font-size: 1rem;">
-            ✓ Communique Page Loaded Successfully
-        </p>
-        <p style="color: #6b7280; font-size: 0.875rem; margin: 0.5rem 0 0 0;">
-            User: <strong>{{ user.get_full_name|default:user.username }}</strong> | Role: <strong>{{ user.role|title }}</strong>
-        </p>
+    <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-left: 4px solid #10b981; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <p style="color: #10b981; font-weight: 600; margin: 0; font-size: 1rem;">
+                ✓ Communique Page Loaded Successfully
+            </p>
+            <p style="color: #6b7280; font-size: 0.875rem; margin: 0.5rem 0 0 0;">
+                User: <strong>{{ user.get_full_name|default:user.username }}</strong> | Role: <strong>{{ user.role|title }}</strong>
+            </p>
+        </div>
+        <a id="backBtn" href="#" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 500; cursor: pointer; display: inline-block;">
+            ← Back to Dashboard
+        </a>
     </div>
 
     <!-- Staff Bookings Component -->
@@ -32,10 +44,28 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Global debug logging system
     window.debugLog = [];
     const maxDebugLines = 50;
+    
+    // Set up back button based on user role
+    const userRole = '{{ user.role }}';
+    const backBtn = document.getElementById('backBtn');
+    
+    const dashboardUrls = {
+        'admin': '{% url "overview" %}',
+        'manager': '{% url "team_dashboard" %}',
+        'staff': '{% url "dashboard" %}',
+        'student': '{% url "student_dashboard" %}',
+        'financialadmin': '{% url "finance" %}',
+        'supervisor': '{% url "supervisor_dashboard_portal" %}'
+    };
+    
+    if (backBtn && dashboardUrls[userRole]) {
+        backBtn.href = dashboardUrls[userRole];
+    }
     
     window.addDebug = function(message, type = 'info') {
         const timestamp = new Date().toLocaleTimeString();
@@ -109,4 +139,5 @@
     });
 </script>
 
-{% endblock %}
+</body>
+</html>

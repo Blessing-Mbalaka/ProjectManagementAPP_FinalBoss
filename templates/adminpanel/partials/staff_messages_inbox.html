@@ -1,16 +1,36 @@
 {% load static %}
 
 <style>
+
+    /* #messages-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+    } */
+
+    /* #messages-content .card {
+        padding: 0 !important;
+        border: none !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        display: block !important;
+    } */
+
+    #messages-content .card {
+        margin-top: -170px !important;
+    }
+
     .staff-messages-container {
         display: grid;
         grid-template-columns: 360px 1fr;
         gap: 0;
         height: 550px;
-        background: var(--bg-card);
-        border-radius: 1rem;
-        border: 1px solid var(--border);
+        background: transparent;
+        border-radius: 0;
+        border: none;
         overflow: hidden;
-    }
+        margin-top: -210px !important;        position: relative;
+        z-index: 10;    }
 
     .messages-sidebar {
         border-right: 1px solid var(--border);
@@ -169,10 +189,10 @@
     .thread-messages {
         flex: 1;
         overflow-y: auto;
-        padding: 1rem 1.5rem;
+        padding: 1.5rem 1rem;
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 1rem;
         background: var(--bg-main);
     }
 
@@ -188,7 +208,7 @@
 
     .chat-message {
         display: flex;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0;
         animation: slideIn 0.3s ease-out;
     }
 
@@ -203,7 +223,8 @@
     .message-wrapper {
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
+        gap: 0.3rem;
+        max-width: 75%;
     }
 
     .chat-message.sent .message-wrapper {
@@ -215,12 +236,14 @@
     }
 
     .message-bubble {
-        max-width: 70%;
+        max-width: 100%;
         padding: 0.75rem 1rem;
         border-radius: 1.125rem;
         word-wrap: break-word;
+        word-break: break-word;
         font-size: 0.9rem;
         line-height: 1.4;
+        display: inline-block;
     }
 
     .message-bubble.sent {
