@@ -4,62 +4,79 @@ const sidebar = document.getElementById('sidebar');
 const mainContent = document.getElementById('mainContent');
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
 
-toggleBtn.addEventListener('click', function () {
-    sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('expanded');
+// Only attach event listeners if elements exist
+if (toggleBtn && sidebar && mainContent) {
+    toggleBtn.addEventListener('click', function () {
+        sidebar.classList.toggle('collapsed');
+        mainContent.classList.toggle('expanded');
 
-    // Change the icon based on state
-    const icon = toggleBtn.querySelector('i');
-    if (sidebar.classList.contains('collapsed')) {
-        icon.classList.remove('bi-chevron-left');
-        icon.classList.add('bi-chevron-right');
-    } else {
-        icon.classList.remove('bi-chevron-right');
-        icon.classList.add('bi-chevron-left');
-    }
-});
+        // Change the icon based on state
+        const icon = toggleBtn.querySelector('i');
+        if (sidebar.classList.contains('collapsed')) {
+            icon.classList.remove('bi-chevron-left');
+            icon.classList.add('bi-chevron-right');
+        } else {
+            icon.classList.remove('bi-chevron-right');
+            icon.classList.add('bi-chevron-left');
+        }
+    });
+}
 
 // Mobile Menu Toggle
-mobileMenuBtn.addEventListener('click', function () {
-    sidebar.classList.toggle('show');
-});
+if (mobileMenuBtn && sidebar) {
+    mobileMenuBtn.addEventListener('click', function () {
+        sidebar.classList.toggle('show');
+    });
+}
 
 // Close sidebar when clicking outside on mobile
 document.addEventListener('click', function (event) {
-    if (window.innerWidth <= 768 && !sidebar.contains(event.target) && event.target !== mobileMenuBtn) {
+    if (sidebar && window.innerWidth <= 768 && !sidebar.contains(event.target) && event.target !== mobileMenuBtn) {
         sidebar.classList.remove('show');
     }
 });
 
 // Task Management
-document.getElementById('add-task-btn').addEventListener('click', function () {
-    const taskInput = document.querySelector('.task-input');
-    const taskText = taskInput.value.trim();
+const addTaskBtn = document.getElementById('add-task-btn');
+if (addTaskBtn) {
+    addTaskBtn.addEventListener('click', function () {
+        const taskInput = document.querySelector('.task-input');
+        if (taskInput) {
+            const taskText = taskInput.value.trim();
 
-    if (taskText) {
-        const taskId = 'task-' + Date.now();
-        const taskItem = document.createElement('div');
-        taskItem.className = 'task-item';
-        taskItem.id = taskId;
-        taskItem.innerHTML = `
-            <span>${taskText}</span>
-            <div class="task-actions">
-                <i class="bi-check-circle text-success" title="Mark as done" onclick="completeTask('${taskId}')"></i>
-                <i class="bi-trash text-danger" title="Delete" onclick="removeTask('${taskId}')"></i>
-            </div>
-        `;
-        document.getElementById('tasks-list').appendChild(taskItem);
-        taskInput.value = '';
-        saveTasks();
-    }
-});
+            if (taskText) {
+                const taskId = 'task-' + Date.now();
+                const taskItem = document.createElement('div');
+                taskItem.className = 'task-item';
+                taskItem.id = taskId;
+                taskItem.innerHTML = `
+                    <span>${taskText}</span>
+                    <div class="task-actions">
+                        <i class="bi-check-circle text-success" title="Mark as done" onclick="completeTask('${taskId}')"></i>
+                        <i class="bi-trash text-danger" title="Delete" onclick="removeTask('${taskId}')"></i>
+                    </div>
+                `;
+                const tasksList = document.getElementById('tasks-list');
+                if (tasksList) {
+                    tasksList.appendChild(taskItem);
+                }
+                taskInput.value = '';
+                saveTasks();
+            }
+        }
+    });
+}
 
 // Allow pressing Enter to add task
-document.querySelector('.task-input').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        document.getElementById('add-task-btn').click();
-    }
-});
+const taskInputField = document.querySelector('.task-input');
+if (taskInputField) {
+    taskInputField.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            const btn = document.getElementById('add-task-btn');
+            if (btn) btn.click();
+        }
+    });
+}
 
 // Complete task with animation
 function completeTask(taskId) {
@@ -99,6 +116,7 @@ function saveTasks() {
 function loadTasks() {
     const savedTasks = JSON.parse(localStorage.getItem('dashboard-tasks')) || [];
     const tasksList = document.getElementById('tasks-list');
+    if (!tasksList) return;
     tasksList.innerHTML = '';
 
     savedTasks.forEach(task => {
@@ -124,43 +142,66 @@ function loadTasks() {
 }
 
 // File Upload Management
-document.getElementById('file-upload').addEventListener('change', function (e) {
-    const fileName = e.target.files[0]?.name || 'No file selected';
-    document.getElementById('selected-file-name').textContent = `Selected: ${fileName}`;
-});
+const fileUploadEl = document.getElementById('file-upload');
+if (fileUploadEl) {
+    fileUploadEl.addEventListener('change', function (e) {
+        const fileName = e.target.files[0]?.name || 'No file selected';
+        const selectedFile = document.getElementById('selected-file-name');
+        if (selectedFile) {
+            selectedFile.textContent = `Selected: ${fileName}`;
+        }
+    });
+}
 
-document.getElementById('confirm-upload').addEventListener('click', function () {
-    const fileNameInput = document.getElementById('file-name');
-    const fileUpload = document.getElementById('file-upload');
-    const fileName = fileNameInput.value.trim() || fileUpload.files[0]?.name || 'Untitled';
+const confirmUploadBtn = document.getElementById('confirm-upload');
+if (confirmUploadBtn) {
+    confirmUploadBtn.addEventListener('click', function () {
+        const fileNameInput = document.getElementById('file-name');
+        const fileUpload = document.getElementById('file-upload');
+        if (fileNameInput && fileUpload) {
+            const fileName = fileNameInput.value.trim() || fileUpload.files[0]?.name || 'Untitled';
 
-    if (fileUpload.files.length > 0) {
-        const fileId = 'file-' + Date.now();
-        const uploadItem = document.createElement('div');
-        uploadItem.className = 'upload-item';
-        uploadItem.id = fileId;
-        uploadItem.innerHTML = `
-            <span>${fileName}</span>
-            <div class="upload-actions">
-                <i class="bi-pencil text-primary" title="Rename" onclick="renameFile('${fileId}')"></i>
-                <i class="bi-trash text-danger" title="Delete" onclick="removeFile('${fileId}')"></i>
-            </div>
-        `;
-        document.getElementById('uploads-list').appendChild(uploadItem);
+            if (fileUpload.files.length > 0) {
+                const fileId = 'file-' + Date.now();
+                const uploadItem = document.createElement('div');
+                uploadItem.className = 'upload-item';
+                uploadItem.id = fileId;
+                uploadItem.innerHTML = `
+                    <span>${fileName}</span>
+                    <div class="upload-actions">
+                        <i class="bi-pencil text-primary" title="Rename" onclick="renameFile('${fileId}')"></i>
+                        <i class="bi-trash text-danger" title="Delete" onclick="removeFile('${fileId}')"></i>
+                    </div>
+                `;
+                const uploadsList = document.getElementById('uploads-list');
+                if (uploadsList) {
+                    uploadsList.appendChild(uploadItem);
+                }
 
-        // Reset form
-        fileNameInput.value = '';
-        fileUpload.value = '';
-        document.getElementById('selected-file-name').textContent = '';
+                // Reset form
+                fileNameInput.value = '';
+                fileUpload.value = '';
+                const selectedFile = document.getElementById('selected-file-name');
+                if (selectedFile) selectedFile.textContent = '';
 
-        // Close modal
-        bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+                // Close modal
+                const uploadModal = document.getElementById('uploadModal');
+                if (uploadModal) {
+                    try {
+                        const modal = bootstrap.Modal.getInstance(uploadModal);
+                        if (modal) modal.hide();
+                    } catch (e) {
+                        console.warn('Modal error:', e);
+                    }
+                }
 
-        saveUploads();
-    } else {
-        alert('Please select a file to upload');
-    }
-});
+                saveUploads();
+            } else {
+                alert('Please select a file to upload');
+            }
+        }
+    });
+}
 
 // Rename file
 function renameFile(fileId) {
@@ -197,6 +238,7 @@ function saveUploads() {
 function loadUploads() {
     const savedUploads = JSON.parse(localStorage.getItem('dashboard-uploads')) || [];
     const uploadsList = document.getElementById('uploads-list');
+    if (!uploadsList) return;
     uploadsList.innerHTML = '';
 
     savedUploads.forEach(upload => {
@@ -243,7 +285,7 @@ window.addEventListener('load', function () {
     loadUploads();
 
     // Initialize sidebar state based on screen size
-    if (window.innerWidth <= 768) {
+    if (sidebar && mainContent && window.innerWidth <= 768) {
         sidebar.classList.remove('collapsed');
         sidebar.classList.remove('show');
         mainContent.classList.remove('expanded');
@@ -252,7 +294,7 @@ window.addEventListener('load', function () {
 
 // Handle window resize
 window.addEventListener('resize', function () {
-    if (window.innerWidth > 768) {
+    if (sidebar && window.innerWidth > 768) {
         sidebar.classList.remove('show');
     }
 });

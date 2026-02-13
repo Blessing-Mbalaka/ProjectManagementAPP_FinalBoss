@@ -5,6 +5,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from decimal import Decimal, InvalidOperation
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from datetime import timedelta
 
 
 class CostCentre(models.Model):
@@ -378,3 +380,161 @@ class ClockInRecord(models.Model):
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
         return f"{hours}h {minutes}m"
+
+
+class UserAvailability(models.Model):
+    """Track daily availability status for team members"""
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('unavailable', 'Unavailable'),
+        ('meeting', 'In Meeting'),
+        ('leave', 'On Leave'),
+        ('off-hours', 'Off Hours'),
+    ]
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='availabilities'
+    )
+    date = models.DateField(db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, db_index=True)
+    
+    # Time Fields
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    
+    # Details
+    reason = models.TextField(
+        blank=True,
+        help_text="Why unavailable/meeting title/leave reason"
+    )
+    meeting_title = models.CharField(max_length=255, blank=True)
+    is_personal = models.BooleanField(
+        default=False,
+        help_text="Private - only admin sees"
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='availability_records_created'
+    )
+    
+    class Meta:
+        unique_together = [['user', 'date']]
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['user', 'date']),
+            models.Index(fields=['date']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.date} ({self.status})"
+    
+    @classmethod
+    def get_team_availability(cls, date, exclude_user=None):
+        """Get all team members' availability for a specific date"""
+        queryset = cls.objects.filter(date=date).select_related('user')
+        if exclude_user:
+            queryset = queryset.exclude(user=exclude_user)
+        return queryset
+    
+    @classmethod
+    def check_conflict(cls, user, date, start_time, end_time, exclude_id=None):
+        """Check if proposed time slot conflicts with existing meetings"""
+        queryset = cls.objects.filter(
+            user=user,
+            date=date,
+            status='meeting'
+        )
+        if exclude_id:
+            queryset = queryset.exclude(id=exclude_id)
+        
+        # Check for time overlap
+        for availability in queryset:
+            if not (end_time <= availability.start_time or start_time >= availability.end_time):
+                return True  # Conflict found
+        return False
+
+
+class UserLeaveRequest(models.Model):
+    """Track leave/time-off requests with approval workflow"""
+    APPROVAL_STATUS = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='leave_requests'
+    )
+    start_date = models.DateField(db_index=True)
+    end_date = models.DateField(db_index=True)
+    reason = models.TextField()
+    status = models.CharField(
+        max_length=20,
+        choices=APPROVAL_STATUS,
+        default='pending',
+        db_index=True
+    )
+    
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_leaves'
+    )
+    approval_date = models.DateTimeField(blank=True, null=True)
+    rejection_reason = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'start_date']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.start_date} to {self.end_date} ({self.status})"
+    
+    def approve(self, approved_by):
+        """Approve the leave request and create UserAvailability records"""
+        self.status = 'approved'
+        self.approved_by = approved_by
+        self.approval_date = timezone.now()
+        self.save()
+        
+        # Create UserAvailability records for each day
+        current_date = self.start_date
+        while current_date <= self.end_date:
+            UserAvailability.objects.update_or_create(
+                user=self.user,
+                date=current_date,
+                defaults={
+                    'status': 'leave',
+                    'start_time': '00:00:00',
+                    'end_time': '23:59:59',
+                    'reason': self.reason,
+                    'created_by': approved_by
+                }
+            )
+            current_date += timedelta(days=1)
+    
+    def reject(self, rejection_reason=''):
+        """Reject the leave request"""
+        self.status = 'rejected'
+        self.rejection_reason = rejection_reason
+        self.save()

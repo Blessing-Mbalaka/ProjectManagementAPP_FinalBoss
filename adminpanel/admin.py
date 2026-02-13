@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CostCentre, Expenditure, Notification, SupervisorProfile, SupervisorFeedback, ClockInRecord, AuditLog
+from .models import CostCentre, Expenditure, Notification, SupervisorProfile, SupervisorFeedback, ClockInRecord, AuditLog, UserAvailability, UserLeaveRequest
 
 from .media_models import SystemMedia
 
@@ -86,3 +86,82 @@ class AuditLogAdmin(admin.ModelAdmin):
             'fields': ('previous_values', 'new_values')
         }),
     )
+
+
+@admin.register(UserAvailability)
+class UserAvailabilityAdmin(admin.ModelAdmin):
+    """Admin interface for managing staff availability"""
+    list_display = ('user', 'date', 'status', 'start_time', 'end_time', 'created_by')
+    list_filter = ('status', 'date', 'created_at')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'reason', 'meeting_title')
+    readonly_fields = ('created_at', 'updated_at', 'created_by')
+    date_hierarchy = 'date'
+    
+    fieldsets = (
+        ('User & Date', {
+            'fields': ('user', 'date')
+        }),
+        ('Availability Details', {
+            'fields': ('status', 'start_time', 'end_time')
+        }),
+        ('Additional Information', {
+            'fields': ('meeting_title', 'reason', 'is_personal'),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Editing existing object
+            return self.readonly_fields + ('user', 'date')
+        return self.readonly_fields
+
+
+@admin.register(UserLeaveRequest)
+class UserLeaveRequestAdmin(admin.ModelAdmin):
+    """Admin interface for managing leave requests with approval workflow"""
+    list_display = ('user', 'start_date', 'end_date', 'status', 'approved_by', 'approval_date')
+    list_filter = ('status', 'start_date', 'created_at')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'reason')
+    readonly_fields = ('created_at', 'updated_at', 'approval_date')
+    date_hierarchy = 'start_date'
+    actions = ['approve_leave', 'reject_leave']
+    
+    fieldsets = (
+        ('Leave Request', {
+            'fields': ('user', 'start_date', 'end_date', 'reason')
+        }),
+        ('Approval Status', {
+            'fields': ('status', 'approved_by', 'approval_date', 'rejection_reason')
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Editing existing object
+            return self.readonly_fields + ('user', 'start_date', 'end_date')
+        return self.readonly_fields
+    
+    def approve_leave(self, request, queryset):
+        """Bulk approve leave requests"""
+        for leave_request in queryset.filter(status='pending'):
+            leave_request.approve(request.user)
+        self.message_user(request, f'{queryset.filter(status="approved").count()} leave request(s) approved.')
+    approve_leave.short_description = 'Approve selected leave requests'
+    
+    def reject_leave(self, request, queryset):
+        """Bulk reject leave requests"""
+        count = queryset.filter(status='pending').update(status='rejected')
+        self.message_user(request, f'{count} leave request(s) rejected.')
+    reject_leave.short_description = 'Reject selected leave requests'

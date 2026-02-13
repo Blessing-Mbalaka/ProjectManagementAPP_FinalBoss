@@ -43,6 +43,7 @@
             <ul class="sidebar-menu">
                 {% if user.role != 'financialadmin' %}
                 <li><a href="{% url 'overview' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
+                <li><a href="{% url 'communique' %}" class="nav-link"><i class="bi bi-chat-dots"></i><span>Communique</span></a></li>
                 <!-- <li><a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
                 <li><a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a></li> -->
                 <li><a href="{% url 'admin_journal' %}" class="nav-link"><i class="bi bi-file-earmark-text"></i><span>Paper</span></a></li>
@@ -72,7 +73,7 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <script src="{% static 'admin/dashboard.js' %}"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
 
 </body>
 

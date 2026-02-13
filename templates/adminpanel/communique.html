@@ -1,0 +1,112 @@
+{% extends "adminpanel/index.html" %}
+{% load static %}
+
+{% block title %}Communique - Staff Booking & Messaging{% endblock %}
+
+{% block content %}
+<div style="padding: 2rem;">
+    <!-- Debug Panel -->
+    <div style="background: #1f2937; color: #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-bottom: 2rem; max-height: 200px; overflow-y: auto; border: 1px solid #374151; font-family: monospace; font-size: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #374151;">
+            <strong>📋 Debug Log</strong>
+            <button id="clearDebugBtn" style="background: #ef4444; color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.7rem;">Clear</button>
+        </div>
+        <div id="debugLog" style="line-height: 1.4;">
+            <div style="color: #10b981;">✓ Debug panel initialized</div>
+        </div>
+    </div>
+
+    <!-- Status Info -->
+    <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-left: 4px solid #10b981; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem;">
+        <p style="color: #10b981; font-weight: 600; margin: 0; font-size: 1rem;">
+            ✓ Communique Page Loaded Successfully
+        </p>
+        <p style="color: #6b7280; font-size: 0.875rem; margin: 0.5rem 0 0 0;">
+            User: <strong>{{ user.get_full_name|default:user.username }}</strong> | Role: <strong>{{ user.role|title }}</strong>
+        </p>
+    </div>
+
+    <!-- Staff Bookings Component -->
+    <div id="bookingsContainer">
+        {% include "adminpanel/partials/Staff_Bookings.html" %}
+    </div>
+</div>
+
+<script>
+    // Global debug logging system
+    window.debugLog = [];
+    const maxDebugLines = 50;
+    
+    window.addDebug = function(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const icon = type === 'error' ? '✗' : type === 'warning' ? '⚠' : type === 'success' ? '✓' : '→';
+        const colorMap = {
+            error: '#ef4444',
+            warning: '#f59e0b',
+            success: '#10b981',
+            info: '#3b82f6'
+        };
+        const color = colorMap[type] || colorMap.info;
+        
+        const logEntry = `[${timestamp}] ${icon} ${message}`;
+        window.debugLog.push({ message: logEntry, type, color });
+        
+        if (window.debugLog.length > maxDebugLines) {
+            window.debugLog.shift();
+        }
+        
+        window.updateDebugDisplay();
+        console.log(`%c${logEntry}`, `color: ${color}; font-weight: bold;`);
+    };
+    
+    window.updateDebugDisplay = function() {
+        const debugContainer = document.getElementById('debugLog');
+        if (debugContainer) {
+            debugContainer.innerHTML = window.debugLog.map(entry => 
+                `<div style="color: ${entry.color};">${entry.message}</div>`
+            ).join('');
+            debugContainer.scrollTop = debugContainer.scrollHeight;
+        }
+    };
+    
+    const clearBtn = document.getElementById('clearDebugBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            window.debugLog.length = 0;
+            document.getElementById('debugLog').innerHTML = '<div style="color: #10b981;">✓ Debug log cleared</div>';
+            window.addDebug('Log cleared by user', 'info');
+        });
+    }
+    
+    window.addDebug('Communique initialized', 'success');
+    
+    // Intercept all fetch calls to log them
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'unknown';
+        const method = (args[1]?.method || 'GET').toUpperCase();
+        window.addDebug(`API: ${method} ${url}`, 'info');
+        
+        return originalFetch.apply(this, args)
+            .then(response => {
+                const status = response.status;
+                const statusType = status >= 200 && status < 300 ? 'success' : status >= 400 ? 'error' : 'warning';
+                window.addDebug(`${status} ${method}`, statusType);
+                return response;
+            })
+            .catch(error => {
+                window.addDebug(`ERROR: ${method} - ${error.message}`, 'error');
+                throw error;
+            });
+    };
+    
+    window.addEventListener('load', function() {
+        window.addDebug('Page fully loaded', 'success');
+    });
+    
+    window.addEventListener('error', function(event) {
+        window.addDebug(`JS Error: ${event.error?.message || event.message}`, 'error');
+    });
+</script>
+
+{% endblock %}

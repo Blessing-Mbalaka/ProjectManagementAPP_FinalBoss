@@ -61,11 +61,9 @@
 
                             <td>
                                 <span class="badge bg-info">{{ cc.payment_count }} payment{{ cc.payment_count|pluralize }}</span>
-
- <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#paymentHistoryModal{{ cc.id }}" title="View Payment History">
-                                     History
+                                <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#paymentHistoryModal{{ cc.id }}" title="View Payment History" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; display: inline-flex; align-items: center; vertical-align: middle;">
+                                    <i class="bi bi-eye" style="font-size: 0.9rem; margin-top: 0.1rem;"></i>
                                 </button>
-
                             </td>
                             <td><span class="text-success fw-bold">R {{ cc.get_total_received|floatformat:2 }}</span>
 

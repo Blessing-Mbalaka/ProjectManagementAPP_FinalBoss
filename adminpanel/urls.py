@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import supervisors
 from . import notification_views
+from . import api_booking_views
 from .clock_views import clock_in, clock_out, get_clock_status, clock_history
 
 urlpatterns = [
@@ -12,6 +13,7 @@ urlpatterns = [
     
     # Admin Routes
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('communique/', views.communique, name='communique'),
     path('admin_book/', views.admin_book, name='admin_book'),
     path('update-book-status/<int:book_id>/', views.update_book_status, name='update_book_status'),
     path('app_kanban/', views.app_kanban, name='app_kanban'),
@@ -69,5 +71,20 @@ urlpatterns = [
     path('clock-out/', clock_out, name='clock_out'),
     path('clock-status/', get_clock_status, name='clock_status'),
     path('clock-history/', clock_history, name='clock_history'),
+    
+    # Staff Booking & Availability API
+    path('api/availability/update/', api_booking_views.update_availability, name='api_update_availability'),
+    path('api/availability/<int:user_id>/<str:date>/', api_booking_views.get_user_availability, name='api_get_user_availability'),
+    path('api/team-availability/<str:date>/', api_booking_views.get_team_availability, name='api_get_team_availability'),
+    path('api/availability/<int:availability_id>/delete/', api_booking_views.delete_availability, name='api_delete_availability'),
+    path('api/leave-request/', api_booking_views.request_leave, name='api_request_leave'),
+    path('api/month-events/<int:year>/<int:month>/', api_booking_views.get_month_events, name='api_get_month_events'),
+    
+    # Staff Messaging API
+    path('api/messages/inbox/', api_booking_views.get_staff_inbox, name='api_staff_inbox'),
+    path('api/messages/send/', api_booking_views.send_staff_message, name='api_send_staff_message'),
+    path('api/messages/thread/<int:recipient_id>/', api_booking_views.get_message_thread, name='api_message_thread'),
+    path('api/messages/recipients/', api_booking_views.get_recipients_list, name='api_recipients_list'),
+    path('api/messages/unread-count/', api_booking_views.get_unread_message_count, name='api_unread_count'),
 
 ]

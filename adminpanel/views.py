@@ -67,6 +67,14 @@ def admin_dashboard(request):
     return render(request, 'adminpanel/admin_dashboard.html')
 
 @login_required
+def communique(request):
+    allowed_roles = ['staff', 'manager', 'admin', 'financialadmin']
+    if request.user.role not in allowed_roles:
+        messages.error(request, "You do not have access to the Communique page.")
+        return redirect('dashboard')
+    return render(request, 'adminpanel/communique.html')
+
+@login_required
 def app_kanban(request):
     phases = ["UX/UI", "Architecture", "Frontend", "Backend", "Testing", "Deployment"]
     return render(request, 'adminpanel/app_kanban.html', {'phases': phases})

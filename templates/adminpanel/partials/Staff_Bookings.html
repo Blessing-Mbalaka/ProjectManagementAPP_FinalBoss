@@ -1,0 +1,1215 @@
+{% load static %}
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=Work+Sans:wght@300;400;500;600&display=swap');
+
+    :root {
+        --primary: #0f172a;
+        --primary-light: #1e293b;
+        --accent: #f59e0b;
+        --accent-dark: #d97706;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --bg-main: #f8fafc;
+        --bg-card: #ffffff;
+        --text-primary: #0f172a;
+        --text-secondary: #64748b;
+        --border: #e2e8f0;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    .availability-dashboard {
+        font-family: 'Work Sans', sans-serif;
+        background: var(--bg-main);
+        padding: 2rem;
+        min-height: 100vh;
+    }
+
+    .dashboard-header {
+        margin-bottom: 2.5rem;
+        animation: slideDown 0.6s ease-out;
+    }
+
+    .dashboard-title {
+        font-family: 'Fraunces', serif;
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin: 0 0 0.5rem 0;
+        letter-spacing: -0.02em;
+    }
+
+    .dashboard-subtitle {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 400;
+    }
+
+    .user-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--accent);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-top: 1rem;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 2rem;
+        animation: fadeIn 0.8s ease-out 0.2s both;
+    }
+
+    @media (max-width: 1200px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .card {
+        background: var(--bg-card);
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border);
+        transition: all 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .card-title {
+        font-family: 'Fraunces', serif;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin: 0;
+    }
+
+    /* Calendar Styles */
+    .calendar-container {
+        grid-column: 1 / -1;
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .calendar-nav {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .calendar-nav button {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .calendar-nav button:hover {
+        background: var(--accent);
+        transform: scale(1.05);
+    }
+
+    .current-month {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--primary);
+        min-width: 200px;
+        text-align: center;
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 0.5rem;
+    }
+
+    .calendar-day-header {
+        text-align: center;
+        font-weight: 600;
+        color: var(--text-secondary);
+        padding: 1rem;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .calendar-day {
+        aspect-ratio: 1;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        min-height: 100px;
+    }
+
+    .calendar-day:hover {
+        border-color: var(--accent);
+        box-shadow: var(--shadow-sm);
+        transform: scale(1.02);
+    }
+
+    .calendar-day.other-month {
+        opacity: 0.3;
+    }
+
+    .calendar-day.today {
+        border: 2px solid var(--accent);
+        background: rgba(245, 158, 11, 0.05);
+    }
+
+    .calendar-day.has-event {
+        background: rgba(16, 185, 129, 0.05);
+    }
+
+    .calendar-day.has-leave {
+        background: rgba(239, 68, 68, 0.05);
+    }
+
+    .calendar-day.has-meeting {
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .day-number {
+        font-weight: 600;
+        color: var(--primary);
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .day-events {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.7rem;
+        overflow: hidden;
+    }
+
+    .event-dot {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .event-dot.meeting {
+        background: rgba(59, 130, 246, 0.2);
+        color: #1e40af;
+    }
+
+    .event-dot.leave {
+        background: rgba(239, 68, 68, 0.2);
+        color: #b91c1c;
+    }
+
+    .event-dot.availability {
+        background: rgba(16, 185, 129, 0.2);
+        color: #047857;
+    }
+
+    /* Availability Form */
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 500;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        font-family: 'Work Sans', sans-serif;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .time-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        font-family: 'Work Sans', sans-serif;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--accent);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-danger {
+        background: var(--danger);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+        background: var(--border);
+        color: var(--primary);
+    }
+
+    .btn-secondary:hover {
+        background: var(--text-secondary);
+        color: white;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    /* Team Availability List */
+    .team-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .team-member {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: var(--bg-main);
+        border-radius: 0.5rem;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .team-member:hover {
+        border-color: var(--accent);
+        background: white;
+    }
+
+    .member-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .member-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .member-details h4 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+
+    .member-details p {
+        margin: 0.25rem 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-available {
+        background: rgba(16, 185, 129, 0.2);
+        color: #047857;
+    }
+
+    .status-unavailable {
+        background: rgba(239, 68, 68, 0.2);
+        color: #b91c1c;
+    }
+
+    .status-meeting {
+        background: rgba(59, 130, 246, 0.2);
+        color: #1e40af;
+    }
+
+    /* Leave Requests */
+    .leave-request {
+        padding: 1rem;
+        background: var(--bg-main);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid var(--accent);
+    }
+
+    .leave-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .leave-date {
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .leave-reason {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal.active {
+        display: flex;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-lg);
+        animation: slideUp 0.3s ease-out;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+        font-family: 'Fraunces', serif;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+        background: var(--bg-main);
+        color: var(--primary);
+    }
+
+    /* Animations */
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Alert Messages */
+    .alert {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        display: none;
+    }
+
+    .alert.active {
+        display: block;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    .alert-success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #047857;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .alert-warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    /* Checkbox styling */
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .checkbox-group label {
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+</style>
+
+<div class="availability-dashboard">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Team Availability Dashboard</h1>
+        <p class="dashboard-subtitle">Manage your schedule, meetings, and leave requests</p>
+        <div class="user-badge">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+            </svg>
+            {{ user.get_full_name|default:user.username }} - {{ user.role|default:"Staff" }}
+        </div>
+    </div>
+
+    <div id="alertContainer"></div>
+
+    <!-- Tab Navigation -->
+    <div style="margin-bottom: 2rem; border-bottom: 2px solid var(--border); display: flex; gap: 2rem;">
+        <button class="tab-button active" id="availability-tab">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem; vertical-align: text-bottom;">
+                <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
+            </svg>
+            Availability
+        </button>
+        <button class="tab-button" id="messages-tab">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem; vertical-align: text-bottom;">
+                <path d="M16 8c0 3.314-1.578 6.235-4 7.906v2.603a.5.5 0 0 1-.757.429l-1.783-1.074A4.5 4.5 0 0 1 8 15.5a4.5 4.5 0 0 1-1.46-.206l-1.784 1.074A.5.5 0 0 1 2.5 16v-2.603C1.578 14.235 0 11.314 0 8c0-4.418 1.791-8 4-8s4 3.582 4 8 1.791 8 4 8 4-3.582 4-8z"/>
+            </svg>
+            Messages
+            <span id="message-badge" class="badge" style="display: none; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; margin-left: 0.5rem;">0</span>
+        </button>
+    </div>
+
+    <style>
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 0.75rem 1rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            position: relative;
+            bottom: -2px;
+        }
+
+        .tab-button:hover {
+            color: var(--accent);
+        }
+
+        .tab-button.active {
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .badge {
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            min-width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+    </style>
+
+    <!-- Availability Tab -->
+    <div id="availability-content" class="tab-content active">
+        <div class="dashboard-grid">
+        <!-- Availability & Leave Form -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Update Availability</h2>
+            </div>
+            
+            <form id="availabilityForm" method="post">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-input" required id="availabilityDate">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select" id="statusSelect" required>
+                        <option value="available">Available</option>
+                        <option value="unavailable">Unavailable</option>
+                        <option value="meeting">In Meeting</option>
+                        <option value="leave">On Leave</option>
+                    </select>
+                </div>
+
+                <div class="time-inputs" id="timeInputs">
+                    <div class="form-group">
+                        <label class="form-label">Start Time</label>
+                        <input type="time" name="start_time" class="form-input" id="startTime">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">End Time</label>
+                        <input type="time" name="end_time" class="form-input" id="endTime">
+                    </div>
+                </div>
+
+                <div class="form-group" id="reasonGroup" style="display: none;">
+                    <label class="form-label">Reason</label>
+                    <textarea name="reason" class="form-textarea" id="reasonText" placeholder="Provide a reason for unavailability..."></textarea>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="is_personal" id="isPersonal">
+                        <label for="isPersonal">This is a personal matter (notify admin privately)</label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="meetingGroup" style="display: none;">
+                    <label class="form-label">Meeting Title</label>
+                    <input type="text" name="meeting_title" class="form-input" id="meetingTitle" placeholder="e.g., Client Review Meeting">
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">Save Availability</button>
+                    <button type="button" class="btn btn-secondary" id="clearForm">Clear</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Team Status -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Team Status Today</h2>
+                <button class="btn btn-secondary" id="refreshTeam">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem;">
+                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                        <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+
+            <div class="team-list" id="teamList">
+                <!-- Team members will be populated here via JavaScript from API -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Section -->
+    <div class="card calendar-container">
+        <div class="card-header">
+            <h2 class="card-title">Schedule Calendar</h2>
+            <button class="btn btn-primary" id="addEventBtn">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem;">
+                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                </svg>
+                Quick Add Leave
+            </button>
+        </div>
+
+        <div class="calendar-header">
+            <div class="calendar-nav">
+                <button id="prevMonth">← Previous</button>
+                <span class="current-month" id="currentMonth">January 2025</span>
+                <button id="nextMonth">Next →</button>
+            </div>
+        </div>
+
+        <div class="calendar-grid">
+            <div class="calendar-day-header">Sun</div>
+            <div class="calendar-day-header">Mon</div>
+            <div class="calendar-day-header">Tue</div>
+            <div class="calendar-day-header">Wed</div>
+            <div class="calendar-day-header">Thu</div>
+            <div class="calendar-day-header">Fri</div>
+            <div class="calendar-day-header">Sat</div>
+            
+            <!-- Calendar days will be generated by JavaScript -->
+            <div id="calendarDays"></div>
+        </div>
+    </div>
+        </div>
+    </div>
+    <!-- End Availability Tab -->
+
+    <!-- Messages Tab -->
+    <div id="messages-content" class="tab-content">
+        {% include "adminpanel/partials/staff_messages_inbox.html" %}
+    </div>
+    <!-- End Messages Tab -->
+
+</div>
+<!-- End availability-dashboard -->
+
+<!-- Event Details Modal -->
+<div id="eventModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">Event Details</h3>
+            <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <div id="modalBody">
+            <!-- Event details will be populated here -->
+        </div>
+    </div>
+</div>
+
+<script>
+    // Tab switching functionality
+    function switchTab(tabName) {
+        // Debug logging
+        if (window.addDebug) window.addDebug(`Switching to ${tabName} tab`, 'info');
+        
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        const contentId = `${tabName}-content`;
+        const buttonId = `${tabName}-tab`;
+        
+        const tabContent = document.getElementById(contentId);
+        const tabButton = document.getElementById(buttonId);
+        
+        if (tabContent) tabContent.classList.add('active');
+        if (tabButton) tabButton.classList.add('active');
+
+        // Load messages when switching to messages tab
+        if (tabName === 'messages' && window.loadConversations) {
+            window.loadConversations();
+        }
+    }
+
+    // Calendar functionality
+    let currentDate = new Date();
+    let selectedDate = null;
+    let events = {}; // Will be populated by API calls
+    
+    // Initialize API base URL (check if already defined to prevent redeclaration errors)
+    if (typeof window.API_BASE === 'undefined') {
+        const teamAvailUrl = "{% url 'api_get_team_availability' '2025-01-01' %}"; window.API_BASE = teamAvailUrl.replace('/team-availability/2025-01-01/', '/');
+    }
+    
+    
+    function renderCalendar() {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        // Update month display
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        document.getElementById('currentMonth').textContent = `${monthNames[month]} ${year}`;
+        
+        // Fetch month events from API
+        fetchMonthEvents(year, month);
+        
+        // Get first day of month and number of days
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+        
+        const calendarDays = document.getElementById('calendarDays');
+        calendarDays.innerHTML = '';
+        
+        // Previous month days
+        for (let i = firstDay - 1; i >= 0; i--) {
+            const day = daysInPrevMonth - i;
+            const dayEl = createDayElement(day, true, year, month - 1);
+            calendarDays.appendChild(dayEl);
+        }
+        
+        // Current month days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayEl = createDayElement(day, false, year, month);
+            calendarDays.appendChild(dayEl);
+        }
+        
+        // Next month days
+        const remainingDays = 42 - (firstDay + daysInMonth);
+        for (let day = 1; day <= remainingDays; day++) {
+            const dayEl = createDayElement(day, true, year, month + 1);
+            calendarDays.appendChild(dayEl);
+        }
+    }
+    
+    function createDayElement(day, otherMonth, year, month) {
+        const dayEl = document.createElement('div');
+        dayEl.className = 'calendar-day';
+        if (otherMonth) dayEl.classList.add('other-month');
+        
+        const monthStr = String(month + 1).padStart(2, '0');
+        const dayStr = String(day).padStart(2, '0');
+        const dateStr = `${year}-${monthStr}-${dayStr}`;
+        
+        // Check if today
+        const today = new Date();
+        if (!otherMonth && day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+            dayEl.classList.add('today');
+        }
+        
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = day;
+        dayEl.appendChild(dayNumber);
+        
+        // Add events
+        if (events[dateStr]) {
+            const eventsContainer = document.createElement('div');
+            eventsContainer.className = 'day-events';
+            
+            events[dateStr].forEach(event => {
+                const eventDot = document.createElement('div');
+                eventDot.className = `event-dot ${event.type}`;
+                eventDot.textContent = event.title;
+                eventsContainer.appendChild(eventDot);
+                
+                dayEl.classList.add(`has-${event.type}`);
+            });
+            
+            dayEl.appendChild(eventsContainer);
+        }
+        
+        dayEl.addEventListener('click', () => showDayEvents(dateStr, events[dateStr] || []));
+        
+        return dayEl;
+    }
+    
+    function fetchMonthEvents(year, month) {
+        const monthStr = String(month + 1).padStart(2, '0');
+        const url = `${window.API_BASE}month-events/${year}/${monthStr}/`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    events = { ...events, ...data.events };
+                    renderCalendar();
+                }
+            })
+            .catch(error => console.error('Error fetching month events:', error));
+    }
+    
+    function showDayEvents(dateStr, dayEvents) {
+        const modal = document.getElementById('eventModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        
+        const date = new Date(dateStr);
+        modalTitle.textContent = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        if (dayEvents.length === 0) {
+            modalBody.innerHTML = `
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">No events scheduled for this day.</p>
+                <button class="btn btn-primary" onclick="quickAddEvent('${dateStr}')">Add Event</button>
+            `;
+        } else {
+            let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+            dayEvents.forEach(event => {
+                html += `
+                    <div class="leave-request">
+                        <div class="leave-header">
+                            <span class="leave-date">${event.title}</span>
+                            <span class="status-badge status-${event.type}">${event.type}</span>
+                        </div>
+                        ${event.time ? `<p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0.5rem 0;">Time: ${event.time}</p>` : ''}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            modalBody.innerHTML = html;
+        }
+        
+        modal.classList.add('active');
+    }
+    
+    function quickAddEvent(dateStr) {
+        document.getElementById('eventModal').classList.remove('active');
+        document.getElementById('availabilityDate').value = dateStr;
+        document.getElementById('statusSelect').value = 'leave';
+        document.getElementById('statusSelect').dispatchEvent(new Event('change'));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    // Navigation
+    document.getElementById('prevMonth').addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+    });
+    
+    document.getElementById('nextMonth').addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+    });
+    
+    document.getElementById('closeModal').addEventListener('click', () => {
+        document.getElementById('eventModal').classList.remove('active');
+    });
+    
+    document.getElementById('eventModal').addEventListener('click', (e) => {
+        if (e.target.id === 'eventModal') {
+            document.getElementById('eventModal').classList.remove('active');
+        }
+    });
+    
+    // Form handling
+    document.getElementById('statusSelect').addEventListener('change', (e) => {
+        const status = e.target.value;
+        const reasonGroup = document.getElementById('reasonGroup');
+        const meetingGroup = document.getElementById('meetingGroup');
+        const timeInputs = document.getElementById('timeInputs');
+        
+        reasonGroup.style.display = 'none';
+        meetingGroup.style.display = 'none';
+        
+        if (status === 'unavailable' || status === 'leave') {
+            reasonGroup.style.display = 'block';
+        }
+        
+        if (status === 'meeting') {
+            meetingGroup.style.display = 'block';
+            timeInputs.style.display = 'grid';
+        }
+        
+        if (status === 'leave') {
+            timeInputs.style.display = 'none';
+        }
+    });
+    
+    document.getElementById('clearForm').addEventListener('click', () => {
+        document.getElementById('availabilityForm').reset();
+        document.getElementById('reasonGroup').style.display = 'none';
+        document.getElementById('meetingGroup').style.display = 'none';
+    });
+    
+    document.getElementById('addEventBtn').addEventListener('click', () => {
+        const today = new Date().toISOString().split('T')[0];
+        quickAddEvent(today);
+    });
+    
+    // Form submission with AJAX
+    document.getElementById('availabilityForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const date = formData.get('date');
+        const status = formData.get('status');
+        const startTime = formData.get('start_time') || '09:00';
+        const endTime = formData.get('end_time') || '17:00';
+        
+        // Debug logging
+        if (window.addDebug) window.addDebug(`Saving availability: ${status} on ${date}`, 'info');
+        
+        // Prepare data for API
+        const data = {
+            date: date,
+            status: status,
+            start_time: startTime,
+            end_time: endTime,
+            meeting_title: formData.get('meeting_title') || '',
+            reason: formData.get('reason') || '',
+            is_personal: formData.get('is_personal') ? true : false,
+        };
+        
+        // Send to API
+        fetch('{% url 'api_update_availability' %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                if (window.addDebug) window.addDebug('✓ Availability saved successfully', 'success');
+                showAlert('success', 'Availability updated successfully!');
+                renderCalendar();
+                e.target.reset();
+                document.getElementById('reasonGroup').style.display = 'none';
+                document.getElementById('meetingGroup').style.display = 'none';
+            } else if (result.warning && result.conflict) {
+                if (window.addDebug) window.addDebug(`⚠ Warning: ${result.warning}`, 'warning');
+                showAlert('warning', result.warning);
+            } else {
+                if (window.addDebug) window.addDebug(`✗ Error: ${result.message}`, 'error');
+                showAlert('error', result.message || 'An error occurred');
+            }
+        })
+        .catch(error => {
+            if (window.addDebug) window.addDebug(`✗ Save failed: ${error.message}`, 'error');
+            showAlert('error', 'Failed to update availability');
+            console.error('Error:', error);
+        });
+    });
+    
+    function showAlert(type, message) {
+        const alertContainer = document.getElementById('alertContainer');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} active`;
+        alert.textContent = message;
+        
+        alertContainer.appendChild(alert);
+        
+        setTimeout(() => {
+            alert.classList.remove('active');
+            setTimeout(() => alert.remove(), 300);
+        }, 3000);
+    }
+    
+    // Fetch and display team availability
+    function loadTeamAvailability() {
+        const today = new Date().toISOString().split('T')[0];
+        const url = `${window.API_BASE}team-availability/${today}/`;
+        
+        if (window.addDebug) window.addDebug(`Loading team availability for ${today}...`, 'info');
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const count = data.team_members?.length || 0;
+                    if (window.addDebug) window.addDebug(`✓ Loaded ${count} team members`, 'success');
+                    displayTeamList(data.team_members);
+                } else {
+                    if (window.addDebug) window.addDebug('✗ API returned error', 'error');
+                    showAlert('error', 'Failed to load team availability');
+                }
+            })
+            .catch(error => {
+                if (window.addDebug) window.addDebug(`✗ Team fetch failed: ${error.message}`, 'error');
+                console.error('Error fetching team availability:', error);
+                showAlert('error', 'Failed to load team availability');
+            });
+    }
+    
+    function displayTeamList(teamMembers) {
+        const teamList = document.getElementById('teamList');
+        teamList.innerHTML = '';
+        
+        teamMembers.forEach(member => {
+            const statusClass = member.status === 'available' ? 'available' : 
+                               member.status === 'meeting' ? 'meeting' : 'unavailable';
+            
+            const statusText = member.status === 'available' ? 'Available' :
+                              member.status === 'meeting' ? `In Meeting (${member.time_range})` :
+                              member.status === 'leave' ? 'On Leave' :
+                              member.status === 'unavailable' ? 'Unavailable' : 'Off Hours';
+            
+            const projectsHtml = member.projects.length > 0 
+                ? `<p style="color: var(--text-secondary); font-size: 0.75rem; margin: 0.25rem 0;">Projects: ${member.projects.join(', ')}</p>`
+                : '';
+            
+            const memberEl = document.createElement('div');
+            memberEl.className = 'team-member';
+            memberEl.innerHTML = `
+                <div class="member-info">
+                    <div class="member-avatar">${member.initials}</div>
+                    <div class="member-details">
+                        <h4>${member.name}</h4>
+                        <p>${member.role}</p>
+                        ${projectsHtml}
+                    </div>
+                </div>
+                <span class="status-badge status-${statusClass}">${statusText}</span>
+            `;
+            teamList.appendChild(memberEl);
+        });
+    }
+    
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Tab button event listeners
+    document.getElementById('availability-tab').addEventListener('click', () => {
+        switchTab('availability');
+    });
+    
+    document.getElementById('messages-tab').addEventListener('click', () => {
+        switchTab('messages');
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        renderCalendar();
+        loadTeamAvailability();
+    });
+    
+    // Team list refresh
+    document.getElementById('refreshTeam').addEventListener('click', () => {
+        loadTeamAvailability();
+        showAlert('success', 'Team status refreshed!');
+    });
+</script>
