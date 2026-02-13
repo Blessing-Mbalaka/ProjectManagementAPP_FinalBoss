@@ -242,11 +242,16 @@
         font-size: 0.65rem;
         cursor: pointer;
         transition: all 0.2s;
+        border: 1.5px solid rgba(255, 255, 255, 0.3);
+        pointer-events: auto;
+        position: relative;
+        z-index: 10;
     }
 
     .unavailable-member:hover {
-        transform: scale(1.15);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transform: scale(1.2);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+        border-color: white;
     }
 
     .unavailable-member.status-unavailable {
@@ -478,8 +483,9 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.3);
         z-index: 99998;
+        backdrop-filter: blur(2px);
     }
 
     .modal-backdrop.active {
@@ -498,10 +504,10 @@
 
     .status-modal {
         display: none;
-        position: fixed;
-        top: 50%;
+        position: absolute;
+        top: 0;
         left: 50%;
-        transform: translate(-50%, -50%);
+        transform: translateX(-50%) translateY(-120%);
         background: var(--bg-card);
         border-radius: 1rem;
         box-shadow: var(--shadow-lg);
@@ -509,11 +515,12 @@
         max-width: 500px;
         width: 90%;
         border: 1px solid var(--border);
+        margin: 2rem auto;
     }
 
     .status-modal.active {
         display: block;
-        animation: slideUpIntoPlace 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        animation: slideUpIntoPlace 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
 
     .status-modal.closing {
@@ -522,12 +529,12 @@
 
     @keyframes slideUpIntoPlace {
         from {
-            transform: translate(-50%, calc(-50% + 60px));
+            transform: translateX(-50%) translateY(0);
             opacity: 0;
             scale: 0.95;
         }
         to {
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%) translateY(0);
             opacity: 1;
             scale: 1;
         }
@@ -535,12 +542,12 @@
 
     @keyframes slideDownOutOfPlace {
         from {
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%) translateY(0);
             opacity: 1;
             scale: 1;
         }
         to {
-            transform: translate(-50%, calc(-50% + 60px));
+            transform: translateX(-50%) translateY(-100px);
             opacity: 0;
             scale: 0.95;
         }
@@ -1263,6 +1270,19 @@
                 memberBadge.className = `unavailable-member status-${member.status}`;
                 memberBadge.textContent = member.initials;
                 memberBadge.title = `${member.name} - ${member.status}`;
+                
+                // Add click handler to open member's specific availability modal
+                memberBadge.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent day click event
+                    console.log(`Member badge clicked: ${member.name} - ${member.status}`);
+                    console.log('Member object:', member);
+                    if (typeof openMemberAvailabilityModal === 'function') {
+                        openMemberAvailabilityModal(member, dateStr);
+                    } else {
+                        console.error('openMemberAvailabilityModal function not found');
+                    }
+                });
+                
                 unavailableContainer.appendChild(memberBadge);
             });
             
@@ -1337,6 +1357,130 @@
         }
         
         return Promise.all(promises);
+    }
+    
+    // Open member-specific availability modal
+    function openMemberAvailabilityModal(member, dateStr) {
+        console.log(`>>> MODAL OPEN: ${member.name} - ${member.status}`);
+        
+        const modal = document.getElementById('statusModal');
+        const backdrop = document.getElementById('statusModalBackdrop');
+        
+        if (!modal) {
+            console.error('>>> ERROR: statusModal element not found');
+            return;
+        }
+        
+        if (!backdrop) {
+            console.error('>>> ERROR: statusModalBackdrop element not found');
+            return;
+        }
+        
+        console.log(`>>> Updating modal for ${member.name} - Status: ${member.status}`);
+        
+        // Update modal title
+        const modalTitle = modal.querySelector('.modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = `${member.name}'s Availability`;
+            console.log('>>> Modal title updated');
+        }
+        
+        // Update member name section
+        const memberNameEl = document.getElementById('modalMemberName');
+        const memberRoleEl = document.getElementById('modalMemberRole');
+        if (memberNameEl) memberNameEl.textContent = member.name;
+        if (memberRoleEl) memberRoleEl.textContent = member.role || 'Staff';
+        
+        // Update avatar with initials
+        const avatarEl = document.getElementById('modalAvatar');
+        if (avatarEl) avatarEl.textContent = member.initials;
+        
+        // Update status badge
+        const statusBadge = document.getElementById('modalStatus');
+        if (statusBadge) {
+            statusBadge.textContent = member.status.charAt(0).toUpperCase() + member.status.slice(1);
+            statusBadge.className = `status-badge-modal status-${member.status}`;
+        }
+        
+        // Update date
+        const [year, month, day] = dateStr.split('-');
+        const dateObj = new Date(`${year}-${month}-${day}T00:00:00`);
+        const dateSection = document.getElementById('dateSection');
+        const modalDate = document.getElementById('modalDate');
+        if (dateSection && modalDate) {
+            dateSection.style.display = 'block';
+            modalDate.textContent = dateObj.toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            console.log(`>>> Date updated: ${dateObj.toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`);
+        }
+        
+        // Update time range if available
+        const timeRangeSection = document.getElementById('timeRangeSection');
+        if (member.time_range) {
+            if (timeRangeSection) {
+                timeRangeSection.style.display = 'block';
+                const timeRangeEl = document.getElementById('modalTimeRange');
+                if (timeRangeEl) {
+                    timeRangeEl.textContent = member.time_range;
+                    console.log(`>>> Time range shown: ${member.time_range}`);
+                }
+            }
+        } else {
+            if (timeRangeSection) timeRangeSection.style.display = 'none';
+        }
+        
+        // Update reason/meeting title if available
+        const reasonSection = document.getElementById('reasonSection');
+        const meetingSection = document.getElementById('meetingSection');
+        
+        if (member.details) {
+            console.log(`>>> Details found: ${member.details}`);
+            if (member.status === 'meeting') {
+                if (meetingSection) {
+                    meetingSection.style.display = 'block';
+                    const titleEl = document.getElementById('modalMeetingTitle');
+                    if (titleEl) {
+                        titleEl.textContent = member.details;
+                        console.log(`>>> Meeting title shown: ${member.details}`);
+                    }
+                }
+                if (reasonSection) reasonSection.style.display = 'none';
+            } else if (member.status === 'leave') {
+                if (reasonSection) {
+                    reasonSection.style.display = 'block';
+                    const reasonEl = document.getElementById('modalReason');
+                    if (reasonEl) {
+                        reasonEl.textContent = member.details;
+                        console.log(`>>> Leave reason shown: ${member.details}`);
+                    }
+                }
+                if (meetingSection) meetingSection.style.display = 'none';
+            } else {
+                if (reasonSection) reasonSection.style.display = 'none';
+                if (meetingSection) meetingSection.style.display = 'none';
+            }
+        } else {
+            if (reasonSection) reasonSection.style.display = 'none';
+            if (meetingSection) meetingSection.style.display = 'none';
+            console.log('>>> No details found');
+        }
+        
+        // Show modal with active class
+        console.log('>>> Adding active class to modal and backdrop');
+        modal.classList.add('active');
+        backdrop.classList.add('active');
+        
+        console.log(`>>> Modal display after adding active: ${window.getComputedStyle(modal).display}`);
+        console.log(`>>> Modal classes after adding active: ${modal.className}`);
+        console.log(`>>> Backdrop display after adding active: ${window.getComputedStyle(backdrop).display}`);
+        console.log(`>>> Backdrop classes after adding active: ${backdrop.className}`);
+        
+        // Scroll to modal smoothly
+        setTimeout(() => {
+            modal.scrollIntoView({behavior: 'smooth', block: 'center'});
+            console.log('>>> Scrolled into view');
+        }, 100);
+        
+        console.log(`>>> MODAL OPEN COMPLETE: ${member.name} - ${member.status}`);
     }
     
     function showDayEvents(dateStr, dayEvents) {
