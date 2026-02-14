@@ -19,7 +19,8 @@
 
 <div class="container-fluid" style="padding-top: 50px; padding-left: 15px; padding-right: 15px; position: relative; z-index: 1;">
 
-    <!-- Cost Centres Overview -->
+    <!-- Cost Centres Overview - COMMENTED OUT -->
+    <!--
     <div class="card shadow mb-4" style="z-index: 2; margin-top: 20px;">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"> Cost Centres Overview</h5>
@@ -71,12 +72,16 @@
             </table>
         </div>
     </div>
+    -->
 
     <!-- Monthly Expenditure Tracker -->
     <div class="card shadow mb-5" style="z-index: 2; margin-top: 30px;">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"> Monthly Expenditure Tracker</h5>
             <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addExpenditureModal">
+                    ➕ Add Expenditure
+                </button>
                 <select id="costCentreDropdown" class="form-select w-auto">
                     <option value="">Show All Cost Centres</option>
                     {% for cc in cost_centres %}
@@ -106,22 +111,28 @@
                         <th data-category-col="Travel">Travel</th>
                         <th>Total Expenses</th>
                         <th>Opening Balance</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="expenditureTableBody">
                     {% for record in all_expenditures %}
-                        <tr data-cost-centre="{{ record.cost_centre_id }}" data-category="{{ record.category }}">
+                        <tr data-cost-centre="{{ record.cost_centre_id }}" data-category="{{ record.category }}" data-exp-id="{{ record.id }}">
                             <td>{{ record.month }}</td>
                             <td>{{ record.cost_centre.name }}</td>
-                            <td>{{ record.name }}</td>
-                            <td data-category-cell="Salary">{% if record.category == 'Salary' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td data-category-cell="Bursaries">{% if record.category == 'Bursaries' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td data-category-cell="Invoices">{% if record.category == 'Invoices' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td data-category-cell="Fitness">{% if record.category == 'Fitness' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td data-category-cell="Equipment">{% if record.category == 'Equipment' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td data-category-cell="Travel">{% if record.category == 'Travel' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
-                            <td><strong>R {{ record.amount|floatformat:2 }}</strong></td>
+                            <td class="editable-name">{{ record.name }}</td>
+                            <td data-category-cell="Salary">{% if record.category == 'Salary' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
+                            <td data-category-cell="Bursaries">{% if record.category == 'Bursaries' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
+                            <td data-category-cell="Invoices">{% if record.category == 'Invoices' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
+                            <td data-category-cell="Fitness">{% if record.category == 'Fitness' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
+                            <td data-category-cell="Equipment">{% if record.category == 'Equipment' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
+                            <td data-category-cell="Travel">{% if record.category == 'Travel' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
+                            <td><strong>R <span class="total-amount">{{ record.amount|floatformat:2 }}</span></strong></td>
                             <td>R {{ record.opening_balance|floatformat:2 }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning edit-btn">✏️ Edit</button>
+                                <button class="btn btn-sm btn-success save-btn" style="display: none;">💾 Save</button>
+                                <button class="btn btn-sm btn-secondary cancel-btn" style="display: none;">❌ Cancel</button>
+                            </td>
                         </tr>
                     {% empty %}
                         <tr><td colspan="11" class="text-center text-muted">No expenditures recorded yet.</td></tr>
@@ -132,6 +143,9 @@
         </div>
     </div>
 
+
+    <!-- CHARTS - COMMENTED OUT -->
+    <!--
     <div class="card mt-4 shadow" style="z-index: 2;">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"> Cost Centre Spending Overview</h5>
@@ -149,8 +163,11 @@
         <canvas id="categoryPieChart" style="max-height: 240px;"></canvas>
     </div>
 </div>
+    -->
 
-<div class="card mt-4 shadow mb-5" style="z-index: 2;">
+    <!-- AUDIT TRAIL - COMMENTED OUT -->
+    <!--
+    <div class="card mt-4 shadow mb-5" style="z-index: 2;">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"> Immutable Audit Trail</h5>
         <small class="text-muted">Read-only record of all changes - Cannot be modified or deleted</small>
@@ -214,6 +231,7 @@
         </table>
     </div>
 </div>
+    -->
 
 </div>
 
@@ -280,6 +298,86 @@
     if (categoryFilterDropdown) {
         categoryFilterDropdown.addEventListener("change", applyFilters);
     }
+
+    // ✅ EDIT FUNCTIONALITY FOR MONTHLY EXPENDITURE TRACKER
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('edit-btn')) {
+            const row = e.target.closest('tr');
+            const editBtn = row.querySelector('.edit-btn');
+            const saveBtn = row.querySelector('.save-btn');
+            const cancelBtn = row.querySelector('.cancel-btn');
+            const editableName = row.querySelector('.editable-name');
+            const editableAmounts = row.querySelectorAll('.editable-amount');
+            const totalAmount = row.querySelector('.total-amount');
+            
+            // Store original values
+            const originalName = editableName.textContent;
+            const originalAmounts = Array.from(editableAmounts).map(el => el.textContent);
+            
+            // Convert to editable inputs
+            editableName.innerHTML = `<input type="text" class="form-control form-control-sm" value="${originalName}">`;
+            editableAmounts.forEach((el, idx) => {
+                if (el.textContent) {
+                    el.innerHTML = `<input type="number" step="0.01" class="form-control form-control-sm" value="${el.textContent}">`;
+                }
+            });
+            
+            // Show/hide buttons
+            editBtn.style.display = 'none';
+            saveBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'inline-block';
+            
+            // Save handler
+            saveBtn.onclick = async function() {
+                const newName = editableName.querySelector('input').value;
+                const newAmount = editableAmounts[0]?.querySelector('input')?.value || totalAmount.textContent;
+                const expId = row.getAttribute('data-exp-id');
+                
+                try {
+                    const response = await fetch(`/adminpanel/finance/update-expenditure/${expId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name: newName, amount: newAmount })
+                    });
+                    
+                    if (response.ok) {
+                        // Update display
+                        editableName.textContent = newName;
+                        editableAmounts.forEach(el => {
+                            el.textContent = parseFloat(newAmount).toFixed(2);
+                        });
+                        totalAmount.textContent = parseFloat(newAmount).toFixed(2);
+                        
+                        // Reset buttons
+                        editBtn.style.display = 'inline-block';
+                        saveBtn.style.display = 'none';
+                        cancelBtn.style.display = 'none';
+                        alert('Expenditure updated successfully!');
+                    } else {
+                        alert('Error updating expenditure');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error updating expenditure');
+                }
+            };
+            
+            // Cancel handler
+            cancelBtn.onclick = function() {
+                editableName.textContent = originalName;
+                editableAmounts.forEach((el, idx) => {
+                    el.textContent = originalAmounts[idx];
+                });
+                
+                editBtn.style.display = 'inline-block';
+                saveBtn.style.display = 'none';
+                cancelBtn.style.display = 'none';
+            };
+        }
+    });
 });
 
     const costCentreLabels = [
@@ -407,6 +505,62 @@ const lineChart = new Chart(lineCtx, {
 });
 
 </script>
+
+<!-- Add Expenditure Modal -->
+<div class="modal fade" id="addExpenditureModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'add_expenditure' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Monthly Expenditure</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Cost Centre</label>
+            <select name="cost_centre_id" class="form-select expenditure-cost-centre" required>
+              <option value="">-- Select Cost Centre --</option>
+              {% for cc in cost_centres %}
+              <option value="{{ cc.id }}" data-moa="{{ cc.moa_amount }}">{{ cc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Date Range</label>
+            <div class="input-group">
+              <input type="date" name="date_from" class="form-control expenditure-date-from" placeholder="Start date" required>
+              <span class="input-group-text">to</span>
+              <input type="date" name="date_to" class="form-control expenditure-date-to" placeholder="End date" required>
+            </div>
+            <small class="form-text text-muted">Select salary period dates</small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Name & Surname</label>
+            <input type="text" name="name" class="form-control" placeholder="Person responsible" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select" required>
+              <option value="">-- Select Category --</option>
+              {% for key, label in category_choices %}
+              <option value="{{ key }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount (R)</label>
+            <input type="number" step="0.01" name="amount" class="form-control expenditure-amount" placeholder="0.00" required min="0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Expenditure</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 {% include 'adminpanel/partials/expenditure_analytics.html' %}
 

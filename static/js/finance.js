@@ -129,13 +129,29 @@ document.addEventListener('DOMContentLoaded', function () {
         costCentreDropdown.addEventListener("change", function () {
             const selectedId = this.value;
             if (selectedId) {
-                fetch(`/finance/expenditures/${selectedId}/`)
+                fetch(`/adminpanel/finance/expenditures/${selectedId}/`)
                     .then(response => response.json())
                     .then(data => {
                         populateExpenditureTable(data.expenditures);
                     });
             }
         });
+    }
+
+    // Function to reload expenditures for currently selected cost centre
+    function reloadExpendituresForSelectedCostCentre() {
+        const selectedId = costCentreDropdown.value;
+        if (selectedId) {
+            fetch(`/adminpanel/finance/expenditures/${selectedId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    populateExpenditureTable(data.expenditures);
+                    console.log('✅ Expenditures reloaded for CC ' + selectedId);
+                })
+                .catch(error => {
+                    console.error('Error reloading expenditures:', error);
+                });
+        }
     }
 
     // ✅ Expenditure Table Loader
@@ -700,6 +716,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (completedCount === totalRequests) {
                         alert('All forecasts released successfully!');
                         loadAllArchiveForecasts();
+                        reloadExpendituresForSelectedCostCentre();
                     }
                 })
                 .catch(error => {
@@ -722,6 +739,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (response.ok) {
                     alert('Forecasts released successfully!');
                     loadAllArchiveForecasts();
+                    reloadExpendituresForSelectedCostCentre();
                 } else {
                     return response.text().then(text => {
                         throw new Error('Error releasing forecasts: ' + text);

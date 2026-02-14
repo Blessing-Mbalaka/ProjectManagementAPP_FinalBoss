@@ -44,6 +44,7 @@ urlpatterns = [
     path('finance/edit-cost-centre/<int:pk>/', views.edit_cost_centre, name='edit_cost_centre'),
     path('finance/edit-expenditure/<int:pk>/', views.edit_expenditure, name='edit_expenditure'),
     path('finance/delete-expenditure/<int:pk>/', views.delete_expenditure, name='delete_expenditure'),
+    path('finance/update-expenditure/<int:pk>/', views.update_expenditure, name='update_expenditure'),
     
     # Budget Forecast Routes
     path('finance/add-budget-forecast/', views.add_budget_forecast, name='add_budget_forecast'),

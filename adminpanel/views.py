@@ -681,13 +681,12 @@ def add_cost_centre(request):
 def add_expenditure(request):
     if request.method == 'POST':
         cost_centre_id = request.POST.get('cost_centre_id')
-        date_from_str = request.POST.get('date_from')  # New date range field
-        date_to_str = request.POST.get('date_to')      # New date range field
-        month = request.POST.get('month')              # Legacy field, set from date_from if not provided
+        date_from_str = request.POST.get('date_from')
+        date_to_str = request.POST.get('date_to')
         name = request.POST.get('name')
         category = request.POST.get('category')
 
-        # Safely convert numeric fields with validation
+        # Safely convert amount with validation
         try:
             amount_str = request.POST.get('amount', '0') or '0.00'
             amount = Decimal(amount_str)
@@ -695,14 +694,6 @@ def add_expenditure(request):
             # Validate decimal places (max 2)
             if amount.as_tuple().exponent < -2:
                 messages.error(request, 'Please enter a valid number with up to 2 decimal places')
-                return redirect('finance')
-            
-            oracle_str = request.POST.get('oracle_balance', '0') or '0.00'
-            oracle = Decimal(oracle_str)
-            
-            # Validate decimal places (max 2)
-            if oracle.as_tuple().exponent < -2:
-                messages.error(request, 'Please enter a valid oracle balance with up to 2 decimal places')
                 return redirect('finance')
                 
         except InvalidOperation:
@@ -713,70 +704,51 @@ def add_expenditure(request):
             return redirect('finance')
 
         try:
-            # Get cost centre object first for audit logging
+            # Get cost centre
             cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
             
-            # Parse date range if provided
+            # Parse date range
             date_from = None
             date_to = None
+            month = None
+            
             if date_from_str:
                 date_from = parse_date(date_from_str)
+                month = date_from.strftime('%Y-%m')
             if date_to_str:
                 date_to = parse_date(date_to_str)
             
-            # If month not set, use date_from for legacy compatibility
-            if not month and date_from:
-                month = date_from.strftime('%Y-%m')
+            # Calculate balances from current total_spent
+            total_spent = safe_decimal(cost_centre.total_spent, Decimal('0'))
+            opening_balance = total_spent
+            closing_balance = opening_balance - amount
             
-            with connection.cursor() as cursor:
-                # Check if cost centre exists
-                cursor.execute("""
-                    SELECT id, total_spent FROM adminpanel_costcentre WHERE id = %s
-                """, [cost_centre_id])
-                cc_row = cursor.fetchone()
-                
-                if not cc_row:
-                    messages.error(request, 'Cost Centre not found')
-                    return redirect('finance')
-                
-                cc_id, total_spent = cc_row
-                
-                # Calculate opening balance for expenditure
-                opening_balance = safe_decimal(total_spent, Decimal('0'))
-                closing_balance = opening_balance - amount
-                
-                # Insert expenditure with date range support
-                cursor.execute("""
-                    INSERT INTO adminpanel_expenditure 
-                    (cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, date_from, date_to)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, [cost_centre_id, month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle), date_from, date_to])
-                
-                # Get the ID of the newly inserted expenditure
-                cursor.execute("SELECT last_insert_id()")
-                expenditure_id = cursor.fetchone()[0]
-                
-                # Update cost centre total_spent
-                new_total = opening_balance + amount
-                cursor.execute("""
-                    UPDATE adminpanel_costcentre 
-                    SET total_spent = %s
-                    WHERE id = %s
-                """, [str(new_total), cost_centre_id])
+            # Create expenditure
+            expenditure = Expenditure.objects.create(
+                cost_centre=cost_centre,
+                month=month,
+                name=name,
+                category=category,
+                amount=amount,
+                opening_balance=opening_balance,
+                closing_balance=closing_balance,
+                date_from=date_from,
+                date_to=date_to
+            )
             
-            # Get the created expenditure and log it
-            expenditure = Expenditure.objects.get(id=expenditure_id)
+            # Update cost centre total_spent
+            cost_centre.total_spent = closing_balance
+            cost_centre.save()
+            
+            # Log the creation
             log_expenditure_creation(expenditure, request.user)
             
             messages.success(request, 'Expenditure added successfully')
-            return redirect('finance')
+            return redirect('finance_readonly')
                 
-        except InvalidOperation:
-            messages.error(request, 'Error processing numbers: invalid format')
-            return redirect('finance')
         except Exception as e:
             messages.error(request, f'Error adding expenditure: {str(e)}')
-            return redirect('finance')
+            return redirect('finance_readonly')
 
 
 @login_required
@@ -1375,6 +1347,37 @@ def release_budget_forecasts(request, cost_centre_id):
         return JsonResponse({
             'success': True, 
             'message': f'Released {forecast_count} forecast(s) to Monthly Expenditure Tracker'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def update_expenditure(request, pk):
+    """Update an expenditure record"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=400)
+    
+    try:
+        import json
+        body = json.loads(request.body)
+        name = body.get('name')
+        amount = body.get('amount')
+        
+        Expenditure = apps.get_model('adminpanel', 'Expenditure')
+        expenditure = get_object_or_404(Expenditure, id=pk)
+        
+        # Update fields
+        if name:
+            expenditure.name = name
+        if amount:
+            expenditure.amount = Decimal(amount)
+        
+        expenditure.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Expenditure updated successfully'
         })
         
     except Exception as e:
