@@ -613,9 +613,14 @@ def finance_readonly(request):
 def add_cost_centre(request):
     """Add a new cost centre with optional initial payment and MOA amount"""
     if request.method == 'POST':
+        code = request.POST.get('code', '').strip()
         name = request.POST.get('name')
         received = request.POST.get('received', '').strip()
         moa_amount = request.POST.get('moa_amount', '').strip()
+        
+        if not code:
+            messages.error(request, 'Cost Centre code is required')
+            return redirect('finance')
         
         if not name or not name.strip():
             messages.error(request, 'Cost Centre name is required')
@@ -625,7 +630,13 @@ def add_cost_centre(request):
             # Create cost centre with 0.00 initially
             moa = Decimal(moa_amount) if moa_amount else Decimal('0.00')
             
+            # Check if code already exists
+            if CostCentre.objects.filter(code=code).exists():
+                messages.error(request, f'Cost Centre code "{code}" already exists')
+                return redirect('finance')
+            
             cost_centre = CostCentre.objects.create(
+                code=code,
                 name=name.strip(),
                 total_received=Decimal('0.00'),
                 total_spent=Decimal('0.00'),

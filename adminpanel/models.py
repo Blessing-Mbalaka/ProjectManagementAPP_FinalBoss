@@ -10,13 +10,14 @@ from datetime import timedelta
 
 
 class CostCentre(models.Model):
+    code = models.CharField(max_length=20, unique=True, help_text="University-assigned cost centre code")
     name = models.CharField(max_length=100, unique=True)
     total_received = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     total_spent = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     moa_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, null=True, blank=True, help_text="Memorandum of Understanding - Total expected/budgeted amount")
 
     def __str__(self):
-        return self.name
+        return f"{self.code} - {self.name}"
 
     @property
     def total_remaining(self):

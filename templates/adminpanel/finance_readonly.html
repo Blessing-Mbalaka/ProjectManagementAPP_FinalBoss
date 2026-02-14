@@ -10,10 +10,19 @@
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}"  media="screen">
 
 <div class="welcome-box" style="margin-bottom: 30px; position: relative; z-index: 5;">
-    <h3>Finance Overview</h3>
-    <p>Track cost centres and monthly expenditures</p>
-    <div class="alert alert-info mt-2">
-        <strong>Read-Only Access:</strong> You can view financial data and visualizations, but cannot make changes.
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h3>Finance Overview</h3>
+            <p>Track cost centres and monthly expenditures</p>
+            <div class="alert alert-info mt-2">
+                <strong>Read-Only Access:</strong> You can view financial data and visualizations, but cannot make changes.
+            </div>
+        </div>
+        <div>
+            <a href="{% url 'communique' %}" class="btn btn-primary" style="white-space: nowrap;">
+                <i class="bi bi-chat-dots"></i> Communique
+            </a>
+        </div>
     </div>
 </div>
 
@@ -85,7 +94,7 @@
                 <select id="costCentreDropdown" class="form-select w-auto">
                     <option value="">Show All Cost Centres</option>
                     {% for cc in cost_centres %}
-                        <option value="{{ cc.id }}">{{ cc.name }}</option>
+                        <option value="{{ cc.id }}">{{ cc.code }} - {{ cc.name }}</option>
                     {% endfor %}
                 </select>
                 <select id="categoryFilterDropdown" class="form-select w-auto">
@@ -522,7 +531,7 @@ const lineChart = new Chart(lineCtx, {
             <select name="cost_centre_id" class="form-select expenditure-cost-centre" required>
               <option value="">-- Select Cost Centre --</option>
               {% for cc in cost_centres %}
-              <option value="{{ cc.id }}" data-moa="{{ cc.moa_amount }}">{{ cc.name }}</option>
+              <option value="{{ cc.id }}" data-moa="{{ cc.moa_amount }}">{{ cc.code }} - {{ cc.name }}</option>
               {% endfor %}
             </select>
           </div>

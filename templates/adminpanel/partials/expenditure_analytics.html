@@ -11,7 +11,7 @@
                 <select id="analyticsFilterCostCentre" class="form-select">
                     <option value="">All Cost Centres</option>
                     {% for cc in cost_centres %}
-                        <option value="{{ cc.id }}">{{ cc.name }}</option>
+                        <option value="{{ cc.id }}">{{ cc.code }} - {{ cc.name }}</option>
                     {% endfor %}
                 </select>
             </div>

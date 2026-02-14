@@ -118,7 +118,7 @@
                 <select id="costCentreDropdown" class="form-select w-auto">
                     <option value="">Show All Cost Centres</option>
                     {% for cc in cost_centres %}
-                        <option value="{{ cc.id }}">{{ cc.name }}</option>
+                        <option value="{{ cc.id }}">{{ cc.code }} - {{ cc.name }}</option>
                     {% endfor %}
                 </select>
                 <select id="categoryFilterDropdown" class="form-select w-auto">
@@ -282,6 +282,11 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="costCentreCode" class="form-label">Cost Centre Code</label>
+                        <input type="text" id="costCentreCode" name="code" class="form-control" placeholder="e.g., CC001" required>
+                        <small class="form-text text-muted">University-assigned code for this cost centre.</small>
+                    </div>
                     <div class="mb-3">
                         <label for="costCentreName" class="form-label">Cost Centre Name</label>
                         <input type="text" id="costCentreName" name="name" class="form-control" required>

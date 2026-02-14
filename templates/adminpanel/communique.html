@@ -50,21 +50,31 @@
     window.debugLog = [];
     const maxDebugLines = 50;
     
-    // Set up back button based on user role
+    // Set up back button based on referrer or user role
     const userRole = '{{ user.role }}';
     const backBtn = document.getElementById('backBtn');
+    const referrer = document.referrer;
     
-    const dashboardUrls = {
-        'admin': '{% url "overview" %}',
-        'manager': '{% url "team_dashboard" %}',
-        'staff': '{% url "dashboard" %}',
-        'student': '{% url "student_dashboard" %}',
-        'financialadmin': '{% url "finance" %}',
-        'supervisor': '{% url "supervisor_dashboard_portal" %}'
-    };
+    let targetUrl = null;
     
-    if (backBtn && dashboardUrls[userRole]) {
-        backBtn.href = dashboardUrls[userRole];
+    // Check if coming from finance-readonly page
+    if (referrer && referrer.includes('finance-readonly')) {
+        targetUrl = '{% url "finance_readonly" %}';
+    } else {
+        // Fall back to role-based dashboard
+        const dashboardUrls = {
+            'admin': '{% url "overview" %}',
+            'manager': '{% url "team_dashboard" %}',
+            'staff': '{% url "dashboard" %}',
+            'student': '{% url "student_dashboard" %}',
+            'financialadmin': '{% url "finance" %}',
+            'supervisor': '{% url "supervisor_dashboard_portal" %}'
+        };
+        targetUrl = dashboardUrls[userRole] || '{% url "overview" %}';
+    }
+    
+    if (backBtn && targetUrl) {
+        backBtn.href = targetUrl;
     }
     
     window.addDebug = function(message, type = 'info') {
