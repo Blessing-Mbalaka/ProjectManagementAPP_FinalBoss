@@ -549,15 +549,25 @@
                 <!-- Messages populated here -->
             </div>
             <div class="thread-input">
-                <form class="message-form" id="messageForm" onsubmit="sendMessage(event)">
+                <form class="message-form" id="messageForm" onsubmit="sendMessage(event)" enctype="multipart/form-data">
                     <input 
                         type="text" 
                         id="messageInput" 
                         placeholder="Type your message..." 
                         required
                     >
+                    <label for="attachmentInput" style="cursor: pointer; margin: 0 8px; font-size: 1.2em;">
+                        <i class="fas fa-paperclip"></i>
+                        <input 
+                            type="file" 
+                            id="attachmentInput" 
+                            style="display: none;" 
+                            accept="*/*"
+                        >
+                    </label>
                     <button type="submit" id="sendBtn">Send</button>
                 </form>
+                <div id="selectedFile" style="padding: 8px 0; font-size: 0.9em; color: #666;"></div>
             </div>
         </div>
 
@@ -577,7 +587,7 @@
         <div class="modal-header">
             <h5>New Message</h5>
         </div>
-        <form id="newMessageForm" onsubmit="startNewConversation(event)">
+        <form id="newMessageForm" onsubmit="startNewConversation(event)" enctype="multipart/form-data">
             <div class="form-group">
                 <label class="form-label">To:</label>
                 <select id="recipientSelect" class="form-control" required>
@@ -593,6 +603,21 @@
                     placeholder="Type your message..."
                     required
                 ></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Attachment (optional):</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input 
+                        type="file" 
+                        id="newMessageAttachment" 
+                        class="form-control" 
+                        accept="*/*"
+                    >
+                    <label for="newMessageAttachment" style="cursor: pointer; margin: 0; font-size: 1.2em; color: #d4a017;">
+                        <i class="fas fa-paperclip"></i>
+                    </label>
+                </div>
+                <div id="selectedModalFile" style="padding: 8px 0; font-size: 0.9em; color: #666;"></div>
             </div>
             <div class="modal-actions">
                 <button type="submit" class="btn-send">Send</button>
@@ -716,6 +741,13 @@
                 <div class="message-wrapper">
                     <div class="message-bubble ${msg.is_from_current_user ? 'sent' : 'received'}">
                         ${msg.message}
+                        ${msg.has_attachment ? `
+                            <div class="message-attachment" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+                                <a href="${msg.attachment_url}" class="attachment-link" download>
+                                    <i class="fas fa-file"></i> ${msg.attachment_name}
+                                </a>
+                            </div>
+                        ` : ''}
                     </div>
                     <div class="message-time">${msg.timestamp_display}</div>
                 </div>
@@ -736,42 +768,72 @@
         }
 
         const message = document.getElementById('messageInput').value.trim();
-        if (!message) return;
+        const attachmentInput = document.getElementById('attachmentInput');
+        const attachment = attachmentInput.files.length > 0 ? attachmentInput.files[0] : null;
+        
+        if (!message) {
+            alert('Please type a message');
+            return;
+        }
 
         isSending = true;
         const sendBtn = document.getElementById('sendBtn');
         sendBtn.disabled = true;
 
         const url = `${API_BASE}send/`;
+        
+        // Create FormData to handle file upload
+        const formData = new FormData();
+        formData.append('recipient_id', currentRecipientId);
+        formData.append('message', message);
+        if (attachment) {
+            formData.append('attachment', attachment);
+        }
+        
         fetch(url, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken'),
             },
-            body: JSON.stringify({
-                recipient_id: currentRecipientId,
-                message: message
-            })
+            body: formData
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 document.getElementById('messageInput').value = '';
+                attachmentInput.value = '';
+                document.getElementById('selectedFile').textContent = '';
                 loadMessageThread(currentRecipientId);
                 loadConversations();
             } else {
                 console.error('Error sending message:', data.message);
+                alert('Error: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            alert('Error sending message');
         })
         .finally(() => {
             isSending = false;
             sendBtn.disabled = false;
         });
     }
+
+    // Handle file selection display
+    document.addEventListener('DOMContentLoaded', function() {
+        const attachmentInput = document.getElementById('attachmentInput');
+        if (attachmentInput) {
+            attachmentInput.addEventListener('change', function() {
+                const selectedFile = document.getElementById('selectedFile');
+                if (this.files.length > 0) {
+                    selectedFile.textContent = '📎 ' + this.files[0].name;
+                } else {
+                    selectedFile.textContent = '';
+                }
+            });
+        }
+    });
 
     function openNewMessageModal() {
         loadRecipientsForModal();
@@ -804,6 +866,8 @@
         
         const recipientId = document.getElementById('recipientSelect').value;
         const message = document.getElementById('newMessageText').value.trim();
+        const attachmentInput = document.getElementById('newMessageAttachment');
+        const attachment = attachmentInput.files.length > 0 ? attachmentInput.files[0] : null;
 
         if (!recipientId || !message) {
             alert('Please select a recipient and enter a message');
@@ -812,34 +876,60 @@
 
         isSending = true;
         const url = `${API_BASE}send/`;
+        
+        // Create FormData to handle file upload
+        const formData = new FormData();
+        formData.append('recipient_id', parseInt(recipientId));
+        formData.append('message', message);
+        if (attachment) {
+            formData.append('attachment', attachment);
+        }
+        
         fetch(url, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken'),
             },
-            body: JSON.stringify({
-                recipient_id: parseInt(recipientId),
-                message: message
-            })
+            body: formData
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 closeNewMessageModal();
+                // Reset form
+                document.getElementById('newMessageText').value = '';
+                attachmentInput.value = '';
+                document.getElementById('selectedModalFile').textContent = '';
                 loadConversations();
                 selectRecipient(parseInt(recipientId), '', '');
             } else {
                 console.error('Error sending message:', data.message);
+                alert('Error: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            alert('Error sending message');
         })
         .finally(() => {
             isSending = false;
         });
     }
+
+    // Handle file selection display in new message modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const newMessageAttachment = document.getElementById('newMessageAttachment');
+        if (newMessageAttachment) {
+            newMessageAttachment.addEventListener('change', function() {
+                const selectedFile = document.getElementById('selectedModalFile');
+                if (this.files.length > 0) {
+                    selectedFile.textContent = '📎 ' + this.files[0].name;
+                } else {
+                    selectedFile.textContent = '';
+                }
+            });
+        }
+    });
 
     function updateUnreadBadge(count) {
         const messagesTab = document.getElementById('messages-tab');

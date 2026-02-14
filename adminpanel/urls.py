@@ -94,5 +94,6 @@ urlpatterns = [
     path('api/messages/thread/<int:recipient_id>/', api_booking_views.get_message_thread, name='api_message_thread'),
     path('api/messages/recipients/', api_booking_views.get_recipients_list, name='api_recipients_list'),
     path('api/messages/unread-count/', api_booking_views.get_unread_message_count, name='api_unread_count'),
+    path('api/messages/attachment/<int:message_id>/download/', api_booking_views.download_message_attachment, name='api_download_attachment'),
 
 ]

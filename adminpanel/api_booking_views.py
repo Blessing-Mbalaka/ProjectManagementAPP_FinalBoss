@@ -1,6 +1,6 @@
 """API views for staff booking and availability management"""
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.db.models import Q
 from datetime import datetime, timedelta
 import json
+import os
 
 from adminpanel.models import UserAvailability, UserLeaveRequest
 from users.models import CustomUser
@@ -481,7 +482,7 @@ def get_message_thread(request, recipient_id):
         
         thread = []
         for msg in messages:
-            thread.append({
+            msg_data = {
                 'id': msg.id,
                 'sender_id': msg.sender.id,
                 'sender_name': msg.sender.get_full_name() or msg.sender.username,
@@ -489,7 +490,15 @@ def get_message_thread(request, recipient_id):
                 'message': msg.message,
                 'timestamp': msg.timestamp.isoformat(),
                 'timestamp_display': msg.timestamp.strftime('%H:%M'),
-            })
+            }
+            # Add attachment info if exists
+            if msg.attachment:
+                msg_data['has_attachment'] = True
+                msg_data['attachment_url'] = f"/api/messages/attachment/{msg.id}/download/"
+                msg_data['attachment_name'] = os.path.basename(msg.attachment.name)
+            else:
+                msg_data['has_attachment'] = False
+            thread.append(msg_data)
         
         return JsonResponse({
             'success': True,
@@ -512,12 +521,20 @@ def get_message_thread(request, recipient_id):
 @login_required
 @require_http_methods(["POST"])
 def send_staff_message(request):
-    """Send message to another staff member"""
+    """Send message to another staff member (supports optional file attachment)"""
     try:
-        data = json.loads(request.body)
-        
-        recipient_id = data.get('recipient_id')
-        message_text = data.get('message', '').strip()
+        # Determine content type
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # Handle multipart/form-data (with file upload)
+            recipient_id = request.POST.get('recipient_id')
+            message_text = request.POST.get('message', '').strip()
+            attachment = request.FILES.get('attachment') if 'attachment' in request.FILES else None
+        else:
+            # Handle JSON (original format)
+            data = json.loads(request.body)
+            recipient_id = data.get('recipient_id')
+            message_text = data.get('message', '').strip()
+            attachment = None
         
         if not recipient_id or not message_text:
             return JsonResponse({
@@ -541,13 +558,15 @@ def send_staff_message(request):
             sender=request.user,
             recipient=recipient,
             message=message_text,
-            submission=None  # Staff messages don't link to submissions
+            submission=None,  # Staff messages don't link to submissions
+            attachment=attachment  # Optional attachment
         )
         
         return JsonResponse({
             'success': True,
             'message_id': message.id,
             'timestamp': message.timestamp.isoformat(),
+            'has_attachment': attachment is not None,
             'message': 'Message sent successfully'
         })
     
@@ -618,6 +637,54 @@ def get_unread_message_count(request):
             'success': True,
             'unread_count': unread_count
         })
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def download_message_attachment(request, message_id):
+    """Download attachment from a message - with security checks"""
+    try:
+        # Get the message
+        message = get_object_or_404(ChatMessage, id=message_id)
+        
+        # Security check: User must be either sender or recipient
+        if request.user != message.sender and request.user != message.recipient:
+            return JsonResponse({
+                'success': False,
+                'message': 'Permission denied'
+            }, status=403)
+        
+        # Check if attachment exists
+        if not message.attachment:
+            return JsonResponse({
+                'success': False,
+                'message': 'No attachment found'
+            }, status=404)
+        
+        # Get file path
+        file_path = message.attachment.path
+        
+        # Check if file exists on filesystem
+        if not os.path.exists(file_path):
+            return JsonResponse({
+                'success': False,
+                'message': 'Attachment file not found'
+            }, status=404)
+        
+        # Open and return the file
+        file_name = os.path.basename(file_path)
+        response = FileResponse(
+            open(file_path, 'rb'),
+            as_attachment=True,
+            filename=file_name
+        )
+        return response
     
     except Exception as e:
         return JsonResponse({

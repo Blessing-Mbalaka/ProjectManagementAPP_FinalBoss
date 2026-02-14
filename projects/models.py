@@ -189,6 +189,7 @@ class ChatMessage(models.Model):
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_messages', null=True, blank=True)
     submission = models.ForeignKey('Submission', on_delete=models.CASCADE, related_name='chat_messages', null=True, blank=True)
     message = models.TextField()
+    attachment = models.FileField(upload_to='messages/', blank=True, null=True, help_text='Optional file attachment')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

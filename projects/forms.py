@@ -55,9 +55,10 @@ class MeetingForm(forms.ModelForm):
 class ChatForm(forms.ModelForm):
     class Meta:
         model = ChatMessage
-        fields = ['message']
+        fields = ['message', 'attachment']
         widgets = {
-            'message': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Type your message...'})
+            'message': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Type your message...'}),
+            'attachment': forms.FileInput(attrs={'class': 'form-control', 'accept': '*/*'})
         }
 
 
