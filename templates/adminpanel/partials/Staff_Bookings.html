@@ -1543,12 +1543,33 @@
         }, 3000);
     }
     
+    // ✅ SCHEDULER AUTO-UPDATE: Fetch real-time availability from scheduler
+    function loadRealtimeSchedulerStatus() {
+        const url = '/adminpanel/api/scheduler/realtime/';
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    // Scheduler automatically detects current meeting slots
+                    // Status updates based on actual meeting times
+                    if (window.addDebug) window.addDebug(`🤖 Auto-scheduler synced: ${data.data.length} members`, 'info');
+                }
+            })
+            .catch(error => {
+                console.error('[SCHEDULER] Auto-update error:', error);
+            });
+    }
+    
     // Fetch and display team availability
     function loadTeamAvailability() {
         const today = new Date().toISOString().split('T')[0];
         const url = `${window.API_BASE}team-availability/${today}/`;
         
         if (window.addDebug) window.addDebug(`Loading team availability for ${today}...`, 'info');
+        
+        // ✅ NEW: Call scheduler auto-update to sync real-time status
+        loadRealtimeSchedulerStatus();
         
         fetch(url)
             .then(response => response.json())
@@ -1863,10 +1884,10 @@
     // Update time every 10 seconds
     setInterval(updateSouthAfricaTime, 10000);
     
-    // Auto-refresh team availability every 5 minutes
+    // ✅ Auto-refresh team availability + scheduler every 1 minute for real-time updates
     setInterval(() => {
         loadTeamAvailability();
-    }, 5 * 60 * 1000);
+    }, 1 * 60 * 1000);
     
     // Set default dates to today
     const today = new Date().toISOString().split('T')[0];

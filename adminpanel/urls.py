@@ -97,4 +97,8 @@ urlpatterns = [
     path('api/messages/unread-count/', api_booking_views.get_unread_message_count, name='api_unread_count'),
     path('api/messages/attachment/<int:message_id>/download/', api_booking_views.download_message_attachment, name='api_download_attachment'),
 
+    # Scheduler Test Routes (NO LOGIN REQUIRED)
+    path('test/scheduler/', views.test_scheduler_view, name='test_scheduler'),
+    path('api/scheduler/realtime/', views.api_realtime_availability, name='api_realtime_availability'),
+
 ]

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduler Test - Real-Time Availability</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        header p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .timestamp {
+            color: #999;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 0.6rem 1.2rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .member-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+
+        .member-card:hover {
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-4px);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .status-available {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-meeting {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-unavailable {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-leave {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .status-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .member-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+
+        .member-username {
+            color: #666;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .details {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .detail-row {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #333;
+            display: inline-block;
+            width: 100px;
+        }
+
+        .detail-value {
+            color: #666;
+        }
+
+        .next-change {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 12px;
+            color: #666;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .refresh-info {
+            text-align: center;
+            color: #666;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <i class="fas fa-calendar-check"></i>
+                Availability Auto-Scheduler Test
+            </h1>
+            <p>Real-time team availability based on meeting schedules</p>
+            <div class="controls">
+                <button onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Refresh Now
+                </button>
+                <button onclick="toggleAutoRefresh()">
+                    <i class="fas fa-clock"></i> <span id="autoRefreshText">Enable Auto-Refresh</span>
+                </button>
+            </div>
+            <div class="timestamp" id="lastUpdate"></div>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalMembers">0</div>
+                <div class="stat-label">Team Members</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="availableCount">0</div>
+                <div class="stat-label">Available</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="meetingCount">0</div>
+                <div class="stat-label">In Meetings</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="unavailableCount">0</div>
+                <div class="stat-label">Unavailable</div>
+            </div>
+        </div>
+
+        <div class="grid" id="membersGrid">
+            <div class="empty-state">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
+                <p style="margin-top: 1rem;">Loading team availability...</p>
+            </div>
+        </div>
+
+        <div class="refresh-info">
+            <p>Auto-refresh every 30 seconds when enabled</p>
+            <p><small>Test page - no authentication required</small></p>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let autoRefreshEnabled = false;
+
+        async function refreshData() {
+            try {
+                const response = await fetch('/adminpanel/api/scheduler/realtime/');
+                const data = await response.json();
+
+                if (data.success) {
+                    renderTeamData(data.data);
+                    updateTimestamp(data.timestamp);
+                    console.log('[SCHEDULER TEST] Data refreshed:', data.data);
+                } else {
+                    console.error('Error:', data.message);
+                    showError('Failed to load data: ' + data.message);
+                }
+            } catch (error) {
+                console.error('[SCHEDULER TEST] Error:', error);
+                showError('Network error: ' + error.message);
+            }
+        }
+
+        function renderTeamData(members) {
+            const grid = document.getElementById('membersGrid');
+            
+            if (members.length === 0) {
+                grid.innerHTML = '<div class="empty-state"><p>No team members found</p></div>';
+                return;
+            }
+
+            // Calculate stats
+            const stats = {
+                available: 0,
+                meeting: 0,
+                unavailable: 0,
+                leave: 0,
+            };
+
+            members.forEach(m => {
+                stats[m.status] = (stats[m.status] || 0) + 1;
+            });
+
+            // Update stat cards
+            document.getElementById('totalMembers').textContent = members.length;
+            document.getElementById('availableCount').textContent = stats.available || 0;
+            document.getElementById('meetingCount').textContent = stats.meeting || 0;
+            document.getElementById('unavailableCount').textContent = stats.unavailable || 0;
+
+            // Render member cards
+            grid.innerHTML = members.map(member => `
+                <div class="member-card">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">
+                        ${getStatusIcon(member.status)}
+                    </div>
+                    <div class="status-badge status-${member.status}">
+                        ${member.status.toUpperCase()}
+                    </div>
+                    <div class="member-name">${member.name}</div>
+                    <div class="member-username">@${member.username}</div>
+                    
+                    <div class="details">
+                        ${member.current_slot ? `
+                            <div class="detail-row">
+                                <div class="detail-label">Activity:</div>
+                                <div class="detail-value">${member.current_slot.reason}</div>
+                            </div>
+                            ${member.current_slot.meeting_title ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">Meeting:</div>
+                                    <div class="detail-value">${member.current_slot.meeting_title}</div>
+                                </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <div class="detail-label">Time:</div>
+                                <div class="detail-value">${formatTime(member.current_slot.start_time)} - ${formatTime(member.current_slot.end_time)}</div>
+                            </div>
+                        ` : `
+                            <div class="detail-row">
+                                <div class="detail-label">Status:</div>
+                                <div class="detail-value">No scheduled activity</div>
+                            </div>
+                        `}
+                    </div>
+
+                    ${member.time_until_next ? `
+                        <div class="next-change">
+                            <i class="fas fa-arrow-right"></i> Next: ${member.time_until_next}
+                            ${member.next_slot ? `<br>(${member.next_slot.status})` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'available': '🟢',
+                'meeting': '🔴',
+                'unavailable': '🟡',
+                'leave': '⚫',
+                'off-hours': '⚪',
+            };
+            return icons[status] || '❓';
+        }
+
+        function formatTime(timeString) {
+            if (!timeString) return '-';
+            try {
+                const [hours, minutes] = timeString.split(':');
+                return `${hours}:${minutes}`;
+            } catch {
+                return timeString;
+            }
+        }
+
+        function updateTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            document.getElementById('lastUpdate').textContent = 
+                `Last updated: ${date.toLocaleString()}`;
+        }
+
+        function toggleAutoRefresh() {
+            if (autoRefreshEnabled) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshEnabled = false;
+                document.getElementById('autoRefreshText').textContent = 'Enable Auto-Refresh';
+            } else {
+                autoRefreshEnabled = true;
+                document.getElementById('autoRefreshText').textContent = 'Disable Auto-Refresh';
+                refreshData();
+                autoRefreshInterval = setInterval(refreshData, 30000); // 30 seconds
+            }
+        }
+
+        function showError(message) {
+            const grid = document.getElementById('membersGrid');
+            grid.innerHTML = `<div class="empty-state"><p style="color: #d32f2f;">❌ ${message}</p></div>`;
+        }
+
+        // Initial load
+        refreshData();
+
+        // Auto-refresh every 60 seconds by default (can be toggled to 30s)
+        setInterval(() => {
+            if (autoRefreshEnabled) {
+                refreshData();
+            }
+        }, 60000);
+    </script>
+</body>
+</html>

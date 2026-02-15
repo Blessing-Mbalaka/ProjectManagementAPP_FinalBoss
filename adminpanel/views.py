@@ -2286,3 +2286,41 @@ def get_conference_data(request, conference_id):
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+# ============================================================================
+# SCHEDULER TEST VIEW (NO LOGIN REQUIRED - FOR TESTING ONLY)
+# ============================================================================
+
+def test_scheduler_view(request):
+    """Test view for availability auto-scheduler (no login required)"""
+    from adminpanel.scheduler import get_team_availability_realtime
+    
+    team_data = get_team_availability_realtime()
+    
+    context = {
+        'team_members': team_data,
+        'total_members': len(team_data),
+        'timestamp': timezone.now().isoformat(),
+    }
+    
+    return render(request, 'adminpanel/test_scheduler.html', context)
+
+
+@require_http_methods(["GET"])
+def api_realtime_availability(request):
+    """API endpoint for real-time availability (no login required for testing)"""
+    from adminpanel.scheduler import get_team_availability_realtime
+    
+    try:
+        team_data = get_team_availability_realtime()
+        return JsonResponse({
+            'success': True,
+            'data': team_data,
+            'timestamp': timezone.now().isoformat(),
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=500)
