@@ -27,7 +27,10 @@
         }
 
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background-image: url("{% static 'img/2.png' %}");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -40,7 +43,7 @@
 
         /* Header Section */
         .communique-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #F26522 0%, #E55100 100%);
             color: white;
             padding: 3rem 2rem;
             border-radius: 12px;
@@ -98,7 +101,7 @@
         }
 
         .back-button:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(242, 101, 34, 0.3);
             transform: translateX(-3px);
             color: white;
         }
@@ -118,7 +121,7 @@
         }
 
         .section-card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #F26522 0%, #E55100 100%);
             color: white;
             padding: 1.5rem 2rem;
             display: flex;
@@ -184,8 +187,8 @@
         /* Status Badge */
         .status-badge {
             display: inline-block;
-            background: #d4edda;
-            color: #155724;
+            background: #F26522;
+            color: white;
             padding: 0.5rem 1rem;
             border-radius: 20px;
             font-size: 0.85rem;
@@ -217,7 +220,7 @@
     <!-- Header -->
     <div class="communique-header">
         <div class="communique-header-left">
-            <h1>💬 Communique</h1>
+            <h1><img src="{% static 'img/logo_uj-removebg-preview.png' %}" alt="UJ" style="height: 45px; width: auto; vertical-align: middle; margin-right: 0.5rem;">Communique</h1>
             <p>Team Communication & Scheduling Hub</p>
         </div>
         <div class="communique-header-right">
