@@ -9,6 +9,7 @@ from django.db.models import Q
 from datetime import datetime, timedelta
 import json
 import os
+import io
 
 from adminpanel.models import UserAvailability, UserLeaveRequest
 from users.models import CustomUser
@@ -494,7 +495,7 @@ def get_message_thread(request, recipient_id):
             # Add attachment info if exists
             if msg.attachment:
                 msg_data['has_attachment'] = True
-                msg_data['attachment_url'] = f"/api/messages/attachment/{msg.id}/download/"
+                msg_data['attachment_url'] = f"/adminpanel/api/messages/attachment/{msg.id}/download/"
                 msg_data['attachment_name'] = os.path.basename(msg.attachment.name)
             else:
                 msg_data['has_attachment'] = False
@@ -517,6 +518,53 @@ def get_message_thread(request, recipient_id):
             'message': str(e)
         }, status=500)
 
+
+# Supported file formats for uploads
+SUPPORTED_FILE_FORMATS = {
+    'application/pdf': '.pdf',
+    'application/msword': '.doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+    'application/vnd.ms-excel': '.xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+    'application/vnd.ms-powerpoint': '.ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/gif': '.gif',
+    'application/zip': '.zip',
+    'application/x-rar-compressed': '.rar',
+    'application/x-7z-compressed': '.7z',
+}
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+
+def validate_file_upload(file_obj):
+    """Validate uploaded file format and size"""
+    print(f"[FILE VALIDATION] Validating: {file_obj.name}, Size: {file_obj.size}, Type: {file_obj.content_type}")
+    
+    # Check file size
+    if file_obj.size > MAX_UPLOAD_SIZE:
+        error = f"File too large. Maximum 50MB allowed (current: {file_obj.size / 1024 / 1024:.1f}MB)"
+        print(f"[FILE VALIDATION] ERROR: {error}")
+        return False, error
+    
+    # Check file type by MIME type
+    if file_obj.content_type in SUPPORTED_FILE_FORMATS:
+        print(f"[FILE VALIDATION] File type supported: {file_obj.content_type}")
+        return True, None
+    
+    # Check by file extension as fallback
+    file_name = file_obj.name.lower()
+    supported_extensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png', '.gif', '.zip', '.rar', '.7z']
+    has_valid_extension = any(file_name.endswith(ext) for ext in supported_extensions)
+    
+    if has_valid_extension:
+        print(f"[FILE VALIDATION] File extension supported")
+        return True, None
+    
+    # Unsupported format
+    error = "Unsupported file format. Supported types: PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), Images (.jpg, .png, .gif), Archives (.zip, .rar, .7z)"
+    print(f"[FILE VALIDATION] ERROR: {error}")
+    return False, error
 
 @login_required
 @require_http_methods(["POST"])
@@ -542,6 +590,15 @@ def send_staff_message(request):
                 'message': 'Recipient and message text are required'
             }, status=400)
         
+        # Validate attachment if present
+        if attachment:
+            is_valid, error_msg = validate_file_upload(attachment)
+            if not is_valid:
+                return JsonResponse({
+                    'success': False,
+                    'message': error_msg
+                }, status=400)
+        
         # Get recipient
         recipient = get_object_or_404(CustomUser, id=recipient_id, is_active=True)
         
@@ -559,8 +616,10 @@ def send_staff_message(request):
             recipient=recipient,
             message=message_text,
             submission=None,  # Staff messages don't link to submissions
-            attachment=attachment  # Optional attachment
+            attachment=attachment  # Optional attachment (already validated)
         )
+        
+        print(f"[MESSAGE SENT] ID: {message.id}, From: {request.user.id}, To: {recipient_id}, Has Attachment: {attachment is not None}")
         
         return JsonResponse({
             'success': True,
@@ -624,6 +683,83 @@ def get_recipients_list(request):
 
 
 @login_required
+@require_http_methods(["POST"])
+def broadcast_message(request):
+    """Broadcast a message or multiple messages to selected recipients"""
+    try:
+        # Determine content type
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            message_id = request.POST.get('message_id')
+            recipient_id = request.POST.get('recipient_id')
+            additional_message = request.POST.get('message', '').strip()
+        else:
+            data = json.loads(request.body)
+            message_id = data.get('message_id')
+            recipient_id = data.get('recipient_id')
+            additional_message = data.get('message', '').strip()
+        
+        if not message_id or not recipient_id:
+            return JsonResponse({
+                'success': False,
+                'message': 'Message ID and recipient ID are required'
+            }, status=400)
+        
+        # Get the original message
+        original_message = get_object_or_404(ChatMessage, id=message_id)
+        
+        # Permission check: user must be sender or recipient of original message
+        if original_message.sender_id != request.user.id and original_message.recipient_id != request.user.id:
+            return JsonResponse({
+                'success': False,
+                'message': 'You do not have permission to broadcast this message'
+            }, status=403)
+        
+        # Get recipient
+        recipient = get_object_or_404(CustomUser, id=recipient_id, is_active=True)
+        
+        # Permission check: sender and recipient should be staff/admin
+        allowed_roles = ['staff', 'manager', 'admin', 'financialadmin']
+        if request.user.role not in allowed_roles or recipient.role not in allowed_roles:
+            return JsonResponse({
+                'success': False,
+                'message': 'Only staff members can broadcast messages'
+            }, status=403)
+        
+        # Create new message with broadcasted content
+        # If no additional message provided, forward original message text
+        message_text = additional_message if additional_message else original_message.message
+        
+        new_message = ChatMessage.objects.create(
+            sender=request.user,
+            recipient=recipient,
+            message=message_text,
+            submission=None,
+            attachment=original_message.attachment if not additional_message else None  # Forward attachment only if no new message
+        )
+        
+        print(f"[BROADCAST] Message {original_message.id} broadcasted to {recipient.id} from {request.user.id}")
+        
+        return JsonResponse({
+            'success': True,
+            'message_id': new_message.id,
+            'timestamp': new_message.timestamp.isoformat(),
+            'message': 'Message broadcasted successfully'
+        })
+    
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid JSON'
+        }, status=400)
+    except Exception as e:
+        print(f"[BROADCAST] Error: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
 @require_http_methods(["GET"])
 def get_unread_message_count(request):
     """Get count of unread messages for current user"""
@@ -653,8 +789,12 @@ def download_message_attachment(request, message_id):
         # Get the message
         message = get_object_or_404(ChatMessage, id=message_id)
         
+        print(f"[DEBUG] Download request - Message ID: {message_id}, User: {request.user}")
+        print(f"[DEBUG] Message sender: {message.sender}, Recipient: {message.recipient}, Current user: {request.user}")
+        
         # Security check: User must be either sender or recipient
         if request.user != message.sender and request.user != message.recipient:
+            print(f"[DEBUG] Permission denied - user not sender or recipient")
             return JsonResponse({
                 'success': False,
                 'message': 'Permission denied'
@@ -662,32 +802,89 @@ def download_message_attachment(request, message_id):
         
         # Check if attachment exists
         if not message.attachment:
+            print(f"[DEBUG] No attachment on message {message_id}")
             return JsonResponse({
                 'success': False,
                 'message': 'No attachment found'
             }, status=404)
         
-        # Get file path
-        file_path = message.attachment.path
+        print(f"[DEBUG] Attachment found: {message.attachment}, Name: {message.attachment.name}")
         
-        # Check if file exists on filesystem
-        if not os.path.exists(file_path):
-            return JsonResponse({
-                'success': False,
-                'message': 'Attachment file not found'
-            }, status=404)
-        
-        # Open and return the file
-        file_name = os.path.basename(file_path)
-        response = FileResponse(
-            open(file_path, 'rb'),
-            as_attachment=True,
-            filename=file_name
-        )
-        return response
+        # Get file from the FileField
+        try:
+            # Read file content directly from the FileField
+            file_content = message.attachment.read()
+            file_name = os.path.basename(message.attachment.name)
+            
+            print(f"[DEBUG] File read successfully - Name: {file_name}, Size: {len(file_content)} bytes")
+            
+            # Determine content type
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(file_name)
+            if not content_type:
+                content_type = 'application/octet-stream'
+            
+            print(f"[DEBUG] Content type: {content_type}")
+            
+            # Create response with file content
+            response = FileResponse(
+                io.BytesIO(file_content),
+                as_attachment=True,
+                filename=file_name,
+                content_type=content_type
+            )
+            response['Content-Length'] = len(file_content)
+            print(f"[DEBUG] FileResponse created and returned")
+            return response
+            
+        except Exception as read_error:
+            # If reading from FileField fails, try filesystem path
+            print(f"[DEBUG] FileField read error: {read_error}, trying filesystem path")
+            from django.conf import settings
+            
+            if hasattr(message.attachment, 'path'):
+                file_path = message.attachment.path
+            else:
+                file_path = os.path.join(settings.MEDIA_ROOT, str(message.attachment))
+            
+            print(f"[DEBUG] File path: {file_path}, Exists: {os.path.exists(file_path)}")
+            
+            if not os.path.exists(file_path):
+                return JsonResponse({
+                    'success': False,
+                    'message': f'File not found'
+                }, status=404)
+            
+            if not os.access(file_path, os.R_OK):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'File is not readable'
+                }, status=403)
+            
+            file_name = os.path.basename(file_path)
+            
+            # Determine content type
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(file_name)
+            if not content_type:
+                content_type = 'application/octet-stream'
+            
+            with open(file_path, 'rb') as f:
+                file_content = f.read()
+                response = FileResponse(
+                    io.BytesIO(file_content),
+                    as_attachment=True,
+                    filename=file_name,
+                    content_type=content_type
+                )
+                response['Content-Length'] = len(file_content)
+                return response
     
     except Exception as e:
+        print(f"[DEBUG] Download error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'message': str(e)
+            'message': f'Error: {str(e)}'
         }, status=500)

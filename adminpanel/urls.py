@@ -91,6 +91,7 @@ urlpatterns = [
     # Staff Messaging API
     path('api/messages/inbox/', api_booking_views.get_staff_inbox, name='api_staff_inbox'),
     path('api/messages/send/', api_booking_views.send_staff_message, name='api_send_staff_message'),
+    path('api/messages/broadcast/', api_booking_views.broadcast_message, name='api_broadcast_message'),
     path('api/messages/thread/<int:recipient_id>/', api_booking_views.get_message_thread, name='api_message_thread'),
     path('api/messages/recipients/', api_booking_views.get_recipients_list, name='api_recipients_list'),
     path('api/messages/unread-count/', api_booking_views.get_unread_message_count, name='api_unread_count'),

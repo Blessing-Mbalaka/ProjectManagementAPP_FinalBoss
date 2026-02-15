@@ -2,6 +2,16 @@
 
 <style>
 
+    /* Prevent scrollbar shift when modal opens */
+    html {
+        overflow-y: scroll;
+    }
+
+    /* Stabilize modal positioning */
+    .modal, .new-message-modal {
+        position: fixed !important;
+    }
+
     /* #messages-content {
         padding: 0 !important;
         margin: 0 !important;
@@ -17,20 +27,25 @@
     } */
 
     #messages-content .card {
-        margin-top: -170px !important;
+        margin-top: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
     }
 
     .staff-messages-container {
         display: grid;
         grid-template-columns: 360px 1fr;
         gap: 0;
-        height: 550px;
+        height: 620px;
         background: transparent;
-        border-radius: 0;
-        border: none;
+        border-radius: 1rem;
+        border: 1px solid var(--border);
         overflow: hidden;
-        margin-top: -210px !important;        position: relative;
-        z-index: 10;    }
+        margin-top: 0 !important;
+        position: relative;
+        z-index: 10;
+    }
 
     .messages-sidebar {
         border-right: 1px solid var(--border);
@@ -162,6 +177,8 @@
         display: flex;
         flex-direction: column;
         background: var(--bg-main);
+        height: 100%;
+        overflow: hidden;
     }
 
     .thread-header {
@@ -188,12 +205,13 @@
 
     .thread-messages {
         flex: 1;
-        overflow-y: auto;
+        overflow-y: scroll;
         padding: 1.5rem 1rem;
         display: flex;
         flex-direction: column;
         gap: 1rem;
         background: var(--bg-main);
+        min-height: 0;
     }
 
     .thread-empty {
@@ -208,6 +226,8 @@
 
     .chat-message {
         display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
         margin-bottom: 0;
         animation: slideIn 0.3s ease-out;
     }
@@ -218,6 +238,11 @@
 
     .chat-message.received {
         justify-content: flex-start;
+    }
+
+    .chat-message .message-checkbox {
+        margin-top: 0.25rem;
+        flex-shrink: 0;
     }
 
     .message-wrapper {
@@ -263,6 +288,93 @@
         font-size: 0.7rem;
         color: var(--text-secondary);
         padding: 0 0.5rem;
+    }
+
+    .message-attachment {
+        font-size: 0.9rem;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 8px;
+        border-radius: 4px;
+        margin-top: 8px;
+    }
+
+    .attachment-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .attachment-link:hover {
+        color: var(--accent-dark);
+        text-decoration: underline;
+    }
+
+    .attachment-link i {
+        font-size: 1rem;
+    }
+
+    /* Bulk message selection styles */
+    .message-checkbox {
+        margin-right: 0.75rem;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+    }
+
+    .bulk-actions-bar {
+        padding: 0.75rem 1.5rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .bulk-actions-bar.hidden {
+        display: none;
+    }
+
+    .bulk-actions-count {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .bulk-action-btn {
+        padding: 0.4rem 0.8rem;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .bulk-action-btn:hover {
+        background: var(--accent-dark);
+    }
+
+    .bulk-action-btn.secondary {
+        background: #6c757d;
+    }
+
+    .bulk-action-btn.secondary:hover {
+        background: #5a6268;
+    }
+
+    .thread-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
     }
 
     .thread-input {
@@ -313,7 +425,7 @@
 
     .message-form button:hover:not(:disabled) {
         background: var(--accent-dark);
-        transform: scale(1.05);
+        box-shadow: var(--shadow-md);
     }
 
     .message-form button:disabled {
@@ -340,20 +452,20 @@
 
     /* New Message Modal */
     .new-message-modal {
-        display: none;
-        position: fixed;
+        display: none !important;
+        position: fixed !important;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.4);
-        z-index: 1000;
+        z-index: 2000 !important;
         align-items: center;
         justify-content: center;
     }
 
     .new-message-modal.active {
-        display: flex;
+        display: flex !important;
     }
 
     .modal-content {
@@ -362,14 +474,31 @@
         padding: 0;
         max-width: 400px;
         width: 90%;
+        max-height: 90vh;
         box-shadow: 0 5px 40px rgba(0, 0, 0, 0.16);
         animation: slideUp 0.3s ease-out;
         overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
     }
 
     .modal-header {
         padding: 1.5rem;
         border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+    }
+
+    .modal-content form {
+        overflow-y: auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 0.5rem;
+    }
+
+    .modal-actions {
+        flex-shrink: 0;
     }
 
     .modal-header h5 {
@@ -403,14 +532,11 @@
 
     .form-group {
         padding: 0 1.5rem;
+        margin-bottom: 1rem;
     }
 
     .form-group:first-of-type {
         padding-top: 1.5rem;
-    }
-
-    .form-group {
-        margin-bottom: 1.25rem;
     }
 
     .form-label {
@@ -442,17 +568,23 @@
         gap: 0.75rem;
         padding: 1.5rem;
         border-top: 1px solid var(--border);
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .modal-actions button {
         flex: 1;
+        min-width: 80px;
         padding: 0.75rem 1rem;
         border: none;
         border-radius: 0.5rem;
         cursor: pointer;
         font-weight: 500;
-        transition: all 0.2s;
+        transition: background-color 0.2s;
         font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .btn-send {
@@ -545,6 +677,15 @@
                     <p class="thread-header-info" id="threadRecipientRole"></p>
                 </div>
             </div>
+            <!-- Bulk Actions Bar -->
+            <div class="bulk-actions-bar hidden" id="bulkActionsBar">
+                <input type="checkbox" id="selectAllCheckbox" class="message-checkbox" title="Select all messages">
+                <span class="bulk-actions-count">
+                    <span id="selectedCount">0</span> selected
+                </span>
+                <button class="bulk-action-btn" id="broadcastBtn" onclick="openBroadcastModal()">📤 Broadcast</button>
+                <button class="bulk-action-btn secondary" id="clearSelectionBtn" onclick="clearSelection()">Clear</button>
+            </div>
             <div class="thread-messages" id="threadMessages">
                 <!-- Messages populated here -->
             </div>
@@ -556,13 +697,13 @@
                         placeholder="Type your message..." 
                         required
                     >
-                    <label for="attachmentInput" style="cursor: pointer; margin: 0 8px; font-size: 1.2em;">
+                    <label for="attachmentInput" style="cursor: pointer; margin: 0 8px; font-size: 1.2em; title: Supported file formats" title="Supported: PDF, Word, Excel, PowerPoint, Images, Archives">
                         <i class="fas fa-paperclip"></i>
                         <input 
                             type="file" 
                             id="attachmentInput" 
                             style="display: none;" 
-                            accept="*/*"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.zip,.rar,.7z"
                         >
                     </label>
                     <button type="submit" id="sendBtn">Send</button>
@@ -611,7 +752,8 @@
                         type="file" 
                         id="newMessageAttachment" 
                         class="form-control" 
-                        accept="*/*"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.zip,.rar,.7z"
+                        title="Supported formats: PDF, Word, Excel, PowerPoint, Images, Archives"
                     >
                     <label for="newMessageAttachment" style="cursor: pointer; margin: 0; font-size: 1.2em; color: #d4a017;">
                         <i class="fas fa-paperclip"></i>
@@ -627,31 +769,189 @@
     </div>
 </div>
 
+<!-- Broadcast Modal -->
+<div id="broadcastModal" class="new-message-modal">
+    <div class="modal-content">
+        <button class="modal-close" id="closeBroadcastModal">&times;</button>
+        <div class="modal-header">
+            <h5>📤 Broadcast Selected Messages</h5>
+        </div>
+        <form id="broadcastForm" onsubmit="sendBroadcast(event)">
+            <div class="form-group">
+                <label class="form-label">Send to (select multiple):</label>
+                <div id="broadcastRecipientsList" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 8px;">
+                    <!-- Recipients will be populated here -->
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label class="form-label">Message:</label>
+                <textarea 
+                    id="broadcastMessageText" 
+                    class="form-control" 
+                    rows="3" 
+                    placeholder="Optional: Add a message with the broadcast..."
+                ></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn-send" id="sendBroadcastBtn">📤 Broadcast</button>
+                <button type="button" class="btn-cancel" id="cancelBroadcastBtn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     // Global state
     let currentRecipientId = null;
     let isSending = false;
+    let selectedMessageIds = new Set();
     const API_BASE = "{% url 'api_staff_inbox' %}".replace('/inbox/', '/');
 
-    // Load conversations on page load
+
+    // Load conversations and set up listeners on page load
     document.addEventListener('DOMContentLoaded', () => {
         loadConversations();
         setupEventListeners();
+        
+        // Supported file formats and max size (50MB)
+        window.SUPPORTED_FORMATS = {
+            'application/pdf': { ext: '.pdf', name: 'PDF' },
+            'application/msword': { ext: '.doc', name: 'Word' },
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { ext: '.docx', name: 'Word' },
+            'application/vnd.ms-excel': { ext: '.xls', name: 'Excel' },
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { ext: '.xlsx', name: 'Excel' },
+            'application/vnd.ms-powerpoint': { ext: '.ppt', name: 'PowerPoint' },
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': { ext: '.pptx', name: 'PowerPoint' },
+            'image/jpeg': { ext: '.jpg', name: 'Image' },
+            'image/png': { ext: '.png', name: 'Image' },
+            'image/gif': { ext: '.gif', name: 'Image' },
+            'application/zip': { ext: '.zip', name: 'Archive' },
+            'application/x-rar-compressed': { ext: '.rar', name: 'Archive' },
+            'application/x-7z-compressed': { ext: '.7z', name: 'Archive' }
+        };
+        window.MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+        
+        // Handle file selection display in message form
+        const attachmentInput = document.getElementById('attachmentInput');
+        if (attachmentInput) {
+            attachmentInput.addEventListener('change', function() {
+                const selectedFile = document.getElementById('selectedFile');
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    const validation = validateFileUpload(file);
+                    if (validation.valid) {
+                        selectedFile.textContent = '📎 ' + file.name + ` (${formatFileSize(file.size)})`;
+                        selectedFile.style.color = '#666';
+                    } else {
+                        selectedFile.textContent = '❌ ' + validation.error;
+                        selectedFile.style.color = '#dc3545';
+                        this.value = '';
+                    }
+                } else {
+                    selectedFile.textContent = '';
+                }
+            });
+        }
+        
+        // Handle file selection display in new message modal
+        const newMessageAttachment = document.getElementById('newMessageAttachment');
+        if (newMessageAttachment) {
+            newMessageAttachment.addEventListener('change', function() {
+                const selectedFile = document.getElementById('selectedModalFile');
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    const validation = validateFileUpload(file);
+                    if (validation.valid) {
+                        selectedFile.textContent = '📎 ' + file.name + ` (${formatFileSize(file.size)})`;
+                        selectedFile.style.color = '#666';
+                    } else {
+                        selectedFile.textContent = '❌ ' + validation.error;
+                        selectedFile.style.color = '#dc3545';
+                        this.value = '';
+                    }
+                } else {
+                    selectedFile.textContent = '';
+                }
+            });
+        }
     });
 
     function setupEventListeners() {
-        document.getElementById('newMessageBtn').addEventListener('click', openNewMessageModal);
-        document.getElementById('closeModal').addEventListener('click', closeNewMessageModal);
-        document.getElementById('cancelBtn').addEventListener('click', closeNewMessageModal);
-        document.getElementById('messageForm').addEventListener('submit', sendMessage);
-        document.getElementById('newMessageForm').addEventListener('submit', startNewConversation);
+        const newMessageBtn = document.getElementById('newMessageBtn');
+        const closeBtn = document.getElementById('closeModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const closeBroadcastBtn = document.getElementById('closeBroadcastModal');
+        const cancelBroadcastBtn = document.getElementById('cancelBroadcastBtn');
+        const messageForm = document.getElementById('messageForm');
+        const newMessageForm = document.getElementById('newMessageForm');
+        const newMessageModal = document.getElementById('newMessageModal');
+        const broadcastModal = document.getElementById('broadcastModal');
+
+        if (newMessageBtn) newMessageBtn.addEventListener('click', openNewMessageModal);
+        if (closeBtn) closeBtn.addEventListener('click', closeNewMessageModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeNewMessageModal);
+        if (closeBroadcastBtn) closeBroadcastBtn.addEventListener('click', closeBroadcastModal);
+        if (cancelBroadcastBtn) cancelBroadcastBtn.addEventListener('click', closeBroadcastModal);
+        if (messageForm) messageForm.addEventListener('submit', sendMessage);
+        if (newMessageForm) newMessageForm.addEventListener('submit', startNewConversation);
 
         // Close modal when clicking outside
-        document.getElementById('newMessageModal').addEventListener('click', (e) => {
-            if (e.target.id === 'newMessageModal') {
-                closeNewMessageModal();
-            }
-        });
+        if (newMessageModal) {
+            newMessageModal.addEventListener('click', (e) => {
+                if (e.target.id === 'newMessageModal') {
+                    closeNewMessageModal();
+                }
+            });
+        }
+
+        if (broadcastModal) {
+            broadcastModal.addEventListener('click', (e) => {
+                if (e.target.id === 'broadcastModal') {
+                    closeBroadcastModal();
+                }
+            });
+        }
+    }
+
+    // File validation utility functions
+    function validateFileUpload(file) {
+        console.log('[FILE VALIDATION] Checking file:', { name: file.name, type: file.type, size: file.size });
+        
+        // Check file size
+        if (file.size > window.MAX_FILE_SIZE) {
+            const error = `File too large (${formatFileSize(file.size)}). Maximum 50MB allowed.`;
+            console.log('[FILE VALIDATION] ERROR:', error);
+            return { valid: false, error: error };
+        }
+
+        // Check file type by MIME type
+        if (window.SUPPORTED_FORMATS[file.type]) {
+            console.log('[FILE VALIDATION] File MIME type supported:', file.type);
+            return { valid: true };
+        }
+
+        // Check by file extension
+        const fileName = file.name.toLowerCase();
+        const supportedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png', '.gif', '.zip', '.rar', '.7z'];
+        const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+
+        if (hasValidExtension) {
+            console.log('[FILE VALIDATION] File extension supported:', fileName.match(/\.[^.]*$/)[0]);
+            return { valid: true };
+        }
+
+        // Unsupported format
+        const error = `Unsupported file format. Supported types: PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), Images (.jpg, .png, .gif), Archives (.zip, .rar, .7z)`;
+        console.log('[FILE VALIDATION] ERROR:', error);
+        return { valid: false, error: error };
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
     }
 
     function loadConversations() {
@@ -697,9 +997,20 @@
     function selectRecipient(userId, name, role) {
         currentRecipientId = userId;
         
-        // Update active state
+        // Update active state - find the recipient item and mark it as active
         document.querySelectorAll('.recipient-item').forEach(el => el.classList.remove('active'));
-        event.currentTarget.classList.add('active');
+        
+        // If called from event (onclick), use event.currentTarget
+        // Otherwise, find the element by data attribute or search
+        if (event && event.currentTarget) {
+            event.currentTarget.classList.add('active');
+        } else {
+            // Find and mark the recipient item with matching userId
+            const recipientElement = document.querySelector(`.recipient-item[onclick*="${userId}"]`);
+            if (recipientElement) {
+                recipientElement.classList.add('active');
+            }
+        }
 
         // Show thread content
         document.getElementById('threadPlaceholder').style.display = 'none';
@@ -737,13 +1048,18 @@
         }
 
         threadEl.innerHTML = messages.map(msg => `
-            <div class="chat-message ${msg.is_from_current_user ? 'sent' : 'received'}">
+            <div class="chat-message ${msg.is_from_current_user ? 'sent' : 'received'}" data-message-id="${msg.id}">
+                <input type="checkbox" class="message-checkbox" data-message-id="${msg.id}" onchange="toggleMessageSelection(${msg.id})">
                 <div class="message-wrapper">
                     <div class="message-bubble ${msg.is_from_current_user ? 'sent' : 'received'}">
                         ${msg.message}
                         ${msg.has_attachment ? `
                             <div class="message-attachment" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
-                                <a href="${msg.attachment_url}" class="attachment-link" download>
+                                <a href="${msg.attachment_url}" 
+                                   class="attachment-link" 
+                                   download 
+                                   data-message-id="${msg.id}"
+                                   onclick="handleAttachmentDownload(event, '${msg.attachment_url}', '${msg.attachment_name}')">
                                     <i class="fas fa-file"></i> ${msg.attachment_name}
                                 </a>
                             </div>
@@ -754,8 +1070,154 @@
             </div>
         `).join('');
 
+        // Setup select all checkbox listener
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = threadEl.querySelectorAll('.message-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                    toggleMessageSelection(parseInt(cb.dataset.messageId), this.checked);
+                });
+            });
+        }
+
         // Auto-scroll to bottom
         threadEl.scrollTop = threadEl.scrollHeight;
+    }
+
+    function toggleMessageSelection(messageId, isChecked) {
+        const checkbox = document.querySelector(`[data-message-id="${messageId}"].message-checkbox`);
+        isChecked = isChecked !== undefined ? isChecked : checkbox.checked;
+        
+        if (isChecked) {
+            selectedMessageIds.add(messageId);
+        } else {
+            selectedMessageIds.delete(messageId);
+        }
+        
+        updateBulkActionsBar();
+    }
+
+    function updateBulkActionsBar() {
+        const bulkActionsBar = document.getElementById('bulkActionsBar');
+        const selectedCount = document.getElementById('selectedCount');
+        const count = selectedMessageIds.size;
+        
+        selectedCount.textContent = count;
+        
+        if (count > 0) {
+            bulkActionsBar.classList.remove('hidden');
+        } else {
+            bulkActionsBar.classList.add('hidden');
+            document.getElementById('selectAllCheckbox').checked = false;
+        }
+    }
+
+    function clearSelection() {
+        selectedMessageIds.clear();
+        document.querySelectorAll('.message-checkbox').forEach(cb => cb.checked = false);
+        updateBulkActionsBar();
+    }
+
+    function openBroadcastModal() {
+        if (selectedMessageIds.size === 0) {
+            alert('Please select at least one message');
+            return;
+        }
+        
+        // Load recipients for broadcast
+        loadBroadcastRecipients();
+        document.getElementById('broadcastModal').classList.add('active');
+    }
+
+    function closeBroadcastModal() {
+        document.getElementById('broadcastModal').classList.remove('active');
+        document.getElementById('broadcastForm').reset();
+    }
+
+    function loadBroadcastRecipients() {
+        const url = `${API_BASE}recipients/`;
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const listEl = document.getElementById('broadcastRecipientsList');
+                    listEl.innerHTML = data.recipients.map(user => `
+                        <label style="display: flex; align-items: center; padding: 8px; gap: 8px; cursor: pointer; border-bottom: 1px solid #f0f0f0;">
+                            <input type="checkbox" name="broadcast_recipients" value="${user.id}" style="width: 18px; height: 18px;">
+                            <span>${user.name}</span>
+                            <span style="font-size: 0.8rem; color: #999;">(${user.role})</span>
+                        </label>
+                    `).join('');
+                }
+            })
+            .catch(error => console.error('[BROADCAST] Error loading recipients:', error));
+    }
+
+    function sendBroadcast(e) {
+        e.preventDefault();
+        
+        if (selectedMessageIds.size === 0) {
+            alert('Please select at least one message');
+            return;
+        }
+
+        const selectedRecipients = Array.from(document.querySelectorAll('input[name="broadcast_recipients"]:checked')).map(cb => parseInt(cb.value));
+        
+        if (selectedRecipients.length === 0) {
+            alert('Please select at least one recipient');
+            return;
+        }
+
+        const additionalMessage = document.getElementById('broadcastMessageText').value.trim();
+        
+        console.log('[BROADCAST] Sending to', selectedRecipients.length, 'recipients with', selectedMessageIds.size, 'messages');
+        
+        // Send each selected message to each selected recipient
+        const promises = [];
+        selectedMessageIds.forEach(messageId => {
+            selectedRecipients.forEach(recipientId => {
+                const formData = new FormData();
+                formData.append('message_id', messageId);
+                formData.append('recipient_id', recipientId);
+                if (additionalMessage) {
+                    formData.append('message', additionalMessage);
+                }
+                
+                promises.push(
+                    fetch(`${API_BASE}broadcast/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken'),
+                        },
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            console.error('[BROADCAST] Error:', data.message);
+                        }
+                    })
+                );
+            });
+        });
+
+        Promise.all(promises).then(() => {
+            alert(`✓ Broadcast sent to ${selectedRecipients.length} recipient(s)!`);
+            closeBroadcastModal();
+            clearSelection();
+            loadConversations();
+        }).catch(error => {
+            console.error('[BROADCAST] Failed:', error);
+            alert('Error sending broadcast: ' + error.message);
+        });
+    }
+
+    function handleAttachmentDownload(event, url, filename) {
+        console.log('Download requested:', { url, filename });
+        // Don't prevent default - let browser handle download
+        // Just log for debugging
     }
 
     function sendMessage(e) {
@@ -776,6 +1238,17 @@
             return;
         }
 
+        // Validate attachment if present
+        if (attachment) {
+            const validation = validateFileUpload(attachment);
+            if (!validation.valid) {
+                alert('❌ ' + validation.error);
+                attachmentInput.value = '';
+                document.getElementById('selectedFile').textContent = '';
+                return;
+            }
+        }
+
         isSending = true;
         const sendBtn = document.getElementById('sendBtn');
         sendBtn.disabled = true;
@@ -787,9 +1260,11 @@
         formData.append('recipient_id', currentRecipientId);
         formData.append('message', message);
         if (attachment) {
+            console.log('[SEND MESSAGE] Attaching file:', { name: attachment.name, size: attachment.size, type: attachment.type });
             formData.append('attachment', attachment);
         }
         
+        console.log('[SEND MESSAGE] Sending to:', url);
         fetch(url, {
             method: 'POST',
             headers: {
@@ -797,43 +1272,34 @@
             },
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('[SEND MESSAGE] Response status:', response.status);
+            return response.json();
+
+        })
         .then(data => {
+            console.log('[SEND MESSAGE] Response data:', data);
             if (data.success) {
                 document.getElementById('messageInput').value = '';
                 attachmentInput.value = '';
                 document.getElementById('selectedFile').textContent = '';
+                alert('Message sent successfully!');
                 loadMessageThread(currentRecipientId);
                 loadConversations();
             } else {
-                console.error('Error sending message:', data.message);
+                console.error('[SEND MESSAGE] Error:', data.message);
                 alert('Error: ' + data.message);
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Error sending message');
+            console.error('[SEND MESSAGE] Fetch error:', error);
+            alert('Error sending message: ' + error.message);
         })
         .finally(() => {
             isSending = false;
             sendBtn.disabled = false;
         });
     }
-
-    // Handle file selection display
-    document.addEventListener('DOMContentLoaded', function() {
-        const attachmentInput = document.getElementById('attachmentInput');
-        if (attachmentInput) {
-            attachmentInput.addEventListener('change', function() {
-                const selectedFile = document.getElementById('selectedFile');
-                if (this.files.length > 0) {
-                    selectedFile.textContent = '📎 ' + this.files[0].name;
-                } else {
-                    selectedFile.textContent = '';
-                }
-            });
-        }
-    });
 
     function openNewMessageModal() {
         loadRecipientsForModal();
@@ -874,6 +1340,17 @@
             return;
         }
 
+        // Validate attachment if present
+        if (attachment) {
+            const validation = validateFileUpload(attachment);
+            if (!validation.valid) {
+                alert('❌ ' + validation.error);
+                attachmentInput.value = '';
+                document.getElementById('selectedModalFile').textContent = '';
+                return;
+            }
+        }
+
         isSending = true;
         const url = `${API_BASE}send/`;
         
@@ -882,9 +1359,11 @@
         formData.append('recipient_id', parseInt(recipientId));
         formData.append('message', message);
         if (attachment) {
+            console.log('[NEW CONVERSATION] Attaching file:', { name: attachment.name, size: attachment.size, type: attachment.type });
             formData.append('attachment', attachment);
         }
         
+        console.log('[NEW CONVERSATION] Sending to:', url);
         fetch(url, {
             method: 'POST',
             headers: {
@@ -892,44 +1371,34 @@
             },
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('[NEW CONVERSATION] Response status:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('[NEW CONVERSATION] Response data:', data);
             if (data.success) {
                 closeNewMessageModal();
                 // Reset form
                 document.getElementById('newMessageText').value = '';
                 attachmentInput.value = '';
                 document.getElementById('selectedModalFile').textContent = '';
+                alert('Message sent successfully!');
                 loadConversations();
                 selectRecipient(parseInt(recipientId), '', '');
             } else {
-                console.error('Error sending message:', data.message);
+                console.error('[NEW CONVERSATION] Error:', data.message);
                 alert('Error: ' + data.message);
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Error sending message');
+            console.error('[NEW CONVERSATION] Fetch error:', error);
+            alert('Error sending message: ' + error.message);
         })
         .finally(() => {
             isSending = false;
         });
     }
-
-    // Handle file selection display in new message modal
-    document.addEventListener('DOMContentLoaded', function() {
-        const newMessageAttachment = document.getElementById('newMessageAttachment');
-        if (newMessageAttachment) {
-            newMessageAttachment.addEventListener('change', function() {
-                const selectedFile = document.getElementById('selectedModalFile');
-                if (this.files.length > 0) {
-                    selectedFile.textContent = '📎 ' + this.files[0].name;
-                } else {
-                    selectedFile.textContent = '';
-                }
-            });
-        }
-    });
 
     function updateUnreadBadge(count) {
         const messagesTab = document.getElementById('messages-tab');

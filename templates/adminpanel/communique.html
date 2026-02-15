@@ -4,52 +4,260 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Communique - Staff Booking & Messaging</title>
+    <title>Communique - Communication Hub</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'style.css' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ========================
+           Professional Communique Page
+           ======================== */
+
+        /* Prevent scrollbar shift */
+        html {
+            overflow-y: scroll;
+        }
+
+        /* Fix modals */
+        .modal, .new-message-modal {
+            position: fixed !important;
+            z-index: 2000 !important;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .communique-wrapper {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Header Section */
+        .communique-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .communique-header-left h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .communique-header-left p {
+            margin: 0;
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        .communique-header-right {
+            text-align: right;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .user-info p {
+            margin: 0.3rem 0;
+            font-size: 0.95rem;
+        }
+
+        .user-info strong {
+            font-weight: 600;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 0.6rem 1.2rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-3px);
+            color: white;
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .section-card:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .section-card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .section-card-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .section-card-header i {
+            font-size: 2rem;
+            opacity: 0.8;
+        }
+
+        .section-card-body {
+            padding: 2rem;
+        }
+
+        /* Availability Section */
+        #availabilityContainer {
+            background: #f8f9fa;
+        }
+
+        /* Messages Section */
+        #messagesContainer {
+            background: #f8f9fa;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .communique-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .communique-header-left h1 {
+                font-size: 1.8rem;
+            }
+
+            .communique-header-right {
+                text-align: center;
+                margin-top: 1.5rem;
+            }
+
+            .communique-wrapper {
+                padding: 1rem;
+            }
+
+            .section-card-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .section-card-body {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            background: #d4edda;
+            color: #155724;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        /* Smooth animations */
+        .section-card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 </head>
-<body style="background-image: url('{% static 'img/2.png' %}'); background-size: cover;">
 
-<div style="padding: 2rem; background: rgba(255, 255, 255, 0.95); min-height: 100vh; margin: 0;">
-    <!-- Debug Panel -->
-    <div style="background: #1f2937; color: #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-bottom: 2rem; max-height: 200px; overflow-y: auto; border: 1px solid #374151; font-family: monospace; font-size: 0.75rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #374151;">
-            <strong>📋 Debug Log</strong>
-            <button id="clearDebugBtn" style="background: #ef4444; color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.7rem;">Clear</button>
+<body>
+
+<div class="communique-wrapper">
+    <!-- Header -->
+    <div class="communique-header">
+        <div class="communique-header-left">
+            <h1>💬 Communique</h1>
+            <p>Team Communication & Scheduling Hub</p>
         </div>
-        <div id="debugLog" style="line-height: 1.4;">
-            <div style="color: #10b981;">✓ Debug panel initialized</div>
+        <div class="communique-header-right">
+            <div class="user-info">
+                <p><strong>User:</strong> {{ user.get_full_name|default:user.username }}</p>
+                <p><strong>Role:</strong> {{ user.role|title }}</p>
+            </div>
+            <a id="backBtn" href="#" class="back-button">
+                ← Back to Dashboard
+            </a>
         </div>
     </div>
 
-    <!-- Status Info -->
-    <div style="background: #ecfdf5; border: 1px solid #d1fae5; border-left: 4px solid #10b981; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <p style="color: #10b981; font-weight: 600; margin: 0; font-size: 1rem;">
-                ✓ Communique Page Loaded Successfully
-            </p>
-            <p style="color: #6b7280; font-size: 0.875rem; margin: 0.5rem 0 0 0;">
-                User: <strong>{{ user.get_full_name|default:user.username }}</strong> | Role: <strong>{{ user.role|title }}</strong>
-            </p>
+    <!-- Availability Section -->
+    <div class="section-card">
+        <div class="section-card-header">
+            <i class="fas fa-calendar-alt"></i>
+            <h2>Team Availability & Scheduling</h2>
         </div>
-        <a id="backBtn" href="#" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 500; cursor: pointer; display: inline-block;">
-            ← Back to Dashboard
-        </a>
+        <div class="section-card-body">
+            <div class="status-badge">✓ Manage schedules, meetings, and leave requests</div>
+            {% include "adminpanel/partials/Staff_Bookings.html" %}
+        </div>
     </div>
 
-    <!-- Staff Bookings Component -->
-    <div id="bookingsContainer">
-        {% include "adminpanel/partials/Staff_Bookings.html" %}
+    <!-- Messages Section -->
+    <div class="section-card">
+        <div class="section-card-header">
+            <i class="fas fa-envelope"></i>
+            <h2>Staff Messages & Communication</h2>
+        </div>
+        <div class="section-card-body">
+            <div class="status-badge">✓ Send messages, share attachments, and collaborate</div>
+            {% include "adminpanel/partials/staff_messages_inbox.html" %}
+        </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Global debug logging system
-    window.debugLog = [];
-    const maxDebugLines = 50;
-    
     // Set up back button based on referrer or user role
     const userRole = '{{ user.role }}';
     const backBtn = document.getElementById('backBtn');
@@ -76,77 +284,47 @@
     if (backBtn && targetUrl) {
         backBtn.href = targetUrl;
     }
-    
-    window.addDebug = function(message, type = 'info') {
-        const timestamp = new Date().toLocaleTimeString();
-        const icon = type === 'error' ? '✗' : type === 'warning' ? '⚠' : type === 'success' ? '✓' : '→';
-        const colorMap = {
-            error: '#ef4444',
-            warning: '#f59e0b',
-            success: '#10b981',
-            info: '#3b82f6'
-        };
-        const color = colorMap[type] || colorMap.info;
-        
-        const logEntry = `[${timestamp}] ${icon} ${message}`;
-        window.debugLog.push({ message: logEntry, type, color });
-        
-        if (window.debugLog.length > maxDebugLines) {
-            window.debugLog.shift();
+
+    // Smooth scroll behavior
+    document.documentElement.style.scrollBehavior = 'smooth';
+
+    // Function to initialize all partials
+    function initializeAllPartials() {
+        // Load messaging conversations
+        if (typeof loadConversations === 'function') {
+            loadConversations();
         }
         
-        window.updateDebugDisplay();
-        console.log(`%c${logEntry}`, `color: ${color}; font-weight: bold;`);
-    };
-    
-    window.updateDebugDisplay = function() {
-        const debugContainer = document.getElementById('debugLog');
-        if (debugContainer) {
-            debugContainer.innerHTML = window.debugLog.map(entry => 
-                `<div style="color: ${entry.color};">${entry.message}</div>`
-            ).join('');
-            debugContainer.scrollTop = debugContainer.scrollHeight;
+        // Load team availability
+        if (typeof loadTeamAvailability === 'function') {
+            loadTeamAvailability();
         }
-    };
-    
-    const clearBtn = document.getElementById('clearDebugBtn');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            window.debugLog.length = 0;
-            document.getElementById('debugLog').innerHTML = '<div style="color: #10b981;">✓ Debug log cleared</div>';
-            window.addDebug('Log cleared by user', 'info');
-        });
+        
+        // Render calendar
+        if (typeof renderCalendar === 'function') {
+            renderCalendar();
+        }
+        
+        // Update current time display
+        if (typeof updateSouthAfricaTime === 'function') {
+            updateSouthAfricaTime();
+        }
+        
+        // Setup modal handlers
+        if (typeof setupModalHandlers === 'function') {
+            setupModalHandlers();
+        }
     }
-    
-    window.addDebug('Communique initialized', 'success');
-    
-    // Intercept all fetch calls to log them
-    const originalFetch = window.fetch;
-    window.fetch = function(...args) {
-        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'unknown';
-        const method = (args[1]?.method || 'GET').toUpperCase();
-        window.addDebug(`API: ${method} ${url}`, 'info');
-        
-        return originalFetch.apply(this, args)
-            .then(response => {
-                const status = response.status;
-                const statusType = status >= 200 && status < 300 ? 'success' : status >= 400 ? 'error' : 'warning';
-                window.addDebug(`${status} ${method}`, statusType);
-                return response;
-            })
-            .catch(error => {
-                window.addDebug(`ERROR: ${method} - ${error.message}`, 'error');
-                throw error;
-            });
-    };
-    
-    window.addEventListener('load', function() {
-        window.addDebug('Page fully loaded', 'success');
-    });
-    
-    window.addEventListener('error', function(event) {
-        window.addDebug(`JS Error: ${event.error?.message || event.message}`, 'error');
-    });
+
+    // Initialize on DOM ready with slight delay to ensure all scripts are loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initializeAllPartials, 100);
+        });
+    } else {
+        // DOM is already loaded, initialize immediately
+        setTimeout(initializeAllPartials, 100);
+    }
 </script>
 
 </body>

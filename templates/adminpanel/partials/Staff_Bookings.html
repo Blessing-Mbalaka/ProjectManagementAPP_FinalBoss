@@ -878,80 +878,6 @@
     </div>
 
     <div id="alertContainer"></div>
-
-    <!-- Tab Navigation -->
-    <div style="margin-bottom: 2rem; border-bottom: 2px solid var(--border); display: flex; gap: 2rem;">
-        <button class="tab-button active" id="availability-tab">
-            <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem; vertical-align: text-bottom;">
-                <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
-            </svg>
-            Availability
-        </button>
-        <button class="tab-button" id="messages-tab">
-            <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 0.5rem; vertical-align: text-bottom;">
-                <path d="M16 8c0 3.314-1.578 6.235-4 7.906v2.603a.5.5 0 0 1-.757.429l-1.783-1.074A4.5 4.5 0 0 1 8 15.5a4.5 4.5 0 0 1-1.46-.206l-1.784 1.074A.5.5 0 0 1 2.5 16v-2.603C1.578 14.235 0 11.314 0 8c0-4.418 1.791-8 4-8s4 3.582 4 8 1.791 8 4 8 4-3.582 4-8z"/>
-            </svg>
-            Messages
-            <span id="message-badge" class="badge" style="display: none; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; margin-left: 0.5rem;">0</span>
-        </button>
-    </div>
-
-    <style>
-
-        #messages-content {
-    margin-top: -120px !important;
-}
-        .tab-button {
-            background: none;
-            border: none;
-            padding: 0.75rem 1rem;
-            color: var(--text-secondary);
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.2s;
-            position: relative;
-            bottom: -2px;
-        }
-
-        .tab-button:hover {
-            color: var(--accent);
-        }
-
-        .tab-button.active {
-            color: var(--accent);
-            border-bottom: 2px solid var(--accent);
-        }
-
-        .tab-content {
-            display: none;
-            padding:0;
-            margin:0;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .badge {
-            background: var(--danger);
-            color: white;
-            border-radius: 50%;
-            min-width: 20px;
-            height: 20px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-    </style>
-
-    <!-- Availability Tab -->
-    <div id="availability-content" class="tab-content active">
         <div class="dashboard-grid">
         <!-- Availability & Leave Form -->
         <div class="card">
@@ -1117,15 +1043,7 @@
     </div>
         </div>
     </div>
-    <!-- End Availability Tab -->
-
-    <!-- Messages Tab -->
-    <div id="messages-content" class="tab-content">
-        <div class="card">
-            {% include "adminpanel/partials/staff_messages_inbox.html" %}
-        </div>
-    </div>
-    <!-- End Messages Tab -->
+    <!-- End Availability Content -->
 
 </div>
 <!-- End availability-dashboard -->
@@ -1144,35 +1062,6 @@
 </div>
 
 <script>
-    // Tab switching functionality
-    function switchTab(tabName) {
-        // Debug logging
-        if (window.addDebug) window.addDebug(`Switching to ${tabName} tab`, 'info');
-        
-        // Hide all tabs
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.remove('active');
-        });
-
-        // Show selected tab
-        const contentId = `${tabName}-content`;
-        const buttonId = `${tabName}-tab`;
-        
-        const tabContent = document.getElementById(contentId);
-        const tabButton = document.getElementById(buttonId);
-        
-        if (tabContent) tabContent.classList.add('active');
-        if (tabButton) tabButton.classList.add('active');
-
-        // Load messages when switching to messages tab
-        if (tabName === 'messages' && window.loadConversations) {
-            window.loadConversations();
-        }
-    }
-
     // Calendar functionality
     let currentDate = new Date();
     let selectedDate = null;
