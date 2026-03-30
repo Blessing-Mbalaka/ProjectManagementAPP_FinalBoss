@@ -1,9 +1,13 @@
+
+
+
+
+
 :root {
-    --primary: #2E1A46;
-    --primary-light: #34495e;
-    --primary-dark: #2e7cc5;
-    /* --secondary: #F26522; */
-    --secondary-dark: #F26522;
+    --primary: #FFA500;
+    --primary-light: #FFB84D;
+    --primary-dark: #E59400;
+    --secondary-dark: #FFA500;
     --accent: #e74c3c;
     --success: #27ae60;
     --warning: #f39c12;
@@ -11,16 +15,40 @@
     --light: #ecf0f1;
     --dark: #2c3e50;
     --card-bg: rgb(255, 255, 255);
-    --content-bg: #904806;
+    --content-bg: #FFA500;
     --text-primary: #2c3e50;
     --text-secondary: #7f8c8d;
     --sidebar-bg: #ffffff84;
     --sidebar-text: #676666;
-    --sidebar-hover:#F26522;
+    --sidebar-hover: #FFA500;
     --sidebar-active: #ffffff60;
     --sidebar-border: #e5e7eb;
-  }
+}
 
+/* Button Styling - UJ Branding */
+.btn-primary {
+    background-color: #FFA500 !important;
+    border-color: #FFA500 !important;
+    transition: all 0.2s ease;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    background-color: #E59400 !important;
+    border-color: #E59400 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(255, 165, 0, 0.3);
+}
+
+.btn-danger {
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b !important;
+    border-color: #c0392b !important;
+}
   h2{
   text-align: center;
   text-decoration: solid;
@@ -211,7 +239,7 @@
   }
   
   /* Button Styling */
-  .btn-primary {
+  /* .btn-primary {
     background-color: rgb(75, 3, 81);
     border-color: var(--secondary) !important;
     transition: all 0.2s ease;
@@ -233,7 +261,7 @@
   .btn-danger:hover {
     background-color: #c03a2b50 !important;
     border-color: #c0392b !important;
-  }
+  } */
   
   /* Kanban Board */
   .kanban-container {

@@ -26,14 +26,48 @@
             z-index: 2000 !important;
         }
 
-        body {
-            background-image: url("{% static 'img/2.png' %}");
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       
+
+      
+
+     body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    position: relative; /* Required for the pseudo-element to align correctly */
+    overflow-x: hidden;
+}
+
+  .mega-container {
+            background-color: #ffffffdc;
+            margin-top: -24px;
         }
+
+body::before {
+    content: "";
+    position: fixed; /* Keeps it as a fixed background */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* Your original background properties move here */
+    background-image: url("{% static 'img/2.png' %}");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    
+    /* The blur effect */
+    filter: blur(5px); /* Adjust the pixels to increase/decrease blur */
+    -webkit-filter: blur(8px); /* For Safari support */
+    
+    z-index: -1; /* Pushes the image behind your text/content */
+    
+    /* Optional: Slight zoom to hide the blurred white edges */
+    transform: scale(1.1); 
+}
+
 
         .communique-wrapper {
             max-width: 1400px;
