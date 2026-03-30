@@ -59,13 +59,14 @@ body::before {
     background-attachment: fixed;
     
     /* The blur effect */
-    filter: blur(5px); /* Adjust the pixels to increase/decrease blur */
-    -webkit-filter: blur(8px); /* For Safari support */
+    filter: blur(1px); /* Adjust the pixels to increase/decrease blur */
+    -webkit-filter: blur(1px); /* For Safari support */
     
     z-index: -1; /* Pushes the image behind your text/content */
     
     /* Optional: Slight zoom to hide the blurred white edges */
     transform: scale(1.1); 
+    opacity:0.5;
 }
 
 

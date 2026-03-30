@@ -17,11 +17,19 @@
 <style>
 body {
     background: #f6f5f7;
+    /* background-image: url("{% static 'img/2.png' %}"); */
     background-image: url("{% static 'img/2.png' %}");
+background-color: rgba(255, 255, 255, 0.6); /* Color to blend with */
+background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
+
     background-size: cover;
     position: relative;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+     
 }
+
+
+
 .background-overlay {
     position: fixed;
     top: 0;
@@ -32,7 +40,8 @@ body {
     background-size: cover;
     background-position: center;
     z-index: -1;
-    opacity: 0.4;
+    opacity: 0.05;
+    filter: blur(80px);
 }
 .card {
     border-radius: 16px;
