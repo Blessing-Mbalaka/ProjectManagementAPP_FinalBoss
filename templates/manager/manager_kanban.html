@@ -25,6 +25,7 @@
 .list-group-item {
     border: none;
     border-bottom: 1px solid #f0f0f0;
+    padding: 15px;
 }
 .welcome-box {
     background: linear-gradient(to right, #ffffff, #f6f9fc);
@@ -45,6 +46,64 @@
 }
 .border-left-success {
     border-left: 5px solid #28a745 !important;
+}
+
+/* Task Card Styling */
+.task-card-title {
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.task-section {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.task-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.task-section-label {
+    display: inline-block;
+    font-weight: 600;
+    color: #7f8c8d;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 6px;
+    min-width: 70px;
+}
+
+.task-section-value {
+    display: inline-block;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+.badge-inline {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.task-actions {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    gap: 8px;
+}
+
+.task-actions .btn-sm {
+    font-size: 0.75rem !important;
+    padding: 5px 10px !important;
 }
 </style>
 
@@ -81,21 +140,46 @@
                             {% endif %}" 
                             draggable="true" data-task-id="{{ task.id }}">
                             <div>
-                                <strong>{{ task.title }}</strong>
-                                <div class="small text-muted">
-                                    {% if task.project %}<span class="badge bg-primary text-white me-1">🔖 {{ task.project.name }}</span>{% endif %}
-                                    {% if task.task_type %}<span class="badge bg-info text-dark me-1">{{ task.task_type }}</span>{% endif %}
-                                    {% if task.priority %}<span class="badge bg-danger me-1">{{ task.priority }}</span>{% endif %}
-                                    {% if task.due_date %}
-                                        {% if task.due_date|stringformat:"s" < today %}
-                                            <span class="badge badge-overdue">⚠️ Overdue: {{ task.due_date }}</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">📅 {{ task.due_date }}</span>
-                                        {% endif %}
-                                    {% endif %}
-                                    {% if task.progress %}<span class="badge bg-success">📊 {{ task.progress }}%</span>{% endif %}
+                                <div class="task-card-title">{{ task.title }}</div>
+                                
+                                {% if task.project %}
+                                <div class="task-section">
+                                    <span class="task-section-label">Project</span>
+                                    <span class="task-section-value badge-inline" style="background-color: #e3f2fd; color: #1976d2;">{{ task.project.name }}</span>
                                 </div>
-                                <div class="mt-2">
+                                {% endif %}
+
+                                {% if task.task_type %}
+                                <div class="task-section">
+                                    <span class="task-section-label">Type</span>
+                                    <span class="task-section-value">{{ task.task_type }}</span>
+                                </div>
+                                {% endif %}
+
+                                {% if task.priority %}
+                                <div class="task-section">
+                                    <span class="task-section-label">Priority</span>
+                                    <span class="task-section-value badge-inline" 
+                                        style="{% if task.priority == 'High' %}background-color: #ffebee; color: #c62828;{% elif task.priority == 'Medium' %}background-color: #fff9c4; color: #f57f17;{% else %}background-color: #e8f5e9; color: #388e3c;{% endif %}">
+                                        {{ task.priority }}</span>
+                                </div>
+                                {% endif %}
+
+                                {% if task.due_date %}
+                                <div class="task-section">
+                                    <span class="task-section-label">Due Date</span>
+                                    <span class="task-section-value{% if task.due_date|stringformat:'s' < today %} badge-inline" style="background-color: #ffebee; color: #c62828;">Overdue: {% endif %}{{ task.due_date }}</span>
+                                </div>
+                                {% endif %}
+
+                                {% if task.progress %}
+                                <div class="task-section">
+                                    <span class="task-section-label">Progress</span>
+                                    <span class="task-section-value">{{ task.progress }}%</span>
+                                </div>
+                                {% endif %}
+
+                                <div class="task-actions">
                                     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editTaskModal{{ task.id }}">Edit</button>
                                     <form method="POST" action="{% url 'manager_delete_task' task.id %}" class="d-inline">
                                         {% csrf_token %}
