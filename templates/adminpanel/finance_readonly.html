@@ -89,7 +89,7 @@
             <h5 class="mb-0"> Monthly Expenditure Tracker</h5>
             <div class="d-flex gap-2 align-items-center">
                 <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addExpenditureModal">
-                    ➕ Add Expenditure
+                     Add Expenditure
                 </button>
                 <select id="costCentreDropdown" class="form-select w-auto">
                     <option value="">Show All Cost Centres</option>
@@ -138,9 +138,9 @@
                             <td><strong>R <span class="total-amount">{{ record.amount|floatformat:2 }}</span></strong></td>
                             <td>R {{ record.opening_balance|floatformat:2 }}</td>
                             <td>
-                                <button class="btn btn-sm btn-warning edit-btn">✏️ Edit</button>
-                                <button class="btn btn-sm btn-success save-btn" style="display: none;">💾 Save</button>
-                                <button class="btn btn-sm btn-secondary cancel-btn" style="display: none;">❌ Cancel</button>
+                                <button class="btn btn-sm btn-warning edit-btn"> Edit</button>
+                                <button class="btn btn-sm btn-success save-btn" style="display: none;"> Save</button>
+                                <button class="btn btn-sm btn-secondary cancel-btn" style="display: none;"> Cancel</button>
                             </td>
                         </tr>
                     {% empty %}

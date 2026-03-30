@@ -121,7 +121,7 @@
                     {% endfor %}
                 </select>
                 <select id="categoryFilterDropdown" class="form-select w-auto">
-                    <option value="">Show All Categories</option>
+                    <option value="">Default</option>
                     {% for key, label in category_choices %}
                         <option value="{{ key }}">{{ label }}</option>
                     {% endfor %}
@@ -378,7 +378,7 @@
               <div class="row mt-2">
                 <div class="col-12">
                   <small class="text-muted">MOA After Deduction:</small>
-                  <div class="fw-bold expenditure-moa-remaining-display" style="color: rgb(238, 143, 20);">R 0.00</div>
+                  <div class="fw-bold expenditure-moa-remaining-display" style="color: rgba(240, 136, 1, 0.877);">R 0.00</div>
                 </div>
               </div>
             </div>
@@ -418,7 +418,7 @@
             <small class="form-text text-muted">Memorandum of Understanding - Total expected/budgeted amount.</small>
           </div>
           <div class="alert alert-info">
-            <small><strong>Note:</strong> Total Received is calculated from all payments. Use the "➕ Payment" button to add funds.</small>
+            <small><strong>Note:</strong> Total Received is calculated from all payments. Use the "Add Payment" button to add funds.</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -902,7 +902,7 @@ const pieChart = new Chart(pieCtx, {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">📋 Budget Forecasts Archive</h5>
+        <h5 class="modal-title"> Budget Forecasts Archive</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">

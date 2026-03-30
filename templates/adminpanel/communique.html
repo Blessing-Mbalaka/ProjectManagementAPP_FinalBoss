@@ -309,7 +309,7 @@ body::before {
         // Fall back to role-based dashboard
         const dashboardUrls = {
             'admin': '{% url "overview" %}',
-            'manager': '{% url "team_dashboard" %}',
+            'manager': '{% url "manager_dashboard" %}',
             'staff': '{% url "dashboard" %}',
             'student': '{% url "student_dashboard" %}',
             'financialadmin': '{% url "finance" %}',
