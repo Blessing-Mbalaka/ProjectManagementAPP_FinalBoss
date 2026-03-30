@@ -1,119 +1,217 @@
-<!-- Clock In/Out Widget -->
-<div class="card clock-widget m-3">
-    <div class="card-body text-center">
-        <h5 class="card-title mb-4">
-            <i class="bi bi-clock"></i> Time Tracking
-        </h5>
-        
-        <!-- Status Display -->
-        <div id="clockStatus" class="mb-4">
-            <div class="spinner-border text-primary d-none" id="clockSpinner" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <div id="statusText" style="font-size: 1.1rem; font-weight: 600;">
-                Loading...
-            </div>
-            <div id="timeDisplay" style="font-size: 0.9rem; color: #666; margin-top: 8px;">
-            </div>
+<!-- Clock In/Out Widget - Floating Button -->
+<div id="clockWidget" class="clock-widget-tiny">
+    <!-- Status indicator dot -->
+    <div id="clockStatusDot" class="clock-status-dot"></div>
+    
+    <!-- Main button -->
+    <button id="clockToggleBtn" class="btn-clock-tiny" onclick="toggleClockMenu()" title="Time Tracking">
+        <i class="bi bi-clock-history"></i>
+    </button>
+    
+    <!-- Mini tooltip menu -->
+    <div id="clockMenu" class="clock-menu d-none">
+        <div class="clock-menu-header">
+            <strong>Time Tracking</strong>
+            <button type="button" class="btn-close btn-sm" onclick="toggleClockMenu()"></button>
         </div>
         
-        <!-- Clock Buttons -->
-        <div class="d-grid gap-2">
-            <button id="clockInBtn" class="btn btn-success btn-lg d-none" onclick="clockIn()">
+        <div class="clock-menu-status">
+            <div id="statusText" style="font-weight: 600; margin: 8px 0;">Loading...</div>
+            <small id="timeDisplay" style="color: #666;"></small>
+        </div>
+        
+        <div class="clock-menu-hours">
+            <small class="text-muted">Today's Hours:</small>
+            <div id="todayHours" style="font-weight: bold; color: #333;">0h 0m</div>
+        </div>
+        
+        <div class="clock-menu-actions">
+            <button id="clockInBtn" class="btn btn-sm btn-success d-none w-100 mb-2" onclick="clockIn(); toggleClockMenu();">
                 <i class="bi bi-play-circle"></i> Clock In
             </button>
-            <button id="clockOutBtn" class="btn btn-danger btn-lg d-none" onclick="clockOut()">
+            <button id="clockOutBtn" class="btn btn-sm btn-danger d-none w-100" onclick="clockOut(); toggleClockMenu();">
                 <i class="bi bi-stop-circle"></i> Clock Out
             </button>
-        </div>
-        
-        <!-- Today's Hours -->
-        <div class="mt-4 p-3 bg-light rounded">
-            <small class="text-muted">Today's Hours</small>
-            <div id="todayHours" style="font-size: 1.3rem; font-weight: bold; color: #333;">
-                0h 0m
-            </div>
-        </div>
-        
-        <!-- Last Session -->
-        <div class="mt-3 p-3 bg-light rounded">
-            <small class="text-muted">Session Duration</small>
-            <div id="sessionDuration" style="font-size: 1rem; font-weight: bold; color: #555;">
-                -
-            </div>
         </div>
     </div>
 </div>
 
 <style>
-.clock-widget {
+/* Floating Clock Widget */
+.clock-widget-tiny {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 999;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.clock-status-dot {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #dc3545;
+    border: 2px solid white;
+    z-index: 1001;
+    animation: pulse 2s infinite;
+}
+
+.clock-status-dot.clocked-in {
+    background-color: #28a745;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.btn-clock-tiny {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F26522, #F57937);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(242, 101, 34, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    transition: all 0.3s ease;
+}
+
+.btn-clock-tiny:hover {
+    box-shadow: 0 6px 16px rgba(242, 101, 34, 0.4);
+    transform: scale(1.08);
+}
+
+.btn-clock-tiny:active {
+    transform: scale(0.96);
+}
+
+.clock-menu {
+    position: absolute;
+    bottom: 65px;
+    right: 0;
+    width: 280px;
+    background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    min-width: 280px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    padding: 12px;
+    animation: slideUp 0.2s ease;
+    border: 1px solid #e9ecef;
 }
 
-.clock-widget .btn-success:hover {
-    background-color: #218838;
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.clock-widget .btn-danger:hover {
-    background-color: #c82333;
+.clock-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 12px;
+}
+
+.clock-menu-status {
+    padding: 8px 0;
+    text-align: center;
+}
+
+.clock-menu-hours {
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin: 8px 0;
+    text-align: center;
+}
+
+.clock-menu-actions {
+    padding-top: 8px;
+    border-top: 1px solid #e9ecef;
+}
+
+@media (max-width: 576px) {
+    .clock-widget-tiny {
+        bottom: 10px;
+        right: 10px;
+    }
+    .btn-clock-tiny {
+        width: 45px;
+        height: 45px;
+        font-size: 1.1rem;
+    }
+    .clock-menu {
+        width: 240px;
+        right: -20px;
+    }
 }
 </style>
 
 <script>
-// Load initial status
+function toggleClockMenu() {
+    const menu = document.getElementById('clockMenu');
+    menu.classList.toggle('d-none');
+    if (!menu.classList.contains('d-none')) {
+        updateClockStatus();
+    }
+}
+
+document.addEventListener('click', function(event) {
+    const widget = document.getElementById('clockWidget');
+    const menu = document.getElementById('clockMenu');
+    if (widget && !widget.contains(event.target) && !menu.classList.contains('d-none')) {
+        menu.classList.add('d-none');
+    }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     updateClockStatus();
-    setInterval(updateClockStatus, 5000); // Refresh every 5 seconds
+    setInterval(updateClockStatus, 30000);
 });
 
 function updateClockStatus() {
     fetch('/adminpanel/clock-status/')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             const statusText = document.getElementById('statusText');
             const timeDisplay = document.getElementById('timeDisplay');
             const clockInBtn = document.getElementById('clockInBtn');
             const clockOutBtn = document.getElementById('clockOutBtn');
             const todayHours = document.getElementById('todayHours');
-            const sessionDuration = document.getElementById('sessionDuration');
+            const statusDot = document.getElementById('clockStatusDot');
             
             if (data.clocked_in) {
                 statusText.innerHTML = '<span style="color: #28a745;">✓ Clocked In</span>';
                 timeDisplay.innerHTML = `Since: ${data.clock_in_time}`;
                 clockInBtn.classList.add('d-none');
                 clockOutBtn.classList.remove('d-none');
-                sessionDuration.innerHTML = data.duration || '0h 0m';
+                statusDot.classList.add('clocked-in');
             } else {
                 statusText.innerHTML = '<span style="color: #999;">○ Clocked Out</span>';
                 timeDisplay.innerHTML = '';
                 clockInBtn.classList.remove('d-none');
                 clockOutBtn.classList.add('d-none');
-                sessionDuration.innerHTML = '-';
+                statusDot.classList.remove('clocked-in');
             }
-            
             todayHours.innerHTML = data.today_hours || '0h 0m';
-        })
-        .catch(error => {
-            console.error('Clock status error:', error);
-            // Show loading failed message
-            const statusText = document.getElementById('statusText');
-            if (statusText) {
-                statusText.innerHTML = '<span style="color: #dc3545;">✗ Status unavailable</span>';
-            }
         });
 }
 
 function clockIn() {
-    const btn = document.getElementById('clockInBtn');
-    btn.disabled = true;
-    
     fetch('/adminpanel/clock-in/', { 
         method: 'POST',
         headers: {
@@ -121,31 +219,16 @@ function clockIn() {
             'X-CSRFToken': getCookie('csrftoken')
         }
     })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 updateClockStatus();
-                showNotification('Clocked in successfully!', 'success');
-            } else {
-                showNotification(data.message || 'Failed to clock in', 'warning');
+                showNotification('Clocked in!', 'success');
             }
-        })
-        .catch(error => {
-            console.error('Clock in error:', error);
-            showNotification('Error clocking in: ' + error.message, 'danger');
-        })
-        .finally(() => btn.disabled = false);
+        });
 }
 
 function clockOut() {
-    const btn = document.getElementById('clockOutBtn');
-    btn.disabled = true;
-    
     fetch('/adminpanel/clock-out/', { 
         method: 'POST',
         headers: {
@@ -153,33 +236,15 @@ function clockOut() {
             'X-CSRFToken': getCookie('csrftoken')
         }
     })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 updateClockStatus();
-                showNotification('Clocked out successfully! ' + (data.duration || ''), 'success');
-            } else {
-                showNotification(data.message || 'Failed to clock out', 'warning');
+                showNotification('Clocked out!', 'success');
             }
-        })
-        .catch(error => {
-            console.error('Clock out error:', error);
-            showNotification('Error clocking out: ' + error.message, 'danger');
-        })
-        .finally(() => btn.disabled = false);
+        });
 }
 
-function showNotification(message, type) {
-    // Simple notification - customize based on your alert system
-    alert(message);
-}
-
-// Helper function to get CSRF token from cookies
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -193,5 +258,14 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+function showNotification(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 10000; min-width: 300px;';
+    alert.textContent = message;
+    document.body.appendChild(alert);
+    setTimeout(() => alert.remove(), 3000);
 }
 </script>
