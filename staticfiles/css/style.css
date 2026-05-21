@@ -144,6 +144,53 @@ body {
     font-size: 1.1rem;
 }
 
+.sidebar-dropdown {
+    margin: 0;
+}
+
+.sidebar-dropdown summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.sidebar-dropdown summary::-webkit-details-marker {
+    display: none;
+}
+
+.sidebar-dropdown-toggle {
+    justify-content: flex-start;
+}
+
+.sidebar-dropdown-chevron {
+    margin-left: auto;
+    margin-right: 0 !important;
+    font-size: 0.85rem !important;
+    transition: transform 0.2s ease;
+}
+
+.sidebar-dropdown[open] .sidebar-dropdown-chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar-submenu {
+    padding: 4px 0 4px 12px;
+}
+
+.sidebar-submenu .nav-link {
+    padding: 8px 20px;
+    font-size: 0.92rem;
+    border-left-color: transparent;
+}
+
+.sidebar-submenu .nav-link i {
+    font-size: 1rem;
+}
+
+.sidebar.collapsed .sidebar-dropdown-chevron,
+.sidebar.collapsed .sidebar-submenu {
+    display: none;
+}
+
 /* Dropdown Styling */
 .dropdown-menu {
     border: none;
@@ -445,7 +492,7 @@ body {
 }
 
 /* Buttons */
-button,
+/* button,
 .btn {
     font-size: 0.9rem !important;
     padding: 8px 15px !important;
@@ -466,16 +513,93 @@ button,
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Buttons - UJ Branding Palette */
+button,
+.btn {
+    font-size: 0.9rem !important;
+    padding: 8px 15px !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Primary - Brand Orange */
+.btn-primary {
+    background-color: #FFA500 !important;
+    border-color: #FFA500 !important;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    background-color: #E59400 !important;
+    border-color: #E59400 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(255, 165, 0, 0.3);
+}
+
+/* Secondary */
 .btn-secondary {
     background-color: #95a5a6 !important;
     border-color: #95a5a6 !important;
+    color: white !important;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d !important;
+}
+
+/* Info - Light Blue */
+.btn-info {
+    background-color: #3498db !important;
+    border-color: #3498db !important;
+    color: white !important;
+}
+
+.btn-info:hover {
+    background-color: #2980b9 !important;
+    border-color: #2980b9 !important;
+}
+
+/* Warning - Amber */
+.btn-warning {
+    background-color: #f39c12 !important;
+    border-color: #f39c12 !important;
+    color: white !important;
+}
+
+.btn-warning:hover {
+    background-color: #e67e22 !important;
+    border-color: #e67e22 !important;
+}
+
+/* Success - Green */
+.btn-success {
+    background-color: #27ae60 !important;
+    border-color: #27ae60 !important;
+    color: white !important;
+}
+
+.btn-success:hover {
+    background-color: #229954 !important;
+    border-color: #229954 !important;
+}
+
+/* Danger - Red */
+.btn-danger {
+    background-color: #e74c3c !important;
+    border-color: #e74c3c !important;
+    color: white !important;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b !important;
+    border-color: #c0392b !important;
 }
 
 .btn-sm {
     padding: 6px 12px !important;
     font-size: 0.85rem !important;
 }
-
 /* Task Input */
 .task-input-container {
     display: flex;

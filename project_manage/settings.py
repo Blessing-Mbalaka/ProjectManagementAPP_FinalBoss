@@ -1,3 +1,5 @@
+# Use non-manifest storage to avoid errors on missing static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 """
 Django settings for project_manage project.
 
