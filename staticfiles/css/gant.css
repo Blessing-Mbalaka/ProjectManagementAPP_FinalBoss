@@ -23,7 +23,7 @@
         }
 
         body {
-            background-image: url(./images/2.png);
+            background-image: url("../img/2.png");
             color: var(--text-primary);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -46,7 +46,7 @@
             display: flex;
             flex-direction: column;
             transition: all 0.3s ease;
-            z-index: 1000;
+            z-index: 999;
             border-right: 1px solid var(--sidebar-border);
         }
 
@@ -207,7 +207,7 @@
 
         /* Welcome Box */
         .welcome-box {
-            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(118, 89, 117, 0.815), rgb(153, 149, 154), rgba(115, 112, 115, 0.858), rgb(71, 0, 89)), url('./images/freepik__upload__83338.png');
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(118, 89, 117, 0.815), rgb(153, 149, 154), rgba(115, 112, 115, 0.858), rgb(71, 0, 89)), url('../img/freepik__upload__83338.png');
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             padding: 10px;
             margin-bottom: 6px;
@@ -296,7 +296,7 @@
             height: 320px;
             background-color: #e5e7eb17;
             margin-top: -30px;
-            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(254, 254, 254, 0.92), rgb(254, 254, 254)), url('./images/freepik__upload__83338.png');
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(254, 254, 254, 0.92), rgb(254, 254, 254)), url('../img/freepik__upload__83338.png');
             display: inline-block;
             background-repeat: no-repeat;
             background-size: cover;
@@ -933,7 +933,17 @@
             background-color: rgba(0, 0, 0, 0.5);
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 1100;
+            pointer-events: auto;
+        }
+
+        .modal.show {
+            display: flex !important;
+            pointer-events: auto;
+        }
+
+        .modal-dialog {
+            pointer-events: auto;
         }
 
         .modal-content {
@@ -943,6 +953,19 @@
             width: 100%;
             max-width: 400px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            pointer-events: auto;
+        }
+
+        .modal-body {
+            margin-bottom: 25px;
+            pointer-events: auto;
+        }
+
+        .modal-body input,
+        .modal-body select,
+        .modal-body textarea,
+        .modal-body button {
+            pointer-events: auto !important;
         }
 
         .modal-header {
@@ -1031,7 +1054,7 @@
         }
 
         body {
-            background-image: url(./images/2.png);
+            background-image: url("../img/2.png");
             color: var(--text-primary);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -1054,7 +1077,7 @@
             display: flex;
             flex-direction: column;
             transition: all 0.3s ease;
-            z-index: 1000;
+            z-index: 999;
             border-right: 1px solid var(--sidebar-border);
         }
 
@@ -1215,7 +1238,7 @@
 
         /* Welcome Box */
         .welcome-box {
-            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(118, 89, 117, 0.815), rgb(153, 149, 154), rgba(115, 112, 115, 0.858), rgb(71, 0, 89)), url('./images/freepik__upload__83338.png');
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(118, 89, 117, 0.815), rgb(153, 149, 154), rgba(115, 112, 115, 0.858), rgb(71, 0, 89)), url('../img/freepik__upload__83338.png');
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             padding: 10px;
             margin-bottom: 6px;
@@ -1304,7 +1327,7 @@
             height: 320px;
             background-color: #e5e7eb17;
             margin-top: -30px;
-            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(254, 254, 254, 0.92), rgb(254, 254, 254)), url('./images/freepik__upload__83338.png');
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(254, 254, 254, 0.92), rgb(254, 254, 254)), url('../img/freepik__upload__83338.png');
             display: inline-block;
             background-repeat: no-repeat;
             background-size: cover;

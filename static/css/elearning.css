@@ -35,7 +35,7 @@
         }
         
         body {
-            background-image: url(./images/2.png);
+            background-image: url("../img/2.png");
             color: var(--text-primary);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -211,7 +211,7 @@
 
         /* Welcome Box from Code 1 */
         .welcome-box {
-            background-image: linear-gradient(to right, rgb(255, 255, 255), rgb(254, 254, 254), rgb(254, 254, 254), rgba(254, 254, 254, 0.92), rgb(254, 254, 254), rgba(254, 254, 254, 0.92), rgb(254, 254, 254), rgba(254, 254, 254, 0.92), rgba(254, 254, 254, 0.692)), url('./images/freepik__upload__83338.png');
+            background-image: linear-gradient(to right, rgb(255, 255, 255), rgb(254, 254, 254), rgb(254, 254, 254), rgba(254, 254, 254, 0.92), rgb(254, 254, 254), rgba(254, 254, 254, 0.92), rgb(254, 254, 254), rgba(254, 254, 254, 0.92), rgba(254, 254, 254, 0.692)), url('../img/freepik__upload__83338.png');
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             padding: 10px;
             margin-bottom: 6px;

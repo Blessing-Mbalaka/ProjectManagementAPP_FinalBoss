@@ -33,7 +33,7 @@
 
 .card-body {
   /* margin-top: -25px; */
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(118, 89, 117, 0.815), rgb(153, 149, 154), rgba(115, 112, 115, 0.858), rgb(71, 0, 89)), url('./images/freepik__upload__83338.png');
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.968), rgba(118, 89, 117, 0.815), rgb(153, 149, 154), rgba(115, 112, 115, 0.858), rgb(71, 0, 89)), url('../img/freepik__upload__83338.png');
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
@@ -88,7 +88,7 @@ margin-left: 80px;
 
   body {
     /* background-color: var(--content-bg); */
-    background-image: url(./images/2.png);
+    background-image: url("../img/2.png");
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: var(--text-primary);
   }
@@ -242,7 +242,7 @@ margin-left: 80px;
     gap: 5px;
     padding: 5px;
     overflow-x: auto;
-    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.913), rgb(255, 255, 255), rgb(255, 255, 255), rgba(255, 255, 255, 0.607), rgb(255, 255, 255)), url('./images/freepik__upload__83338.png');
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.913), rgb(255, 255, 255), rgb(255, 255, 255), rgba(255, 255, 255, 0.607), rgb(255, 255, 255)), url('../img/freepik__upload__83338.png');
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;

@@ -33,7 +33,7 @@
         }
 
         body {
-            background-image: url("{% static 'img/2.png' %}");
+            background-image: url("../img/2.png");
             color: var(--text-primary);
             background-size: cover;
             background-repeat: no-repeat;
@@ -208,7 +208,7 @@
                     rgb(255, 255, 255),
                     rgb(253, 253, 253),
                     rgba(244, 244, 244, 0.858)),
-                url("{% static 'img/freepik__upload__83338.png' %}");
+                url("../img/freepik__upload__83338.png");
                 background-size: cover;
                 background-repeat: no-repeat;
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
