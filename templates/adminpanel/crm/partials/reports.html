@@ -1,0 +1,55 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-1">Reporting Aggregation</h5>
+    <div class="text-muted small">Aggregated CRM, financial, engagement, staffing, alert, and publication data for executive reporting.</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'crm_report_export' 'weekly' %}{% if selected_centre %}?centre={{ selected_centre.id }}{% endif %}" class="btn btn-sm btn-outline-primary">Weekly Word Report</a>
+    <a href="{% url 'crm_report_export' 'annual' %}{% if selected_centre %}?centre={{ selected_centre.id }}{% endif %}" class="btn btn-sm btn-primary">Annual Word Report</a>
+  </div>
+</div>
+
+<div class="crm-chart-grid mb-4">
+  <div class="crm-chart-card"><h6>Revenue by Centre</h6><canvas id="crmRevenueChart"></canvas></div>
+  <div class="crm-chart-card"><h6>Pipeline by Centre</h6><canvas id="crmPipelineChart"></canvas></div>
+  <div class="crm-chart-card"><h6>Engagement Status</h6><canvas id="crmEngagementChart"></canvas></div>
+  <div class="crm-chart-card"><h6>Clients by Centre</h6><canvas id="crmClientChart"></canvas></div>
+  <div class="crm-chart-card"><h6>Staff Allocation</h6><canvas id="crmStaffChart"></canvas></div>
+  <div class="crm-chart-card"><h6>Publications by Type</h6><canvas id="crmPublicationChart"></canvas></div>
+  <div class="crm-chart-card"><h6>Alerts by Type</h6><canvas id="crmAlertChart"></canvas></div>
+  <div class="crm-chart-card"><h6>Centre Performance</h6><canvas id="crmPerformanceChart"></canvas></div>
+</div>
+
+<h6 class="mb-3">Publication Output</h6>
+<div class="table-responsive">
+  <table class="table table-hover align-middle crm-table">
+    <thead class="table-light">
+      <tr>
+        <th>Type</th>
+        <th>Title</th>
+        <th>Authors</th>
+        <th>Status</th>
+        <th>Owner</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in publications %}
+      <tr>
+        <td>{{ item.type }}</td>
+        <td><strong>{{ item.title }}</strong></td>
+        <td>{{ item.authors|default:"-" }}</td>
+        <td>{{ item.status }}</td>
+        <td>
+          {% if item.owner %}
+            {{ item.owner.get_full_name|default:item.owner.username }}
+          {% else %}
+            <span class="text-muted">Unassigned</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted">No publication records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ report_title }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #222; }
+    h1 { color: #4b0351; border-bottom: 3px solid #F26522; padding-bottom: 8px; }
+    h2 { color: #4b0351; margin-top: 28px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0 20px; }
+    th, td { border: 1px solid #cccccc; padding: 7px; font-size: 10pt; }
+    th { background: #f2f2f2; text-align: left; }
+    .metric { display: inline-block; width: 23%; padding: 10px; border: 1px solid #ddd; margin-right: 1%; vertical-align: top; }
+    .muted { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>{{ report_title }}</h1>
+  <p class="muted">Generated {{ generated_at|date:"Y-m-d H:i" }}{% if selected_centre %} for {{ selected_centre.name }}{% else %} for all research centres{% endif %}.</p>
+
+  <h2>Executive Summary</h2>
+  <div class="metric"><strong>Clients</strong><br>{{ client_count }}</div>
+  <div class="metric"><strong>Active Engagements</strong><br>{{ active_engagement_count }}</div>
+  <div class="metric"><strong>Revenue</strong><br>R {{ total_revenue|floatformat:2 }}</div>
+  <div class="metric"><strong>Pipeline</strong><br>R {{ pipeline_value|floatformat:2 }}</div>
+
+  <h2>Centre Performance</h2>
+  <table>
+    <tr><th>Centre</th><th>Director</th><th>Staff</th><th>Clients</th><th>Engagements</th><th>Revenue</th><th>Estimated Profit</th><th>KPI</th></tr>
+    {% for centre in centres %}
+    <tr>
+      <td>{{ centre.name }}</td>
+      <td>{% if centre.director %}{{ centre.director.get_full_name|default:centre.director.username }}{% else %}Unassigned{% endif %}</td>
+      <td>{{ centre.staff_count }}</td>
+      <td>{{ centre.client_count }}</td>
+      <td>{{ centre.engagement_count }}</td>
+      <td>R {{ centre.revenue|floatformat:2 }}</td>
+      <td>R {{ centre.estimated_profit|floatformat:2 }}</td>
+      <td>{{ centre.avg_progress }}%</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>Client and Stakeholder Summary</h2>
+  <table>
+    <tr><th>Client</th><th>Code</th><th>Centre</th><th>Revenue</th><th>Spend</th><th>Pipeline</th></tr>
+    {% for client in clients %}
+    <tr>
+      <td>{{ client.name }}</td>
+      <td>{{ client.code }}</td>
+      <td>{{ client.sector }}</td>
+      <td>R {{ client.total_received|floatformat:2 }}</td>
+      <td>R {{ client.total_spent|floatformat:2 }}</td>
+      <td>R {{ client.pipeline_value|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>Engagement Pipeline</h2>
+  <table>
+    <tr><th>Engagement</th><th>Centre</th><th>Stage</th><th>Lead</th><th>Due Date</th><th>Progress</th></tr>
+    {% for item in engagements %}
+    <tr>
+      <td>{{ item.name }}</td>
+      <td>{{ item.client }}</td>
+      <td>{{ item.stage }}</td>
+      <td>{% if item.lead %}{{ item.lead.get_full_name|default:item.lead.username }}{% else %}Unassigned{% endif %}</td>
+      <td>{{ item.due_date|default:"Not set" }}</td>
+      <td>{{ item.progress }}%</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>Publication Output</h2>
+  <table>
+    <tr><th>Type</th><th>Title</th><th>Authors</th><th>Status</th><th>Owner</th></tr>
+    {% for item in publications %}
+    <tr>
+      <td>{{ item.type }}</td>
+      <td>{{ item.title }}</td>
+      <td>{{ item.authors|default:"-" }}</td>
+      <td>{{ item.status }}</td>
+      <td>{% if item.owner %}{{ item.owner.get_full_name|default:item.owner.username }}{% else %}Unassigned{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>Alerts and Risks</h2>
+  <table>
+    <tr><th>Severity</th><th>Type</th><th>Message</th><th>Owner</th></tr>
+    {% for alert in alerts %}
+    <tr>
+      <td>{{ alert.level }}</td>
+      <td>{{ alert.type }}</td>
+      <td>{{ alert.message }}</td>
+      <td>{% if alert.owner %}{{ alert.owner.get_full_name|default:alert.owner.username }}{% else %}Unassigned{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No alerts for this period.</td></tr>
+    {% endfor %}
+  </table>
+
+  <h2>Recommendations</h2>
+  <p>Review high-risk alerts, follow up on dormant engagements, resolve Oracle mismatches, and confirm ownership for unassigned clients or centres.</p>
+</body>
+</html>

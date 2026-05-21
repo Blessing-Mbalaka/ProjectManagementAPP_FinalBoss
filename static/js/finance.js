@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function populateExpenditureTable(expenditures) {
         expenditureTable.innerHTML = "";
         if (expenditures.length === 0) {
-            expenditureTable.innerHTML = `<tr><td colspan="${canEditFinance ? 14 : 13}" class="text-center">No expenditures recorded.</td></tr>`;
+            expenditureTable.innerHTML = `<tr><td colspan="${canEditFinance ? 15 : 14}" class="text-center">No expenditures recorded.</td></tr>`;
             return;
         }
 
@@ -183,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function () {
             expenditureTable.innerHTML += `
                 <tr data-cost-centre="${record.cost_centre_id || ''}" data-category="${record.category}" data-amount="${record.amount}" data-oracle="${oracleValue === null ? '' : oracleValue}">
                     <td>${record.month}</td>
+                    <td>${record.expense_id || ''}</td>
                     <td>${record.cost_centre_name || ''}</td>
                     <td>${record.name}</td>
                     <td>${categories['Salary']}</td>

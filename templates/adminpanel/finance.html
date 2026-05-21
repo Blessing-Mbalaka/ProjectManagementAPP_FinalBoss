@@ -29,6 +29,9 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"> Cost Centres Overview</h5>
             <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-success" href="{% url 'download_finance_summary_excel' %}">
+                    <i class="bi bi-download"></i> Download Excel
+                </a>
                 {% if can_add_cost_centre %}
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCostCentreModal">
                      Add Cost Centre
@@ -144,6 +147,12 @@
                     {% endfor %}
                 </select>
                 {% if can_edit_finance %}
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'download_expense_import_template' %}">
+                    <i class="bi bi-file-earmark-excel"></i> Template
+                </a>
+                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#uploadExpensesModal">
+                    <i class="bi bi-upload"></i> Upload Excel
+                </button>
                 <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addExpenditureModal">
                      Add Expenditure
                 </button>
@@ -155,6 +164,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Month</th>
+                        <th>Expense ID</th>
                         <th>Cost Centre</th>
                         <th>Name & Surname</th>
                         <th data-category-col="Salary">Salary</th>
@@ -176,6 +186,7 @@
                     {% for record in all_expenditures %}
                         <tr data-cost-centre="{{ record.cost_centre_id }}" data-category="{{ record.category }}" data-amount="{{ record.amount }}" data-oracle="{{ record.oracle_balance|default_if_none:'' }}">
                             <td>{{ record.month }}</td>
+                            <td>{{ record.expense_id|default:"" }}</td>
                             <td>{{ record.cost_centre.name }}</td>
                             <td>{{ record.name }}</td>
                             <td data-category-cell="Salary">{% if record.category == 'Salary' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
@@ -217,7 +228,7 @@
                             {% endif %}
                         </tr>
                     {% empty %}
-                        <tr><td colspan="{% if can_edit_finance %}14{% else %}13{% endif %}" class="text-center text-muted">No expenditures recorded yet.</td></tr>
+                        <tr><td colspan="{% if can_edit_finance %}15{% else %}14{% endif %}" class="text-center text-muted">No expenditures recorded yet.</td></tr>
                     {% endfor %}
                 </tbody>
 
@@ -361,6 +372,35 @@
     </div>
 </div>
 
+<!-- Upload Expenses Modal -->
+<div class="modal fade" id="uploadExpensesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'upload_expense_excel' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Upload Expenses from Excel</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Excel File</label>
+            <input type="file" name="expense_file" class="form-control" accept=".xlsx" required>
+            <small class="form-text text-muted">Use the template. Each row must have a unique expense_id and an exact cost centre name or code.</small>
+          </div>
+          <div class="alert alert-info mb-0">
+            Duplicate expense_id values are skipped. Rows with cost centre name mismatch are reported and not imported.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <a href="{% url 'download_expense_import_template' %}" class="btn btn-outline-primary">Download Template</a>
+          <button type="submit" class="btn btn-success">Upload Expenses</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Add Expenditure Modal -->
 <div class="modal fade" id="addExpenditureModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
@@ -372,6 +412,11 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Expense ID</label>
+            <input type="text" name="expense_id" class="form-control" placeholder="Optional for manual entries">
+            <small class="form-text text-muted">Use this when you want to prevent duplicate imported or manually tracked expenses.</small>
+          </div>
           <div class="mb-3">
             <label class="form-label">Cost Centre</label>
             <select name="cost_centre_id" class="form-select expenditure-cost-centre" required>
@@ -594,6 +639,10 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
+            <label>Expense ID</label>
+            <input type="text" name="expense_id" class="form-control" value="{{ record.expense_id|default:'' }}" placeholder="Optional duplicate control ID">
+          </div>
+          <div class="mb-3">
             <label>Date</label>
             <input type="date" name="month" class="form-control" value="{{ record.month }}" required>
           </div>
@@ -777,7 +826,7 @@
     function populateExpenditureTable(expenditures) {
         expenditureTable.innerHTML = "";
         if (expenditures.length === 0) {
-            expenditureTable.innerHTML = `<tr><td colspan="{% if can_edit_finance %}14{% else %}13{% endif %}" class="text-center">No expenditures recorded.</td></tr>`;
+            expenditureTable.innerHTML = `<tr><td colspan="{% if can_edit_finance %}15{% else %}14{% endif %}" class="text-center">No expenditures recorded.</td></tr>`;
             return;
         }
 
@@ -810,6 +859,7 @@
             expenditureTable.innerHTML += `
                 <tr data-cost-centre="${record.cost_centre_id || ''}" data-category="${record.category}" data-amount="${record.amount}" data-oracle="${oracleValue === null ? '' : oracleValue}">
                     <td>${record.month}</td>
+                    <td>${record.expense_id || ''}</td>
                     <td>${record.cost_centre_name || ''}</td>
                     <td>${record.name}</td>
                     <td>${categories['Salary']}</td>

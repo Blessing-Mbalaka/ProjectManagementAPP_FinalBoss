@@ -1,0 +1,42 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-1">Financials</h5>
+    <div class="text-muted small">Revenue, pipeline valuation, estimated profit, and top client analysis from finance records.</div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="border rounded p-3"><span class="text-muted small">Revenue</span><strong class="d-block">R {{ total_revenue|floatformat:2 }}</strong></div></div>
+  <div class="col-md-3"><div class="border rounded p-3"><span class="text-muted small">Spend</span><strong class="d-block">R {{ total_spent|floatformat:2 }}</strong></div></div>
+  <div class="col-md-3"><div class="border rounded p-3"><span class="text-muted small">Estimated Profit</span><strong class="d-block">R {{ estimated_profit|floatformat:2 }}</strong></div></div>
+  <div class="col-md-3"><div class="border rounded p-3"><span class="text-muted small">Pipeline</span><strong class="d-block">R {{ pipeline_value|floatformat:2 }}</strong></div></div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle crm-table">
+    <thead class="table-light">
+      <tr>
+        <th>Client</th>
+        <th>Centre</th>
+        <th>Revenue</th>
+        <th>Spend</th>
+        <th>Estimated Profit</th>
+        <th>Pipeline Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for client in clients %}
+      <tr>
+        <td><strong>{{ client.name }}</strong></td>
+        <td>{{ client.sector }}</td>
+        <td>R {{ client.estimated_profit|floatformat:2 }}</td>
+        <td>R {{ client.total_spent|floatformat:2 }}</td>
+        <td>R {{ client.total_received|floatformat:2 }}</td>
+        <td>R {{ client.pipeline_value|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted">No financial records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,43 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-1">Clients</h5>
+    <div class="text-muted small">Cost centres are used as client/stakeholder records for this CRM view.</div>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle crm-table">
+    <thead class="table-light">
+      <tr>
+        <th>Client</th>
+        <th>Code</th>
+        <th>Research Centre</th>
+        <th>Relationship Owner</th>
+        <th>Visibility</th>
+        <th>Revenue</th>
+        <th>Pipeline</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for client in clients %}
+      <tr>
+        <td><strong>{{ client.name }}</strong></td>
+        <td>{{ client.code }}</td>
+        <td>{{ client.sector }}</td>
+        <td>
+          {% if client.lead %}
+            {{ client.lead.get_full_name|default:client.lead.username }}
+          {% else %}
+            <span class="text-muted">Unassigned</span>
+          {% endif %}
+        </td>
+        <td><span class="badge bg-secondary">{{ client.visibility }}</span></td>
+        <td>R {{ client.total_received|floatformat:2 }}</td>
+        <td>R {{ client.pipeline_value|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center text-muted">No clients found for this centre.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

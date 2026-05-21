@@ -144,6 +144,53 @@ body {
     font-size: 1.1rem;
 }
 
+.sidebar-dropdown {
+    margin: 0;
+}
+
+.sidebar-dropdown summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.sidebar-dropdown summary::-webkit-details-marker {
+    display: none;
+}
+
+.sidebar-dropdown-toggle {
+    justify-content: flex-start;
+}
+
+.sidebar-dropdown-chevron {
+    margin-left: auto;
+    margin-right: 0 !important;
+    font-size: 0.85rem !important;
+    transition: transform 0.2s ease;
+}
+
+.sidebar-dropdown[open] .sidebar-dropdown-chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar-submenu {
+    padding: 4px 0 4px 12px;
+}
+
+.sidebar-submenu .nav-link {
+    padding: 8px 20px;
+    font-size: 0.92rem;
+    border-left-color: transparent;
+}
+
+.sidebar-submenu .nav-link i {
+    font-size: 1rem;
+}
+
+.sidebar.collapsed .sidebar-dropdown-chevron,
+.sidebar.collapsed .sidebar-submenu {
+    display: none;
+}
+
 /* Dropdown Styling */
 .dropdown-menu {
     border: none;

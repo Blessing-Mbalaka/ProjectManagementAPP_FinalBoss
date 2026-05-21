@@ -141,6 +141,7 @@ class Expenditure(models.Model):
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     closing_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     oracle_balance = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    expense_id = models.CharField(max_length=100, unique=True, null=True, blank=True, db_index=True, help_text="External/import identifier used to prevent duplicate uploaded expenses")
 
     @property
     def months_count(self):

@@ -1,0 +1,48 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-1">Engagements</h5>
+    <div class="text-muted small">Existing projects are treated as engagement records with lifecycle, lead, dates, and team allocation.</div>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle crm-table">
+    <thead class="table-light">
+      <tr>
+        <th>Engagement</th>
+        <th>Client/Centre</th>
+        <th>Stage</th>
+        <th>Lead</th>
+        <th>Due Date</th>
+        <th>Team</th>
+        <th>Progress</th>
+        <th>Last Contact</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for engagement in engagements %}
+      <tr>
+        <td><strong>{{ engagement.name }}</strong></td>
+        <td>{{ engagement.client }}</td>
+        <td><span class="badge bg-info text-dark">{{ engagement.stage }}</span></td>
+        <td>{{ engagement.lead.get_full_name|default:engagement.lead.username }}</td>
+        <td>
+          {% if engagement.due_date %}
+            <span class="{% if engagement.is_overdue %}text-danger fw-bold{% endif %}">{{ engagement.due_date }}</span>
+          {% else %}
+            <span class="text-muted">Not set</span>
+          {% endif %}
+        </td>
+        <td>{{ engagement.team_count }}</td>
+        <td>
+          <div class="crm-progress"><div style="width: {{ engagement.progress }}%;"></div></div>
+          <small>{{ engagement.progress }}%</small>
+        </td>
+        <td>{{ engagement.last_contact|date:"Y-m-d" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center text-muted">No engagements found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

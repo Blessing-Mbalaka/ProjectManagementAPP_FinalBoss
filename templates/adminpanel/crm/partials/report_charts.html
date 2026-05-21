@@ -1,0 +1,41 @@
+{{ crm_chart_data|json_script:"crm-chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const chartData = JSON.parse(document.getElementById('crm-chart-data').textContent);
+    const palette = ['#F26522', '#4b0351', '#3498db', '#27ae60', '#f39c12', '#6c757d', '#dc3545'];
+
+    function drawChart(id, payload, type) {
+      const element = document.getElementById(id);
+      if (!element) return;
+      new Chart(element, {
+        type: type || 'bar',
+        data: {
+          labels: payload.labels,
+          datasets: [{
+            label: payload.label,
+            data: payload.data,
+            backgroundColor: palette,
+            borderColor: '#ffffff',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: type === 'doughnut' } },
+          scales: type === 'doughnut' ? {} : { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    drawChart('crmRevenueChart', chartData.revenueByCentre, 'bar');
+    drawChart('crmPipelineChart', chartData.pipelineByCentre, 'bar');
+    drawChart('crmEngagementChart', chartData.engagementStatus, 'doughnut');
+    drawChart('crmClientChart', chartData.clientCountByCentre, 'bar');
+    drawChart('crmStaffChart', chartData.staffByCentre, 'bar');
+    drawChart('crmPublicationChart', chartData.publicationsByType, 'doughnut');
+    drawChart('crmAlertChart', chartData.alertsByType, 'doughnut');
+    drawChart('crmPerformanceChart', chartData.centrePerformance, 'bar');
+  });
+</script>

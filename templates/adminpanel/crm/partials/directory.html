@@ -1,0 +1,67 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-1">Engagement Directory</h5>
+    <div class="text-muted small">Institutional transparency layer for shared engagements. Sensitive financial values are masked here.</div>
+  </div>
+</div>
+
+<div class="table-responsive mb-4">
+  <table class="table table-hover align-middle crm-table">
+    <thead class="table-light">
+      <tr>
+        <th>Engagement</th>
+        <th>Centre</th>
+        <th>Lead</th>
+        <th>Status</th>
+        <th>Visibility</th>
+        <th>Conflict Signal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in directory_engagements %}
+      <tr>
+        <td><strong>{{ item.name }}</strong></td>
+        <td>{{ item.client }}</td>
+        <td>{{ item.lead.get_full_name|default:item.lead.username }}</td>
+        <td>{{ item.stage }}</td>
+        <td><span class="badge bg-secondary">{{ item.visibility }}</span></td>
+        <td>
+          {% if item.is_overdue %}
+            <span class="badge bg-warning text-dark">Review</span>
+          {% else %}
+            <span class="badge bg-success">Clear</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted">No directory records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h6 class="mb-3">Staff Directory</h6>
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle crm-table">
+    <thead class="table-light">
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role Classification</th>
+        <th>Centre Allocation</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for person in staff_directory %}
+      <tr>
+        <td>{{ person.get_full_name|default:person.username }}</td>
+        <td>{{ person.email|default:"-" }}</td>
+        <td>{{ person.get_role_display }}</td>
+        <td>{{ person.research_centre.name|default:"Unassigned" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-center text-muted">No staff found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

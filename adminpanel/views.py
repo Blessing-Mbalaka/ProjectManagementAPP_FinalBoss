@@ -43,8 +43,12 @@ import csv
 from datetime import datetime, timedelta
 import io
 import os
+import re
+import zipfile
+from xml.etree import ElementTree
 
 from .media_models import SystemMedia
+from .crm_logic import build_context as build_crm_logic_context
 
 
 def safe_decimal(value, default=Decimal('0.00')):
@@ -73,10 +77,158 @@ def optional_decimal(value):
     return safe_decimal(value)
 
 
+def normalize_header(value):
+    return re.sub(r'[^a-z0-9]+', '_', str(value or '').strip().lower()).strip('_')
+
+
+def get_cell_text(cell, shared_strings):
+    value = cell.find('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}v')
+    if value is None:
+        inline = cell.find('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}is')
+        text = inline.find('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}t') if inline is not None else None
+        return text.text if text is not None else ''
+
+    raw_value = value.text or ''
+    if cell.attrib.get('t') == 's':
+        try:
+            return shared_strings[int(raw_value)]
+        except (IndexError, ValueError):
+            return ''
+    return raw_value
+
+
+def xlsx_column_index(cell_ref):
+    letters = re.sub(r'[^A-Z]', '', cell_ref.upper())
+    index = 0
+    for letter in letters:
+        index = index * 26 + (ord(letter) - ord('A') + 1)
+    return index - 1
+
+
+def read_xlsx_rows(file_obj):
+    file_obj.seek(0)
+    with zipfile.ZipFile(file_obj) as workbook:
+        shared_strings = []
+        if 'xl/sharedStrings.xml' in workbook.namelist():
+            root = ElementTree.fromstring(workbook.read('xl/sharedStrings.xml'))
+            for item in root.findall('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}si'):
+                shared_strings.append(''.join(text.text or '' for text in item.iter('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}t')))
+
+        sheet_name = 'xl/worksheets/sheet1.xml'
+        root = ElementTree.fromstring(workbook.read(sheet_name))
+        rows = []
+        for row in root.findall('.//{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row'):
+            values = []
+            for cell in row.findall('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c'):
+                index = xlsx_column_index(cell.attrib.get('r', 'A1'))
+                while len(values) <= index:
+                    values.append('')
+                values[index] = get_cell_text(cell, shared_strings)
+            rows.append(values)
+        return rows
+
+
+def parse_import_date(value):
+    value = str(value or '').strip()
+    if not value:
+        return None
+    if len(value) >= 10:
+        parsed = parse_date(value[:10])
+        if parsed:
+            return parsed
+    parsed = parse_date(value)
+    if parsed:
+        return parsed
+    try:
+        excel_epoch = datetime(1899, 12, 30).date()
+        return excel_epoch + timedelta(days=int(float(value)))
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_import_decimal(value):
+    value = str(value or '').strip()
+    if not value:
+        return None
+    value = value.replace('R', '').replace(',', '').strip()
+    return safe_decimal(value, None)
+
+
+def xml_escape(value):
+    return (
+        str(value if value is not None else '')
+        .replace('&', '&amp;')
+        .replace('<', '&lt;')
+        .replace('>', '&gt;')
+        .replace('"', '&quot;')
+    )
+
+
+def cell_ref(row_number, column_number):
+    letters = ''
+    column_number += 1
+    while column_number:
+        column_number, remainder = divmod(column_number - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return f'{letters}{row_number}'
+
+
+def build_sheet_xml(rows):
+    xml_rows = []
+    for row_index, row in enumerate(rows, start=1):
+        cells = []
+        for column_index, value in enumerate(row):
+            ref = cell_ref(row_index, column_index)
+            cells.append(f'<c r="{ref}" t="inlineStr"><is><t>{xml_escape(value)}</t></is></c>')
+        xml_rows.append(f'<row r="{row_index}">{"".join(cells)}</row>')
+    return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetData>{"".join(xml_rows)}</sheetData>
+</worksheet>'''
+
+
+def create_xlsx_workbook(sheets):
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as workbook:
+        workbook.writestr('[Content_Types].xml', '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+''' + ''.join(f'<Override PartName="/xl/worksheets/sheet{i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' for i in range(1, len(sheets) + 1)) + '''
+</Types>''')
+        workbook.writestr('_rels/.rels', '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>''')
+        workbook.writestr('xl/workbook.xml', '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>''' + ''.join(f'<sheet name="{xml_escape(name)[:31]}" sheetId="{i}" r:id="rId{i}"/>' for i, (name, _) in enumerate(sheets, start=1)) + '''</sheets>
+</workbook>''')
+        workbook.writestr('xl/_rels/workbook.xml.rels', '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+''' + ''.join(f'<Relationship Id="rId{i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet{i}.xml"/>' for i in range(1, len(sheets) + 1)) + '''
+</Relationships>''')
+        for index, (_, rows) in enumerate(sheets, start=1):
+            workbook.writestr(f'xl/worksheets/sheet{index}.xml', build_sheet_xml(rows))
+    output.seek(0)
+    return output.getvalue()
+
+
+def xlsx_response(filename, sheets):
+    response = HttpResponse(
+        create_xlsx_workbook(sheets),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
 READONLY_FINANCE_ROLES = ['dean', 'financialadmin']
 FINANCE_EDITOR_ROLES = ['admin', 'centrehead']
 ADMIN_VIEW_ROLES = ['admin', 'dean', 'centrehead']
 COMMUNIQUE_ROLES = ['staff', 'manager', 'admin', 'dean', 'centrehead', 'financialadmin', 'student', 'supervisor']
+CRM_ROLES = ['dean', 'centrehead']
 
 
 def is_admin(user):
@@ -93,6 +245,10 @@ def can_view_admin_kanban(user):
 
 def can_edit_finance(user):
     return user.is_authenticated and user.role in FINANCE_EDITOR_ROLES
+
+
+def can_view_crm(user):
+    return user.is_authenticated and user.role in CRM_ROLES
 
 
 def get_user_research_centre_id(user):
@@ -586,11 +742,11 @@ def finance(request):
             cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
 
         cursor.execute("""
-            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance
+            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id
             FROM adminpanel_expenditure
             ORDER BY id DESC
         """)
-        for exp_id, cc_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance in cursor.fetchall():
+        for exp_id, cc_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id in cursor.fetchall():
             if scoped_cost_centre_ids is not None and cc_id not in scoped_cost_centre_ids:
                 continue
             amount_dec = safe_decimal(amount)
@@ -615,7 +771,8 @@ def finance(request):
                 'amount': decimal_to_float(amount_dec),
                 'opening_balance': decimal_to_float(opening_dec),
                 'closing_balance': decimal_to_float(closing_dec),
-                'oracle_balance': decimal_to_float(oracle_dec) if oracle_dec is not None else None
+                'oracle_balance': decimal_to_float(oracle_dec) if oracle_dec is not None else None,
+                'expense_id': expense_id,
             })
 
     cost_centres = []
@@ -709,11 +866,11 @@ def finance_readonly(request):
             cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
 
         cursor.execute("""
-            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance
+            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance, expense_id
             FROM adminpanel_expenditure
             ORDER BY month DESC
         """)
-        for exp_id, cc_id, month, name, category, amount, opening_balance, oracle_balance in cursor.fetchall():
+        for exp_id, cc_id, month, name, category, amount, opening_balance, oracle_balance, expense_id in cursor.fetchall():
             amount_dec = safe_decimal(amount)
             opening_balance_dec = safe_decimal(opening_balance)
             oracle_dec = optional_decimal(oracle_balance)
@@ -731,6 +888,7 @@ def finance_readonly(request):
                 'amount': decimal_to_float(amount_dec),
                 'opening_balance': decimal_to_float(opening_balance_dec),
                 'oracle_balance': decimal_to_float(oracle_dec) if oracle_dec is not None else None,
+                'expense_id': expense_id,
             })
 
     cost_centres = []
@@ -787,6 +945,208 @@ def finance_readonly(request):
         'research_centres': ResearchCentre.objects.all(),
     })
 
+
+def get_finance_scope_queryset(user):
+    queryset = CostCentre.objects.select_related('research_centre').all().order_by('name')
+    if getattr(user, 'role', None) == 'centrehead':
+        queryset = queryset.filter(research_centre_id=get_user_research_centre_id(user))
+    return queryset
+
+
+@login_required
+def download_expense_import_template(request):
+    if not can_edit_finance(request.user):
+        messages.error(request, "You do not have permission to import expenses.")
+        return redirect(get_finance_redirect(request.user))
+
+    sample_cost_centre = get_finance_scope_queryset(request.user).first()
+    cost_centre_name = sample_cost_centre.name if sample_cost_centre else 'Exact Cost Centre Name'
+    rows = [
+        ['expense_id', 'cost_centre', 'date_from', 'date_to', 'name', 'category', 'amount', 'oracle_balance'],
+        ['EXP-2026-0001', cost_centre_name, '2026-05-01', '2026-05-31', 'Example Person or Supplier', 'Invoices', '1500.00', '1500.00'],
+    ]
+    return xlsx_response('expense_upload_template.xlsx', [('Expense Upload', rows)])
+
+
+@login_required
+def download_finance_summary_excel(request):
+    if request.user.role not in ['admin', 'centrehead', 'dean', 'financialadmin']:
+        messages.error(request, "You do not have permission to download finance data.")
+        return redirect('overview')
+
+    cost_centres = get_finance_scope_queryset(request.user)
+    cost_centre_ids = list(cost_centres.values_list('id', flat=True))
+    expenditures = Expenditure.objects.select_related('cost_centre', 'cost_centre__research_centre').filter(cost_centre_id__in=cost_centre_ids).order_by('cost_centre__name', 'month', 'id')
+    CostCentrePayment = apps.get_model('adminpanel', 'CostCentrePayment')
+    payments = CostCentrePayment.objects.select_related('cost_centre').filter(cost_centre_id__in=cost_centre_ids).order_by('cost_centre__name', '-payment_date')
+
+    summary_rows = [[
+        'cost_centre_code', 'cost_centre_name', 'research_centre', 'moa_amount',
+        'total_received', 'total_spent', 'total_remaining', 'moa_outstanding'
+    ]]
+    for cost_centre in cost_centres:
+        total_received = cost_centre.get_total_received()
+        total_spent = expenditures.filter(cost_centre=cost_centre).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        moa_amount = safe_decimal(cost_centre.moa_amount)
+        summary_rows.append([
+            cost_centre.code,
+            cost_centre.name,
+            cost_centre.research_centre.name if cost_centre.research_centre else '',
+            moa_amount,
+            total_received,
+            total_spent,
+            total_received - total_spent,
+            moa_amount - total_received,
+        ])
+
+    expense_rows = [[
+        'expense_id', 'database_id', 'cost_centre', 'month', 'date_from', 'date_to',
+        'name', 'category', 'amount', 'opening_balance', 'closing_balance', 'oracle_balance', 'oracle_check'
+    ]]
+    for expenditure in expenditures:
+        oracle_check = ''
+        if expenditure.oracle_balance is None:
+            oracle_check = 'Pending'
+        elif safe_decimal(expenditure.oracle_balance) == safe_decimal(expenditure.amount):
+            oracle_check = 'Matched'
+        else:
+            oracle_check = 'Review'
+        expense_rows.append([
+            expenditure.expense_id or '',
+            expenditure.id,
+            expenditure.cost_centre.name,
+            expenditure.month or '',
+            expenditure.date_from or '',
+            expenditure.date_to or '',
+            expenditure.name,
+            expenditure.category,
+            expenditure.amount,
+            expenditure.opening_balance,
+            expenditure.closing_balance,
+            expenditure.oracle_balance if expenditure.oracle_balance is not None else '',
+            oracle_check,
+        ])
+
+    payment_rows = [['cost_centre', 'payment_date', 'amount', 'description']]
+    for payment in payments:
+        payment_rows.append([payment.cost_centre.name, payment.payment_date, payment.amount, payment.description or ''])
+
+    return xlsx_response(
+        'finance_summary.xlsx',
+        [('Overall Summary', summary_rows), ('Expenses', expense_rows), ('Payments', payment_rows)]
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def upload_expense_excel(request):
+    if not ensure_finance_editor(request):
+        return redirect(get_finance_redirect(request.user))
+
+    upload = request.FILES.get('expense_file')
+    if not upload:
+        messages.error(request, "Please choose an Excel file to upload.")
+        return redirect('finance')
+
+    if not upload.name.lower().endswith('.xlsx'):
+        messages.error(request, "Please upload an .xlsx file using the template.")
+        return redirect('finance')
+
+    try:
+        rows = read_xlsx_rows(upload)
+    except Exception as exc:
+        messages.error(request, f"Could not read Excel file: {exc}")
+        return redirect('finance')
+
+    if not rows:
+        messages.error(request, "The uploaded Excel file is empty.")
+        return redirect('finance')
+
+    headers = [normalize_header(header) for header in rows[0]]
+    required_headers = {'expense_id', 'cost_centre', 'date_from', 'date_to', 'name', 'category', 'amount'}
+    missing_headers = required_headers - set(headers)
+    if missing_headers:
+        messages.error(request, f"Excel missing required columns: {', '.join(sorted(missing_headers))}")
+        return redirect('finance')
+
+    category_values = {choice[0] for choice in Expenditure.EXPENSE_CATEGORY_CHOICES}
+    scoped_cost_centres = get_finance_scope_queryset(request.user)
+    cost_centres_by_name = {cc.name.strip().lower(): cc for cc in scoped_cost_centres}
+    cost_centres_by_code = {cc.code.strip().lower(): cc for cc in scoped_cost_centres if cc.code}
+    existing_expense_ids = set(Expenditure.objects.exclude(expense_id__isnull=True).exclude(expense_id='').values_list('expense_id', flat=True))
+
+    created_count = 0
+    skipped_count = 0
+    errors = []
+
+    for index, row in enumerate(rows[1:], start=2):
+        values = {headers[col_index]: (row[col_index] if col_index < len(row) else '') for col_index in range(len(headers))}
+        if not any(str(value).strip() for value in values.values()):
+            continue
+
+        expense_id = str(values.get('expense_id', '')).strip()
+        cost_centre_key = str(values.get('cost_centre', '')).strip()
+        name = str(values.get('name', '')).strip()
+        category = str(values.get('category', '')).strip()
+        amount = parse_import_decimal(values.get('amount'))
+        oracle_balance = parse_import_decimal(values.get('oracle_balance'))
+        date_from = parse_import_date(values.get('date_from'))
+        date_to = parse_import_date(values.get('date_to'))
+
+        if not expense_id:
+            errors.append(f"Row {index}: Expense ID is required to prevent duplicates.")
+            continue
+        if expense_id in existing_expense_ids:
+            skipped_count += 1
+            continue
+
+        cost_centre = cost_centres_by_name.get(cost_centre_key.lower()) or cost_centres_by_code.get(cost_centre_key.lower())
+        if not cost_centre:
+            errors.append(f"Row {index}: record failed because cost_centre name mismatch: '{cost_centre_key}'.")
+            continue
+        if not name:
+            errors.append(f"Row {index}: Name is required.")
+            continue
+        if category not in category_values:
+            errors.append(f"Row {index}: Invalid category '{category}'.")
+            continue
+        if amount is None:
+            errors.append(f"Row {index}: Invalid amount.")
+            continue
+        if not date_from or not date_to:
+            errors.append(f"Row {index}: date_from and date_to must be valid dates.")
+            continue
+
+        opening_balance = Expenditure.objects.filter(cost_centre=cost_centre).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        expenditure = Expenditure.objects.create(
+            expense_id=expense_id,
+            cost_centre=cost_centre,
+            month=date_from.strftime('%Y-%m'),
+            date_from=date_from,
+            date_to=date_to,
+            name=name,
+            category=category,
+            amount=amount,
+            opening_balance=opening_balance,
+            oracle_balance=oracle_balance,
+        )
+        existing_expense_ids.add(expense_id)
+        log_expenditure_creation(expenditure, request.user)
+        created_count += 1
+
+    if created_count:
+        messages.success(request, f"Uploaded {created_count} expense record(s).")
+    if skipped_count:
+        messages.info(request, f"Skipped {skipped_count} duplicate expense ID record(s).")
+    for error in errors[:8]:
+        messages.error(request, error)
+    if len(errors) > 8:
+        messages.error(request, f"{len(errors) - 8} more row error(s) were not shown.")
+    if not created_count and not skipped_count and not errors:
+        messages.info(request, "No expense rows were found in the upload.")
+
+    return redirect('finance')
+
 @login_required
 @login_required
 def add_cost_centre(request):
@@ -805,6 +1165,11 @@ def add_cost_centre(request):
         if not name or not name.strip():
             messages.error(request, 'Cost Centre name is required')
             return redirect('finance')
+        existing_client = CostCentre.objects.select_related('research_centre').filter(name__iexact=name.strip()).first()
+        if existing_client:
+            centre_name = existing_client.research_centre.name if existing_client.research_centre else 'Unassigned centre'
+            messages.error(request, f'Client already associated with {centre_name}. No duplicate client/cost centre was created.')
+            return redirect('finance')
         
         try:
             # Create cost centre with 0.00 initially
@@ -812,7 +1177,9 @@ def add_cost_centre(request):
             
             # Check if code already exists
             if code and CostCentre.objects.filter(code=code).exists():
-                messages.error(request, f'Cost Centre code "{code}" already exists')
+                existing_by_code = CostCentre.objects.select_related('research_centre').filter(code=code).first()
+                centre_name = existing_by_code.research_centre.name if existing_by_code and existing_by_code.research_centre else 'Unassigned centre'
+                messages.error(request, f'Client already associated with {centre_name} under cost centre code "{code}".')
                 return redirect('finance')
             
             cost_centre = CostCentre.objects.create(
@@ -881,6 +1248,7 @@ def add_expenditure(request):
         name = request.POST.get('name')
         category = request.POST.get('category')
         oracle_balance = optional_decimal(request.POST.get('oracle_balance'))
+        expense_id = request.POST.get('expense_id', '').strip() or None
 
         # Safely convert amount with validation
         try:
@@ -904,6 +1272,9 @@ def add_expenditure(request):
             cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
             if not ensure_finance_editor(request, cost_centre):
                 return redirect(get_finance_redirect(request.user))
+            if expense_id and Expenditure.objects.filter(expense_id=expense_id).exists():
+                messages.error(request, f'Expense ID "{expense_id}" already exists. Use a unique ID to prevent duplicates.')
+                return redirect('finance')
             
             # Parse date range
             date_from = None
@@ -931,6 +1302,7 @@ def add_expenditure(request):
                 opening_balance=opening_balance,
                 closing_balance=closing_balance,
                 oracle_balance=oracle_balance,
+                expense_id=expense_id,
                 date_from=date_from,
                 date_to=date_to
             )
@@ -971,14 +1343,14 @@ def get_expenditures(request, cost_centre_id):
             
             # Fetch expenditures
             cursor.execute("""
-                SELECT id, month, name, category, amount, opening_balance, closing_balance, oracle_balance
+                SELECT id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id
                 FROM adminpanel_expenditure
                 WHERE cost_centre_id = %s
                 ORDER BY id
             """, [cost_centre_id])
             
             for row in cursor.fetchall():
-                exp_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance = row
+                exp_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id = row
                 
                 # Convert to float safely
                 try:
@@ -1001,6 +1373,7 @@ def get_expenditures(request, cost_centre_id):
                     'opening_balance': str(opening_balance),
                     'closing_balance': str(closing_balance),
                     'oracle_balance': str(oracle_balance) if oracle_balance is not None else None,
+                    'expense_id': expense_id,
                 })
         
         return JsonResponse({'expenditures': data})
@@ -1195,7 +1568,7 @@ def edit_expenditure(request, pk):
         with connection.cursor() as cursor:
             # Fetch expenditure
             cursor.execute("""
-                SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance
+                SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance, expense_id
                 FROM adminpanel_expenditure WHERE id = %s
             """, [pk])
             row = cursor.fetchone()
@@ -1204,7 +1577,7 @@ def edit_expenditure(request, pk):
                 messages.error(request, 'Expenditure not found')
                 return redirect('finance')
             
-            exp_id, cost_centre_id, old_month, old_name, old_category, old_amount, old_opening_balance, old_oracle_balance = row
+            exp_id, cost_centre_id, old_month, old_name, old_category, old_amount, old_opening_balance, old_oracle_balance, old_expense_id = row
             if request.user.role == 'centrehead' and cost_centre_id not in get_accessible_cost_centre_ids(request.user):
                 messages.error(request, "You can only edit expenditures for your assigned research centre.")
                 return redirect('finance')
@@ -1213,6 +1586,10 @@ def edit_expenditure(request, pk):
                 month = request.POST.get('month', old_month)
                 name = request.POST.get('name', old_name)
                 category = request.POST.get('category', old_category)
+                expense_id_value = request.POST.get('expense_id', '').strip() or None
+                if expense_id_value and Expenditure.objects.filter(expense_id=expense_id_value).exclude(id=exp_id).exists():
+                    messages.error(request, f'Expense ID "{expense_id_value}" already exists.')
+                    return redirect('finance')
                 
                 # Validate and convert amount with error handling
                 try:
@@ -1257,6 +1634,7 @@ def edit_expenditure(request, pk):
                         'category': old_category,
                         'amount': str(old_amount),
                         'oracle_balance': str(old_oracle_balance) if old_oracle_balance is not None else None,
+                        'expense_id': old_expense_id,
                     }
                     
                     # Calculate closing balance
@@ -1267,9 +1645,9 @@ def edit_expenditure(request, pk):
                     cursor.execute("""
                         UPDATE adminpanel_expenditure
                         SET month = %s, name = %s, category = %s, amount = %s, 
-                            opening_balance = %s, closing_balance = %s, oracle_balance = %s
+                            opening_balance = %s, closing_balance = %s, oracle_balance = %s, expense_id = %s
                         WHERE id = %s
-                    """, [month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle_balance) if oracle_balance is not None else None, exp_id])
+                    """, [month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle_balance) if oracle_balance is not None else None, expense_id_value, exp_id])
                     
                     # Get the updated expenditure for audit logging
                     expenditure = Expenditure.objects.get(id=pk)
@@ -1688,6 +2066,242 @@ def update_expenditure(request, pk):
 @login_required
 def admin_kanban(request):
     return render(request, 'adminpanel/admin_kanban.html')
+
+
+def get_crm_selected_centre(request):
+    if request.user.role == 'centrehead':
+        return ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)).first()
+
+    centre_id = request.GET.get('centre')
+    if centre_id:
+        return ResearchCentre.objects.filter(id=centre_id).first()
+    return None
+
+
+def get_crm_scope(request):
+    selected_centre = get_crm_selected_centre(request)
+    centres = ResearchCentre.objects.all().order_by('name')
+    if request.user.role == 'centrehead':
+        centres = centres.filter(id=get_user_research_centre_id(request.user))
+
+    cost_centres = CostCentre.objects.select_related('research_centre').all().order_by('name')
+    users = CustomUser.objects.select_related('research_centre').filter(is_active=True).order_by('first_name', 'last_name', 'username')
+    projects = Project.objects.select_related('assigned_user', 'created_by').prefetch_related('tasks', 'assignments__team_member__user').all().order_by('-created_at')
+
+    if selected_centre:
+        cost_centres = cost_centres.filter(research_centre=selected_centre)
+        users = users.filter(research_centre=selected_centre)
+        projects = projects.filter(
+            Q(assigned_user__research_centre=selected_centre) |
+            Q(created_by__research_centre=selected_centre) |
+            Q(assignments__team_member__user__research_centre=selected_centre)
+        ).distinct()
+
+    return {
+        'selected_centre': selected_centre,
+        'research_centres': centres,
+        'cost_centres': cost_centres,
+        'users': users,
+        'projects': projects,
+    }
+
+
+def project_progress(project):
+    tasks = list(project.tasks.all())
+    if not tasks:
+        return 0
+    return int(sum(task.progress for task in tasks) / len(tasks))
+
+
+def project_centre_name(project):
+    if project.assigned_user and project.assigned_user.research_centre:
+        return project.assigned_user.research_centre.name
+    if project.created_by and project.created_by.research_centre:
+        return project.created_by.research_centre.name
+    assignment = project.assignments.first()
+    if assignment and assignment.team_member.user.research_centre:
+        return assignment.team_member.user.research_centre.name
+    return 'Unassigned'
+
+
+def build_crm_context(request, active_tab):
+    scope = get_crm_scope(request)
+    cost_centres = list(scope['cost_centres'])
+    users = list(scope['users'])
+    projects = list(scope['projects'])
+    today = timezone.now().date()
+
+    total_revenue = Decimal('0.00')
+    total_spent = Decimal('0.00')
+    clients = []
+    for cost_centre in cost_centres:
+        received = cost_centre.get_total_received()
+        spent = Expenditure.objects.filter(cost_centre=cost_centre).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        total_revenue += received
+        total_spent += spent
+        clients.append({
+            'id': cost_centre.id,
+            'code': cost_centre.code,
+            'name': cost_centre.name,
+            'sector': cost_centre.research_centre.name if cost_centre.research_centre else 'Unassigned',
+            'ownership': cost_centre.research_centre.name if cost_centre.research_centre else 'Institutional',
+            'lead': next((user for user in users if user.role == 'centrehead' and user.research_centre_id == cost_centre.research_centre_id), None),
+            'total_received': received,
+            'total_spent': spent,
+            'estimated_profit': received - spent,
+            'pipeline_value': safe_decimal(cost_centre.moa_amount) - received,
+            'visibility': 'Institutional' if request.user.role == 'dean' else 'Centre',
+        })
+
+    engagements = []
+    for project in projects:
+        tasks = list(project.tasks.all())
+        latest_task = max((task.created_at for task in tasks), default=project.created_at)
+        progress = project_progress(project)
+        stage = 'Active'
+        if project.status == 'planning':
+            stage = 'Prospect'
+        elif project.status == 'on-hold':
+            stage = 'On hold'
+        elif project.status == 'completed':
+            stage = 'Completed'
+
+        engagements.append({
+            'id': project.id,
+            'name': project.name,
+            'client': project_centre_name(project),
+            'stage': stage,
+            'status': project.status,
+            'lead': project.assigned_user or project.created_by,
+            'due_date': project.due_date,
+            'last_contact': latest_task,
+            'progress': progress,
+            'team_count': project.assignments.count(),
+            'visibility': 'Institutional',
+            'is_overdue': bool(project.due_date and project.due_date < today and project.status != 'completed'),
+        })
+
+    centres = []
+    for centre in scope['research_centres']:
+        centre_users = [user for user in users if user.research_centre_id == centre.id]
+        centre_costs = [client for client in clients if client['sector'] == centre.name]
+        centre_projects = [engagement for engagement in engagements if engagement['client'] == centre.name]
+        revenue = sum((client['total_received'] for client in centre_costs), Decimal('0.00'))
+        spent = sum((client['total_spent'] for client in centre_costs), Decimal('0.00'))
+        centres.append({
+            'id': centre.id,
+            'name': centre.name,
+            'director': next((user for user in centre_users if user.role == 'centrehead'), None),
+            'staff_count': len(centre_users),
+            'client_count': len(centre_costs),
+            'engagement_count': len(centre_projects),
+            'revenue': revenue,
+            'estimated_profit': revenue - spent,
+            'avg_progress': int(sum(item['progress'] for item in centre_projects) / len(centre_projects)) if centre_projects else 0,
+        })
+
+    duplicate_clients = defaultdict(list)
+    for client in clients:
+        duplicate_clients[client['name'].lower()].append(client)
+
+    oracle_mismatches = Expenditure.objects.select_related('cost_centre').filter(
+        cost_centre__in=cost_centres,
+        oracle_balance__isnull=False,
+    ).exclude(oracle_balance=models.F('amount'))
+
+    alerts = []
+    for engagement in engagements:
+        if engagement['is_overdue']:
+            alerts.append({'level': 'High', 'type': 'Deadline', 'message': f"{engagement['name']} is past its due date.", 'owner': engagement['lead']})
+        if engagement['last_contact'] and (timezone.now() - engagement['last_contact']).days > 60 and engagement['status'] != 'completed':
+            alerts.append({'level': 'Medium', 'type': 'Contact Risk', 'message': f"{engagement['name']} has no recent activity in 60+ days.", 'owner': engagement['lead']})
+
+    for cost_centre in cost_centres:
+        if cost_centre.get_total_received() <= 0:
+            alerts.append({'level': 'Medium', 'type': 'Payment', 'message': f"{cost_centre.name} has no recorded payments.", 'owner': None})
+
+    for expenditure in oracle_mismatches[:20]:
+        alerts.append({'level': 'High', 'type': 'Oracle', 'message': f"{expenditure.cost_centre.name}: Oracle balance differs for {expenditure.name}.", 'owner': None})
+
+    for duplicates in duplicate_clients.values():
+        centre_names = {client['sector'] for client in duplicates}
+        if len(duplicates) > 1 and len(centre_names) > 1:
+            alerts.append({'level': 'Medium', 'type': 'Overlap', 'message': f"{duplicates[0]['name']} appears across multiple centres.", 'owner': None})
+
+    role_counts = Counter(user.role for user in users)
+    active_engagements = [item for item in engagements if item['status'] in ['planning', 'in-progress']]
+
+    context = {
+        **scope,
+        'active_tab': active_tab,
+        'crm_tabs': [
+            ('clients', 'Clients', 'bi-building'),
+            ('centres', 'Centres', 'bi-diagram-3'),
+            ('engagements', 'Engagements', 'bi-kanban'),
+            ('directory', 'Directory', 'bi-journal-text'),
+            ('financials', 'Financials', 'bi-cash-stack'),
+            ('alerts', 'Alerts', 'bi-exclamation-triangle'),
+        ],
+        'clients': clients,
+        'centres': centres,
+        'engagements': engagements,
+        'directory_engagements': [item for item in engagements if item['visibility'] != 'Private'],
+        'alerts': alerts,
+        'staff_directory': users,
+        'role_counts': role_counts,
+        'total_revenue': total_revenue,
+        'total_spent': total_spent,
+        'pipeline_value': sum((client['pipeline_value'] for client in clients), Decimal('0.00')),
+        'estimated_profit': total_revenue - total_spent,
+        'active_engagement_count': len(active_engagements),
+        'client_count': len(clients),
+    }
+    return context
+
+
+@login_required
+@user_passes_test(can_view_crm)
+def crm(request, tab='clients'):
+    valid_tabs = {'clients', 'centres', 'engagements', 'directory', 'financials', 'alerts', 'reports'}
+    if tab not in valid_tabs:
+        tab = 'clients'
+    return render(request, 'adminpanel/crm/crm.html', build_crm_logic_context(request, tab))
+
+
+@login_required
+@user_passes_test(can_view_crm)
+def crm_reporting_data(request):
+    context = build_crm_logic_context(request, 'reports')
+    return JsonResponse({
+        'success': True,
+        'charts': context['crm_chart_data'],
+        'metrics': {
+            'clients': context['client_count'],
+            'active_engagements': context['active_engagement_count'],
+            'revenue': float(context['total_revenue']),
+            'pipeline': float(context['pipeline_value']),
+            'estimated_profit': float(context['estimated_profit']),
+        },
+    })
+
+
+@login_required
+@user_passes_test(can_view_crm)
+def crm_report_export(request, period='annual'):
+    if period not in ['annual', 'weekly']:
+        period = 'annual'
+    context = build_crm_logic_context(request, 'reports')
+    now = timezone.now()
+    title = 'Annual CRM Report' if period == 'annual' else 'Weekly CRM Report'
+    html = render(request, 'adminpanel/crm/reports/system_report.doc.html', {
+        **context,
+        'report_title': title,
+        'report_period': period.title(),
+        'generated_at': now,
+    }).content
+    response = HttpResponse(html, content_type='application/msword')
+    response['Content-Disposition'] = f'attachment; filename="crm_{period}_report_{now:%Y%m%d}.doc"'
+    return response
 
 # @login_required
 # def supervisor_dashboard(request):

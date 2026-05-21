@@ -1,0 +1,67 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-1">Centres</h5>
+    <div class="text-muted small">Centre profiles mirror the existing project overview and Kanban workload, filtered by research centre.</div>
+  </div>
+</div>
+
+<div class="table-responsive mb-4">
+  <table class="table table-hover align-middle crm-table">
+    <thead class="table-light">
+      <tr>
+        <th>Centre</th>
+        <th>Director</th>
+        <th>Staff</th>
+        <th>Clients</th>
+        <th>Engagements</th>
+        <th>Revenue</th>
+        <th>Estimated Profit</th>
+        <th>KPI</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for centre in centres %}
+      <tr>
+        <td><strong>{{ centre.name }}</strong></td>
+        <td>
+          {% if centre.director %}
+            {{ centre.director.get_full_name|default:centre.director.username }}
+          {% else %}
+            <span class="text-muted">Unassigned</span>
+          {% endif %}
+        </td>
+        <td>{{ centre.staff_count }}</td>
+        <td>{{ centre.client_count }}</td>
+        <td>{{ centre.engagement_count }}</td>
+        <td>R {{ centre.revenue|floatformat:2 }}</td>
+        <td>R {{ centre.estimated_profit|floatformat:2 }}</td>
+        <td>
+          <div class="crm-progress"><div style="width: {{ centre.avg_progress }}%;"></div></div>
+          <small>{{ centre.avg_progress }}%</small>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center text-muted">No centres available.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h6 class="mb-3">Project Overview</h6>
+<div class="row g-3">
+  {% for engagement in engagements %}
+  <div class="col-md-6 col-xl-4">
+    <div class="border rounded p-3 h-100">
+      <div class="d-flex justify-content-between gap-2">
+        <strong>{{ engagement.name }}</strong>
+        <span class="badge bg-light text-dark">{{ engagement.stage }}</span>
+      </div>
+      <div class="text-muted small mt-1">{{ engagement.client }}</div>
+      <div class="crm-progress mt-3"><div style="width: {{ engagement.progress }}%;"></div></div>
+      <div class="small mt-2">{{ engagement.progress }}% complete</div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-muted">No projects found for this centre.</div>
+  {% endfor %}
+</div>

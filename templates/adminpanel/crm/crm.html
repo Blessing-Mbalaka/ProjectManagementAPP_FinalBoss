@@ -1,0 +1,96 @@
+{% extends 'adminpanel/index.html' %}
+{% load static %}
+
+{% block title %}CRM{% endblock %}
+
+{% block content %}
+<style>
+  .crm-shell { padding: 34px 18px 60px; }
+  .crm-header { display: flex; justify-content: space-between; gap: 18px; align-items: end; margin-bottom: 20px; }
+  .crm-title h3 { margin: 0; font-weight: 700; }
+  .crm-title p { margin: 6px 0 0; color: #6c757d; }
+  .crm-filter { min-width: 260px; }
+  .crm-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .crm-tabs a { border: 1px solid #d8dee4; border-radius: 8px; padding: 9px 12px; color: #2f3b4a; background: #fff; text-decoration: none; font-weight: 600; }
+  .crm-tabs a.active { background: #212529; color: #fff; border-color: #212529; }
+  .crm-metrics { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .crm-metric { background: #fff; border: 1px solid #e7eaee; border-radius: 8px; padding: 14px; }
+  .crm-metric span { display: block; color: #6c757d; font-size: .83rem; }
+  .crm-metric strong { display: block; font-size: 1.2rem; margin-top: 5px; }
+  .crm-panel { background: #fff; border: 1px solid #e7eaee; border-radius: 8px; padding: 16px; box-shadow: 0 10px 30px rgba(20, 30, 50, .05); }
+  .crm-table th { white-space: nowrap; }
+  .crm-badge { border-radius: 999px; padding: 4px 9px; font-size: .78rem; font-weight: 700; }
+  .crm-badge.high { background: #ffe2e2; color: #9f1239; }
+  .crm-badge.medium { background: #fff3cd; color: #8a5a00; }
+  .crm-badge.low { background: #e7f5ff; color: #075985; }
+  .crm-progress { height: 8px; background: #edf2f7; border-radius: 999px; overflow: hidden; min-width: 90px; }
+  .crm-progress div { height: 100%; background: #198754; }
+  .crm-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 16px; }
+  .crm-chart-card { border: 1px solid #e7eaee; border-radius: 8px; padding: 14px; min-height: 300px; }
+  .crm-chart-card canvas { width: 100% !important; max-height: 240px; }
+  @media (max-width: 900px) {
+    .crm-header { display: block; }
+    .crm-filter { margin-top: 14px; min-width: 0; }
+    .crm-metrics { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+    .crm-chart-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .crm-metrics { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="crm-shell">
+  <div class="crm-header">
+    <div class="crm-title">
+      <h3>CRM</h3>
+      <p>Institutional view of clients, centres, engagements, financials, and relationship risk.</p>
+    </div>
+    <form method="get" class="crm-filter">
+      <label class="form-label mb-1">Research Centre</label>
+      <select name="centre" class="form-select" onchange="this.form.submit()" {% if user.role == 'centrehead' %}disabled{% endif %}>
+        <option value="">All centres</option>
+        {% for centre in research_centres %}
+          <option value="{{ centre.id }}" {% if selected_centre and selected_centre.id == centre.id %}selected{% endif %}>{{ centre.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  <div class="crm-metrics">
+    <div class="crm-metric"><span>Clients</span><strong>{{ client_count }}</strong></div>
+    <div class="crm-metric"><span>Active Engagements</span><strong>{{ active_engagement_count }}</strong></div>
+    <div class="crm-metric"><span>Revenue</span><strong>R {{ total_revenue|floatformat:2 }}</strong></div>
+    <div class="crm-metric"><span>Pipeline</span><strong>R {{ pipeline_value|floatformat:2 }}</strong></div>
+  </div>
+
+  <nav class="crm-tabs">
+    {% for key, label, icon in crm_tabs %}
+      <a href="{% url 'crm_tab' key %}{% if selected_centre %}?centre={{ selected_centre.id }}{% endif %}" class="{% if active_tab == key %}active{% endif %}">
+        <i class="bi {{ icon }}"></i> {{ label }}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <div class="crm-panel">
+    {% if active_tab == 'clients' %}
+      {% include 'adminpanel/crm/partials/clients.html' %}
+    {% elif active_tab == 'centres' %}
+      {% include 'adminpanel/crm/partials/centres.html' %}
+    {% elif active_tab == 'engagements' %}
+      {% include 'adminpanel/crm/partials/engagements.html' %}
+    {% elif active_tab == 'directory' %}
+      {% include 'adminpanel/crm/partials/directory.html' %}
+    {% elif active_tab == 'financials' %}
+      {% include 'adminpanel/crm/partials/financials.html' %}
+    {% elif active_tab == 'alerts' %}
+      {% include 'adminpanel/crm/partials/alerts.html' %}
+    {% elif active_tab == 'reports' %}
+      {% include 'adminpanel/crm/partials/reports.html' %}
+    {% endif %}
+  </div>
+</div>
+
+{% if active_tab == 'reports' %}
+  {% include 'adminpanel/crm/partials/report_charts.html' %}
+{% endif %}
+{% endblock %}
