@@ -1,34 +1,23 @@
+databases:
 services:
   - type: web
     name: project-management-app
     runtime: python
+    pythonVersion: 3.12
     plan: free
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    preDeployCommand: python manage.py migrate --noinput
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: gunicorn project_manage.wsgi:application --bind 0.0.0.0:$PORT
-    healthCheckPath: /
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.4
+      - key: SECRET_KEY
+        value: generate-a-random-secret-key-or-set-via-render-dashboard
       - key: DEBUG
         value: "False"
-      - key: SECRET_KEY
-        generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: project-management-db
-          property: connectionString
       - key: ALLOWED_HOSTS
         value: .onrender.com
-      - key: CSRF_TRUSTED_ORIGINS
-        value: https://*.onrender.com
-      - key: DJANGO_LOG_LEVEL
-        value: INFO
-      - key: WEB_CONCURRENCY
-        value: "2"
 
-databases:
+
   - name: project-management-db
-    plan: free
     databaseName: project_management
     user: project_management_user
+    plan: free
+      - key: CSRF_TRUSTED_ORIGINS
