@@ -23,13 +23,23 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
+        ('dean', 'Dean'),
+        ('centrehead', 'Centre Head'),
         ('supervisor', 'Supervisor'),
         ('manager', 'Project Manager'),
         ('financialadmin', 'Financial Admin'),
         ('staff', 'Staff'),
         ('student', 'Student'),
     )
-    role = models.CharField(max_length=15, choices=ROLE_CHOICES, default='staff')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='staff')
+    research_centre = models.ForeignKey(
+        'adminpanel.ResearchCentre',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users',
+        help_text="Research centre this user belongs to. Required for centre heads."
+    )
 
     # Use custom manager
     objects = CustomUserManager()

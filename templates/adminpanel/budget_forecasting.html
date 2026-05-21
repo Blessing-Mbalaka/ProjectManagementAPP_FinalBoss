@@ -3,15 +3,19 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">📊 Budget Forecasting</h5>
         <div class="d-flex gap-2">
+            {% if can_edit_finance %}
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addForecastModal">
                 ➕ Add Forecast
             </button>
+            {% endif %}
             <button class="btn btn-sm btn-info" id="viewArchiveBtn" data-bs-toggle="modal" data-bs-target="#archiveForecastsModal">
                 📋 View Archive
             </button>
+            {% if can_edit_finance %}
             <button class="btn btn-sm btn-success" id="releaseForecastsBtn" style="display: none;">
                 ✅ Release All to Tracker
             </button>
+            {% endif %}
         </div>
     </div>
     <div class="card-body table-responsive">
@@ -25,7 +29,9 @@
                     <th>Months</th>
                     <th>Total Cost</th>
                     <th>Status</th>
+                    {% if can_edit_finance %}
                     <th>Actions</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody id="forecastTableBody">

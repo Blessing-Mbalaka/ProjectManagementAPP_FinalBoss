@@ -49,9 +49,9 @@
     <div class="col-md-4">
       <select name="role" class="form-select">
         <option value="">🔽 Filter by Role</option>
-        <option value="manager" {% if request.GET.role == "manager" %}selected{% endif %}>📋 Project Manager</option>
-        <option value="staff" {% if request.GET.role == "staff" %}selected{% endif %}>👨‍💻 Team Member</option>
-        <option value="student" {% if request.GET.role == "student" %}selected{% endif %}>🎓 Student</option>
+        {% for role, label in role_counts.items %}
+        <option value="{{ role }}" {% if request.GET.role == role %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
       </select>
     </div>
     <div class="col-md-4">
@@ -61,7 +61,9 @@
   </form>
 
   <!-- ➕ Create User Modal Button -->
-  <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#createUserModal">➕ Add New User</button>
+  {% if not is_readonly_user_management %}
+  <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#createUserModal">Add New User</button>
+  {% endif %}
 
   <!-- ✅ Messages -->
   {% if messages %}
@@ -78,8 +80,11 @@
         <th>Username</th>
         <th>Email</th>
         <th>Role</th>
+        <th>Research Centre</th>
         <th>Status</th>
+        {% if not is_readonly_user_management %}
         <th>Actions</th>
+        {% endif %}
       </tr>
     </thead>
     <tbody>
@@ -89,6 +94,7 @@
         <td>{{ user.username }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.get_role_display }}</td>
+        <td>{{ user.research_centre.name|default:"Unassigned" }}</td>
         <td>
           {% if user.is_active %}
           <span class="badge bg-success">Active</span>
@@ -96,6 +102,7 @@
           <span class="badge bg-secondary">Inactive</span>
           {% endif %}
         </td>
+        {% if not is_readonly_user_management %}
         <td>
           <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editUserModal{{ user.id }}">✏️ Edit</button>
           {% if user.is_active %}
@@ -106,10 +113,11 @@
           <a href="{% url 'delete_user' user.id %}" class="btn btn-sm btn-danger"
             onclick="return confirm('Are you sure you want to delete this user?')">🗑️</a>
         </td>
+        {% endif %}
       </tr>
       {% empty %}
       <tr>
-        <td colspan="6" class="text-center">No users found.</td>
+        <td colspan="{% if is_readonly_user_management %}5{% else %}6{% endif %}" class="text-center">No users found.</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -140,6 +148,15 @@
             <select name="role" class="form-select">
               {% for value, label in user.ROLE_CHOICES %}
                 <option value="{{ value }}" {% if user.role == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label>Research Centre</label>
+            <select name="research_centre" class="form-select">
+              <option value="">Unassigned</option>
+              {% for centre in research_centres %}
+                <option value="{{ centre.id }}" {% if user.research_centre_id == centre.id %}selected{% endif %}>{{ centre.name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -186,6 +203,10 @@
           <div class="col-md-6">
             <label>Role</label>
             {{ form.role }}
+          </div>
+          <div class="col-md-6">
+            <label>Research Centre</label>
+            {{ form.research_centre }}
           </div>
           <div class="col-md-6">
             <label>Password</label>

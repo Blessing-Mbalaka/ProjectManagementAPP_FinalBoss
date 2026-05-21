@@ -14,6 +14,8 @@ urlpatterns = [
     # Admin Routes
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('communique/', views.communique, name='communique'),
+    path('communique/templates/upload/', views.upload_communique_template, name='upload_communique_template'),
+    path('communique/templates/<int:media_id>/download/', views.download_communique_template, name='download_communique_template'),
     path('admin_book/', views.admin_book, name='admin_book'),
     path('update-book-status/<int:book_id>/', views.update_book_status, name='update_book_status'),
     path('app_kanban/', views.app_kanban, name='app_kanban'),
@@ -50,6 +52,7 @@ urlpatterns = [
     path('finance/add-budget-forecast/', views.add_budget_forecast, name='add_budget_forecast'),
     path('finance/forecasts/<int:cost_centre_id>/', views.get_budget_forecasts, name='get_budget_forecasts'),
     path('finance/delete-budget-forecast/<int:pk>/', views.delete_budget_forecast, name='delete_budget_forecast'),
+    path('finance/edit-budget-forecast/<int:pk>/', views.edit_budget_forecast, name='edit_budget_forecast'),
     path('finance/release-forecasts/<int:cost_centre_id>/', views.release_budget_forecasts, name='release_budget_forecasts'),
     
     path('user-kanban/<int:user_id>/', views.admin_user_kanban, name='admin_user_kanban'),

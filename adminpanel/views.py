@@ -7,14 +7,14 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
 from manager.models import Book, Chapter
-from .models import CostCentre, Expenditure, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord
+from .models import CostCentre, Expenditure, ResearchCentre, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord
 from .audit_service import (
     log_cost_centre_creation, log_cost_centre_edit, log_cost_centre_deletion,
     log_expenditure_creation, log_expenditure_edit, log_expenditure_deletion,
     log_payment_creation, log_payment_deletion
 )
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 import json
 import csv
 from .media_service import MediaService
@@ -42,6 +42,9 @@ from projects.models import StudentProfile
 import csv
 from datetime import datetime, timedelta
 import io
+import os
+
+from .media_models import SystemMedia
 
 
 def safe_decimal(value, default=Decimal('0.00')):
@@ -64,17 +67,145 @@ def decimal_to_float(value):
         return 0.0
 
 
+def optional_decimal(value):
+    if value is None or str(value).strip() == '':
+        return None
+    return safe_decimal(value)
+
+
+READONLY_FINANCE_ROLES = ['dean', 'financialadmin']
+FINANCE_EDITOR_ROLES = ['admin', 'centrehead']
+ADMIN_VIEW_ROLES = ['admin', 'dean', 'centrehead']
+COMMUNIQUE_ROLES = ['staff', 'manager', 'admin', 'dean', 'centrehead', 'financialadmin', 'student', 'supervisor']
+
+
+def is_admin(user):
+    return user.is_authenticated and user.role == 'admin'
+
+
+def is_admin_or_dean(user):
+    return user.is_authenticated and user.role in ADMIN_VIEW_ROLES
+
+
+def can_view_admin_kanban(user):
+    return user.is_authenticated and user.role in ADMIN_VIEW_ROLES
+
+
+def can_edit_finance(user):
+    return user.is_authenticated and user.role in FINANCE_EDITOR_ROLES
+
+
+def get_user_research_centre_id(user):
+    return getattr(user, 'research_centre_id', None)
+
+
+def get_accessible_cost_centre_ids(user):
+    if getattr(user, 'role', None) != 'centrehead':
+        return None
+    research_centre_id = get_user_research_centre_id(user)
+    if not research_centre_id:
+        return []
+    return list(CostCentre.objects.filter(research_centre_id=research_centre_id).values_list('id', flat=True))
+
+
+def get_finance_redirect(user):
+    return 'finance_readonly' if getattr(user, 'role', None) in READONLY_FINANCE_ROLES else 'finance'
+
+
+def ensure_finance_editor(request, cost_centre=None):
+    if not can_edit_finance(request.user):
+        messages.error(request, "You do not have permission to change financial data.")
+        return False
+
+    if request.user.role == 'centrehead':
+        research_centre_id = get_user_research_centre_id(request.user)
+        if not research_centre_id:
+            messages.error(request, "Your account is not assigned to a research centre.")
+            return False
+        if cost_centre is not None and cost_centre.research_centre_id != research_centre_id:
+            messages.error(request, "You can only change data for your assigned research centre.")
+            return False
+
+    return True
+
+
 @login_required
 def admin_dashboard(request):
     return render(request, 'adminpanel/overview.html')
 
 @login_required
 def communique(request):
-    allowed_roles = ['staff', 'manager', 'admin', 'financialadmin', 'student', 'supervisor']
-    if request.user.role not in allowed_roles:
+    if request.user.role not in COMMUNIQUE_ROLES:
         messages.error(request, "You do not have access to the Communique page.")
         return redirect('dashboard')
-    return render(request, 'adminpanel/communique.html')
+
+    template_uploads = SystemMedia.objects.filter(
+        purpose='template',
+        is_active=True,
+        description__startswith='Communique template:'
+    ).select_related('uploaded_by').order_by('-uploaded_at')
+
+    return render(request, 'adminpanel/communique.html', {
+        'template_uploads': template_uploads,
+        'can_upload_templates': request.user.role == 'admin',
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_http_methods(["POST"])
+def upload_communique_template(request):
+    template_name = request.POST.get('template_name', '').strip()
+    template_file = request.FILES.get('template_file')
+
+    if not template_name:
+        messages.error(request, "Template name is required.")
+        return redirect('communique')
+
+    if not template_file:
+        messages.error(request, "Please choose a template file.")
+        return redirect('communique')
+
+    allowed_extensions = {'.doc', '.docx', '.pdf'}
+    extension = os.path.splitext(template_file.name.lower())[1]
+    if extension not in allowed_extensions:
+        messages.error(request, "Only Word documents and PDFs are supported.")
+        return redirect('communique')
+
+    MediaService.create_media_record_with_backup(
+        file_obj=template_file,
+        uploaded_by=request.user,
+        purpose='template',
+        description=f'Communique template: {template_name}',
+        backup_to_db=True,
+    )
+    messages.success(request, f'Template "{template_name}" uploaded successfully.')
+    return redirect('communique')
+
+
+@login_required
+def download_communique_template(request, media_id):
+    media = get_object_or_404(
+        SystemMedia,
+        id=media_id,
+        purpose='template',
+        is_active=True,
+        description__startswith='Communique template:',
+    )
+
+    content = media.file_blob
+    if content is None and media.file:
+        media.file.open('rb')
+        content = media.file.read()
+        media.file.close()
+
+    if content is None:
+        messages.error(request, "Template file is not available.")
+        return redirect('communique')
+
+    response = HttpResponse(content, content_type=media.mime_type or 'application/octet-stream')
+    response['Content-Disposition'] = f'attachment; filename="{media.filename}"'
+    return response
 
 @login_required
 def app_kanban(request):
@@ -83,7 +214,7 @@ def app_kanban(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.role in ['admin', 'manager'])
+@user_passes_test(lambda u: u.role in ['admin', 'dean', 'manager'])
 def admin_ganttchart(request):
     projects = Project.objects.prefetch_related('tasks__subtasks')
     return render(request, 'adminpanel/admin_ganttchart.html', {'projects': projects})
@@ -119,6 +250,8 @@ def register_users(request):
 def overview(request):
     User = get_user_model()
     users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+    if request.user.role == 'centrehead':
+        users = users.filter(research_centre_id=request.user.research_centre_id)
 
     projects = Project.objects.prefetch_related(
         'tasks',
@@ -164,22 +297,20 @@ def overview(request):
         'projects': projects,
         'users': users,
         'insights_json': json.dumps(insights),
-        'recent_notifications': recent_notifications
+        'recent_notifications': recent_notifications,
+        'can_manage_overview': request.user.role == 'admin',
     })
 
 
 
-def is_admin(user):
-    return user.is_authenticated and user.role == 'admin'
-
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(is_admin_or_dean)
 def manage_users(request):
     search = request.GET.get('search', '')
     role_filter = request.GET.get('role', '')
 
-    users = CustomUser.objects.exclude(role='admin')
-    all_users = CustomUser.objects.exclude(role='admin')  # All users for filter dropdown
+    users = CustomUser.objects.exclude(role='admin').select_related('research_centre')
+    all_users = CustomUser.objects.exclude(role='admin').select_related('research_centre')  # All users for filter dropdown
 
     if search:
         users = users.filter(Q(username__icontains=search) | Q(email__icontains=search))
@@ -198,7 +329,9 @@ def manage_users(request):
         'form': CustomUserCreationForm(),
         'edit_forms': edit_forms,
         'role_totals': role_totals,
-        'role_counts': role_labels
+        'role_counts': role_labels,
+        'research_centres': ResearchCentre.objects.all(),
+        'is_readonly_user_management': request.user.role == 'dean',
     })
 
 
@@ -210,6 +343,7 @@ def create_user(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.role = form.cleaned_data['role']
+            user.research_centre = form.cleaned_data.get('research_centre')
             password = form.cleaned_data['password1']
             user.set_password(password)
             user.save()
@@ -307,6 +441,8 @@ def edit_user(request, user_id):
         user.username = request.POST.get('username')
         user.email = request.POST.get('email')
         user.role = request.POST.get('role')
+        research_centre_id = request.POST.get('research_centre')
+        user.research_centre = ResearchCentre.objects.filter(id=research_centre_id).first() if research_centre_id else None
 
         password1 = request.POST.get('password1')
         password2 = request.POST.get('password2')
@@ -399,6 +535,19 @@ def update_task_progress(request, task_id):
 def finance(request):
     from django.db import connection
 
+    if request.user.role in READONLY_FINANCE_ROLES:
+        return redirect('finance_readonly')
+    if not can_edit_finance(request.user):
+        messages.error(request, "You do not have access to the finance dashboard.")
+        return redirect('overview')
+
+    scoped_cost_centre_ids = None
+    if request.user.role == 'centrehead':
+        scoped_cost_centre_ids = get_accessible_cost_centre_ids(request.user)
+        if not scoped_cost_centre_ids:
+            messages.error(request, "Your account is not assigned to a research centre with cost centres.")
+            return redirect('communique')
+
     payment_summary = defaultdict(lambda: {'count': 0, 'total': Decimal('0.00')})
     payments_by_cc = defaultdict(list)
     cost_centres_map = {}
@@ -412,6 +561,8 @@ def finance(request):
             ORDER BY payment_date DESC
         """)
         for payment_id, cc_id, amount, description, payment_date in cursor.fetchall():
+            if scoped_cost_centre_ids is not None and cc_id not in scoped_cost_centre_ids:
+                continue
             amount_dec = safe_decimal(amount)
             summary = payment_summary[cc_id]
             summary['count'] += 1
@@ -423,9 +574,16 @@ def finance(request):
                 'payment_date': payment_date
             })
 
-        cursor.execute("SELECT id, name, moa_amount FROM adminpanel_costcentre ORDER BY name")
-        for cc_id, name, moa_amount in cursor.fetchall():
-            cost_centres_map[cc_id] = {'id': cc_id, 'name': name, 'moa_amount': safe_decimal(moa_amount)}
+        cursor.execute("""
+            SELECT cc.id, cc.code, cc.name, cc.moa_amount, cc.research_centre_id, rc.name
+            FROM adminpanel_costcentre cc
+            LEFT JOIN adminpanel_researchcentre rc ON cc.research_centre_id = rc.id
+            ORDER BY cc.name
+        """)
+        for cc_id, code, name, moa_amount, research_centre_id, research_centre_name in cursor.fetchall():
+            if scoped_cost_centre_ids is not None and cc_id not in scoped_cost_centre_ids:
+                continue
+            cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
 
         cursor.execute("""
             SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance
@@ -433,10 +591,12 @@ def finance(request):
             ORDER BY id DESC
         """)
         for exp_id, cc_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance in cursor.fetchall():
+            if scoped_cost_centre_ids is not None and cc_id not in scoped_cost_centre_ids:
+                continue
             amount_dec = safe_decimal(amount)
             opening_dec = safe_decimal(opening_balance)
             closing_dec = safe_decimal(closing_balance)
-            oracle_dec = safe_decimal(oracle_balance)
+            oracle_dec = optional_decimal(oracle_balance)
 
             expenditure_summary[cc_id] += amount_dec
 
@@ -455,7 +615,7 @@ def finance(request):
                 'amount': decimal_to_float(amount_dec),
                 'opening_balance': decimal_to_float(opening_dec),
                 'closing_balance': decimal_to_float(closing_dec),
-                'oracle_balance': decimal_to_float(oracle_dec)
+                'oracle_balance': decimal_to_float(oracle_dec) if oracle_dec is not None else None
             })
 
     cost_centres = []
@@ -501,12 +661,16 @@ def finance(request):
         'category_totals': category_totals,
         'monthly_totals': monthly_totals,
         'category_choices': Expenditure.EXPENSE_CATEGORY_CHOICES,
-        'payments_by_cc': payments_by_cc,
-        'audit_logs': audit_logs,
+            'payments_by_cc': payments_by_cc,
+            'audit_logs': audit_logs,
+            'is_readonly': False,
+            'can_add_cost_centre': request.user.role == 'admin',
+            'can_edit_finance': True,
+            'research_centres': ResearchCentre.objects.all(),
     })
 
 @login_required
-@user_passes_test(lambda u: u.role in ['admin', 'financialadmin'])
+@user_passes_test(lambda u: u.role in ['admin', 'dean', 'financialadmin'])
 def finance_readonly(request):
     """Read-only finance dashboard for financial admin users"""
     from django.db import connection
@@ -535,30 +699,38 @@ def finance_readonly(request):
                 'payment_date': payment_date
             })
 
-        cursor.execute("SELECT id, name, moa_amount FROM adminpanel_costcentre ORDER BY name")
-        for cc_id, name, moa_amount in cursor.fetchall():
-            cost_centres_map[cc_id] = {'id': cc_id, 'name': name, 'moa_amount': safe_decimal(moa_amount)}
+        cursor.execute("""
+            SELECT cc.id, cc.code, cc.name, cc.moa_amount, cc.research_centre_id, rc.name
+            FROM adminpanel_costcentre cc
+            LEFT JOIN adminpanel_researchcentre rc ON cc.research_centre_id = rc.id
+            ORDER BY cc.name
+        """)
+        for cc_id, code, name, moa_amount, research_centre_id, research_centre_name in cursor.fetchall():
+            cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
 
         cursor.execute("""
-            SELECT id, cost_centre_id, month, name, category, amount, opening_balance
+            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance
             FROM adminpanel_expenditure
             ORDER BY month DESC
         """)
-        for exp_id, cc_id, month, name, category, amount, opening_balance in cursor.fetchall():
+        for exp_id, cc_id, month, name, category, amount, opening_balance, oracle_balance in cursor.fetchall():
             amount_dec = safe_decimal(amount)
             opening_balance_dec = safe_decimal(opening_balance)
+            oracle_dec = optional_decimal(oracle_balance)
             cc_info = cost_centres_map.get(cc_id, {'id': cc_id, 'name': f'CC {cc_id}', 'moa_amount': Decimal('0')})
             expenditure_summary[cc_id] += amount_dec
 
             all_expenditures.append({
                 'id': exp_id,
                 'cost_centre_id': cc_id,
+                'cost_centre': cc_info,
                 'cost_centre_name': cc_info['name'],
                 'month': month,
                 'name': name,
                 'category': category,
                 'amount': decimal_to_float(amount_dec),
                 'opening_balance': decimal_to_float(opening_balance_dec),
+                'oracle_balance': decimal_to_float(oracle_dec) if oracle_dec is not None else None,
             })
 
     cost_centres = []
@@ -570,8 +742,12 @@ def finance_readonly(request):
 
         cost_centres.append({
             'id': cc_id,
+            'code': cc_info.get('code', ''),
             'name': cc_info['name'],
+            'research_centre_id': cc_info.get('research_centre_id'),
+            'research_centre_name': cc_info.get('research_centre_name'),
             'payment_count': summary['count'],
+            'total_received': decimal_to_float(summary['total']),
             'get_total_received': decimal_to_float(summary['total']),
             'total_spent': decimal_to_float(total_spent),
             'total_remaining': decimal_to_float(total_remaining),
@@ -597,7 +773,7 @@ def finance_readonly(request):
 
     audit_logs = AuditLog.objects.all().order_by('-timestamp')[:100]
 
-    return render(request, 'adminpanel/finance_readonly.html', {
+    return render(request, 'adminpanel/finance.html', {
         'cost_centres': cost_centres,
         'all_expenditures': all_expenditures,
         'category_totals': category_totals,
@@ -606,21 +782,25 @@ def finance_readonly(request):
         'payments_by_cc': payments_by_cc,
         'audit_logs': audit_logs,
         'is_readonly': True,
+        'can_add_cost_centre': False,
+        'can_edit_finance': False,
+        'research_centres': ResearchCentre.objects.all(),
     })
 
 @login_required
 @login_required
 def add_cost_centre(request):
     """Add a new cost centre with optional initial payment and MOA amount"""
+    if request.user.role != 'admin':
+        messages.error(request, "Only admins can add cost centres.")
+        return redirect(get_finance_redirect(request.user))
+
     if request.method == 'POST':
         code = request.POST.get('code', '').strip()
         name = request.POST.get('name')
+        research_centre_id = request.POST.get('research_centre')
         received = request.POST.get('received', '').strip()
         moa_amount = request.POST.get('moa_amount', '').strip()
-        
-        if not code:
-            messages.error(request, 'Cost Centre code is required')
-            return redirect('finance')
         
         if not name or not name.strip():
             messages.error(request, 'Cost Centre name is required')
@@ -631,13 +811,14 @@ def add_cost_centre(request):
             moa = Decimal(moa_amount) if moa_amount else Decimal('0.00')
             
             # Check if code already exists
-            if CostCentre.objects.filter(code=code).exists():
+            if code and CostCentre.objects.filter(code=code).exists():
                 messages.error(request, f'Cost Centre code "{code}" already exists')
                 return redirect('finance')
             
             cost_centre = CostCentre.objects.create(
                 code=code,
                 name=name.strip(),
+                research_centre=ResearchCentre.objects.filter(id=research_centre_id).first() if research_centre_id else None,
                 total_received=Decimal('0.00'),
                 total_spent=Decimal('0.00'),
                 moa_amount=moa
@@ -690,12 +871,16 @@ def add_cost_centre(request):
     
 @login_required
 def add_expenditure(request):
+    if not ensure_finance_editor(request):
+        return redirect(get_finance_redirect(request.user))
+
     if request.method == 'POST':
         cost_centre_id = request.POST.get('cost_centre_id')
         date_from_str = request.POST.get('date_from')
         date_to_str = request.POST.get('date_to')
         name = request.POST.get('name')
         category = request.POST.get('category')
+        oracle_balance = optional_decimal(request.POST.get('oracle_balance'))
 
         # Safely convert amount with validation
         try:
@@ -717,6 +902,8 @@ def add_expenditure(request):
         try:
             # Get cost centre
             cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+            if not ensure_finance_editor(request, cost_centre):
+                return redirect(get_finance_redirect(request.user))
             
             # Parse date range
             date_from = None
@@ -743,6 +930,7 @@ def add_expenditure(request):
                 amount=amount,
                 opening_balance=opening_balance,
                 closing_balance=closing_balance,
+                oracle_balance=oracle_balance,
                 date_from=date_from,
                 date_to=date_to
             )
@@ -755,17 +943,21 @@ def add_expenditure(request):
             log_expenditure_creation(expenditure, request.user)
             
             messages.success(request, 'Expenditure added successfully')
-            return redirect('finance_readonly')
+            return redirect('finance')
                 
         except Exception as e:
             messages.error(request, f'Error adding expenditure: {str(e)}')
-            return redirect('finance_readonly')
+            return redirect('finance')
 
 
 @login_required
 def get_expenditures(request, cost_centre_id):
     """Get expenditures for a cost centre using raw SQL"""
     try:
+        cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+        if request.user.role == 'centrehead' and cost_centre.research_centre_id != get_user_research_centre_id(request.user):
+            return JsonResponse({'error': 'You can only view expenditures for your assigned research centre'}, status=403)
+
         data = []
         
         with connection.cursor() as cursor:
@@ -793,18 +985,22 @@ def get_expenditures(request, cost_centre_id):
                     amount = float(amount) if amount else 0
                     opening_balance = float(opening_balance) if opening_balance else 0
                     closing_balance = float(closing_balance) if closing_balance else 0
-                    oracle_balance = float(oracle_balance) if oracle_balance else 0
+                    oracle_balance = float(oracle_balance) if oracle_balance is not None else None
                 except (ValueError, TypeError):
-                    amount = opening_balance = closing_balance = oracle_balance = 0
+                    amount = opening_balance = closing_balance = 0
+                    oracle_balance = None
                 
                 data.append({
+                    'id': exp_id,
+                    'cost_centre_id': cost_centre_id,
+                    'cost_centre_name': cost_centre.name,
                     'month': month,
                     'name': name,
                     'category': category,
                     'amount': str(amount),
                     'opening_balance': str(opening_balance),
                     'closing_balance': str(closing_balance),
-                    'oracle_balance': str(oracle_balance),
+                    'oracle_balance': str(oracle_balance) if oracle_balance is not None else None,
                 })
         
         return JsonResponse({'expenditures': data})
@@ -814,6 +1010,10 @@ def get_expenditures(request, cost_centre_id):
 @login_required
 def delete_cost_centre(request, pk):
     """Delete a cost centre using raw SQL"""
+    if request.user.role != 'admin':
+        messages.error(request, "Only admins can delete cost centres.")
+        return redirect(get_finance_redirect(request.user))
+
     try:
         with connection.cursor() as cursor:
             # Check if cost centre exists
@@ -856,11 +1056,16 @@ def delete_cost_centre(request, pk):
 @login_required
 def edit_cost_centre(request, pk):
     """Edit a cost centre - allows name and MOA amount editing"""
+    if request.user.role != 'admin':
+        messages.error(request, "Only admins can edit cost centres.")
+        return redirect(get_finance_redirect(request.user))
+
     try:
         cost_centre = CostCentre.objects.get(id=pk)
         
         if request.method == 'POST':
             name = request.POST.get('name', cost_centre.name)
+            research_centre_id = request.POST.get('research_centre')
             moa_amount = request.POST.get('moa_amount', '').strip()
             
             if not name or name.strip() == '':
@@ -875,6 +1080,7 @@ def edit_cost_centre(request, pk):
                 }
                 
                 cost_centre.name = name
+                cost_centre.research_centre = ResearchCentre.objects.filter(id=research_centre_id).first() if research_centre_id else None
                 if moa_amount:
                     cost_centre.moa_amount = Decimal(moa_amount)
                 cost_centre.save()
@@ -901,6 +1107,9 @@ def edit_cost_centre(request, pk):
 @login_required
 def add_payment(request):
     """Add an incremental payment to a cost centre"""
+    if not ensure_finance_editor(request):
+        return redirect(get_finance_redirect(request.user))
+
     if request.method == 'POST':
         cost_centre_id = request.POST.get('cost_centre_id')
         amount_str = request.POST.get('amount')
@@ -912,6 +1121,8 @@ def add_payment(request):
         
         try:
             cost_centre = CostCentre.objects.get(id=cost_centre_id)
+            if not ensure_finance_editor(request, cost_centre):
+                return redirect(get_finance_redirect(request.user))
             from adminpanel.models import CostCentrePayment
             
             # Validate and convert amount
@@ -945,10 +1156,15 @@ def add_payment(request):
 @login_required
 def delete_payment(request, payment_id):
     """Delete a payment from cost centre"""
+    if not ensure_finance_editor(request):
+        return redirect(get_finance_redirect(request.user))
+
     try:
         from adminpanel.models import CostCentrePayment
         payment = CostCentrePayment.objects.get(id=payment_id)
         cost_centre = payment.cost_centre
+        if not ensure_finance_editor(request, cost_centre):
+            return redirect(get_finance_redirect(request.user))
         payment_description = f"{cost_centre.name} - R {payment.amount}"
         
         payment.delete()
@@ -972,6 +1188,9 @@ def delete_payment(request, payment_id):
 @login_required
 def edit_expenditure(request, pk):
     """Edit an expenditure using raw SQL"""
+    if not ensure_finance_editor(request):
+        return redirect(get_finance_redirect(request.user))
+
     try:
         with connection.cursor() as cursor:
             # Fetch expenditure
@@ -986,6 +1205,9 @@ def edit_expenditure(request, pk):
                 return redirect('finance')
             
             exp_id, cost_centre_id, old_month, old_name, old_category, old_amount, old_opening_balance, old_oracle_balance = row
+            if request.user.role == 'centrehead' and cost_centre_id not in get_accessible_cost_centre_ids(request.user):
+                messages.error(request, "You can only edit expenditures for your assigned research centre.")
+                return redirect('finance')
             
             if request.method == 'POST':
                 month = request.POST.get('month', old_month)
@@ -1013,13 +1235,10 @@ def edit_expenditure(request, pk):
                 
                 # Validate and convert oracle_balance with error handling
                 try:
-                    oracle_str = request.POST.get('oracle_balance', str(old_oracle_balance))
-                    if not oracle_str or oracle_str.strip() == '':
-                        oracle_str = '0.00'
-                    oracle_balance = Decimal(oracle_str)
+                    oracle_balance = optional_decimal(request.POST.get('oracle_balance', old_oracle_balance))
                     
                     # Validate decimal places (max 2)
-                    if oracle_balance.as_tuple().exponent < -2:
+                    if oracle_balance is not None and oracle_balance.as_tuple().exponent < -2:
                         messages.error(request, 'Please enter a valid Oracle balance with up to 2 decimal places')
                         return redirect('finance')
                         
@@ -1036,7 +1255,8 @@ def edit_expenditure(request, pk):
                         'month': old_month,
                         'name': old_name,
                         'category': old_category,
-                        'amount': str(old_amount)
+                        'amount': str(old_amount),
+                        'oracle_balance': str(old_oracle_balance) if old_oracle_balance is not None else None,
                     }
                     
                     # Calculate closing balance
@@ -1049,7 +1269,7 @@ def edit_expenditure(request, pk):
                         SET month = %s, name = %s, category = %s, amount = %s, 
                             opening_balance = %s, closing_balance = %s, oracle_balance = %s
                         WHERE id = %s
-                    """, [month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle_balance), exp_id])
+                    """, [month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle_balance) if oracle_balance is not None else None, exp_id])
                     
                     # Get the updated expenditure for audit logging
                     expenditure = Expenditure.objects.get(id=pk)
@@ -1071,11 +1291,14 @@ def edit_expenditure(request, pk):
 @login_required
 def delete_expenditure(request, pk):
     """Delete an expenditure using raw SQL"""
+    if not ensure_finance_editor(request):
+        return redirect(get_finance_redirect(request.user))
+
     try:
         with connection.cursor() as cursor:
             # Fetch expenditure details before deletion
             cursor.execute("""
-                SELECT id, name, category, month FROM adminpanel_expenditure WHERE id = %s
+                SELECT id, cost_centre_id, name, category, month FROM adminpanel_expenditure WHERE id = %s
             """, [pk])
             
             row = cursor.fetchone()
@@ -1083,7 +1306,10 @@ def delete_expenditure(request, pk):
                 messages.error(request, 'Expenditure not found')
                 return redirect('finance')
             
-            exp_id, exp_name, exp_category, exp_month = row
+            exp_id, cost_centre_id, exp_name, exp_category, exp_month = row
+            if request.user.role == 'centrehead' and cost_centre_id not in get_accessible_cost_centre_ids(request.user):
+                messages.error(request, "You can only delete expenditures for your assigned research centre.")
+                return redirect('finance')
             
             if request.method == 'POST':
                 # Log the deletion with expenditure details
@@ -1111,6 +1337,9 @@ def delete_expenditure(request, pk):
 @login_required
 def add_budget_forecast(request):
     """Add a new budget forecast"""
+    if not ensure_finance_editor(request):
+        return redirect(get_finance_redirect(request.user))
+
     if request.method == 'POST':
         print("\n=== BUDGET FORECAST RECEIVED ===")
         print(f"POST data: {request.POST}")
@@ -1160,17 +1389,22 @@ def add_budget_forecast(request):
             # Try to fetch cost centre - handle decimal conversion errors
             try:
                 cost_centre = CostCentre.objects.get(id=cost_centre_id)
+                if not ensure_finance_editor(request, cost_centre):
+                    return redirect(get_finance_redirect(request.user))
                 print(f"✅ Cost centre found: {cost_centre.name}")
             except Exception as e:
                 print(f"⚠️ Error fetching cost centre via ORM: {e}")
                 # Fallback: fetch using raw SQL to bypass decimal issues
                 from django.db import connection
                 with connection.cursor() as cursor:
-                    cursor.execute("SELECT id, name FROM adminpanel_costcentre WHERE id = %s", [cost_centre_id])
+                    cursor.execute("SELECT id, name, research_centre_id FROM adminpanel_costcentre WHERE id = %s", [cost_centre_id])
                     row = cursor.fetchone()
                     if row:
                         # Create a temporary object with just id and name
                         cost_centre = CostCentre(id=row[0], name=row[1])
+                        cost_centre.research_centre_id = row[2]
+                        if not ensure_finance_editor(request, cost_centre):
+                            return redirect(get_finance_redirect(request.user))
                         print(f"✅ Cost centre found (via raw SQL): {cost_centre.name}")
                     else:
                         print(f"ERROR: Cost centre {cost_centre_id} not found")
@@ -1226,6 +1460,10 @@ def add_budget_forecast(request):
 def get_budget_forecasts(request, cost_centre_id):
     """Get budget forecasts for a cost centre as JSON"""
     try:
+        cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+        if request.user.role == 'centrehead' and cost_centre.research_centre_id != get_user_research_centre_id(request.user):
+            return JsonResponse({'error': 'You can only view forecasts for your assigned research centre'}, status=403)
+
         BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
         forecasts = BudgetForecast.objects.filter(
             cost_centre_id=cost_centre_id,
@@ -1267,11 +1505,51 @@ def get_budget_forecasts(request, cost_centre_id):
 
 @login_required
 @require_http_methods(["POST"])
+def edit_budget_forecast(request, pk):
+    if not ensure_finance_editor(request):
+        return JsonResponse({'error': 'You do not have permission to change financial data'}, status=403)
+
+    try:
+        BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
+        forecast = get_object_or_404(BudgetForecast, id=pk, is_released=False)
+        if not ensure_finance_editor(request, forecast.cost_centre):
+            return JsonResponse({'error': 'You can only edit forecasts for your assigned research centre'}, status=403)
+
+        body = json.loads(request.body) if request.body else request.POST
+        name = body.get('name', '').strip()
+        category = body.get('category', '').strip()
+        amount = optional_decimal(body.get('amount'))
+        date_from = parse_date(body.get('date_from')) if body.get('date_from') else None
+        date_to = parse_date(body.get('date_to')) if body.get('date_to') else None
+
+        if not name or not category or amount is None:
+            return JsonResponse({'error': 'Name, category, and amount are required'}, status=400)
+
+        forecast.name = name
+        forecast.category = category
+        forecast.amount = amount
+        forecast.date_from = date_from
+        forecast.date_to = date_to
+        forecast.month = date_from.strftime('%Y-%m-%d') if date_from else None
+        forecast.save()
+
+        return JsonResponse({'success': True, 'message': 'Forecast updated successfully'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
 def delete_budget_forecast(request, pk):
     """Delete a budget forecast"""
+    if not ensure_finance_editor(request):
+        return redirect(get_finance_redirect(request.user))
+
     try:
         BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
         forecast = get_object_or_404(BudgetForecast, id=pk)
+        if not ensure_finance_editor(request, forecast.cost_centre):
+            return redirect(get_finance_redirect(request.user))
         forecast.delete()
         messages.success(request, 'Budget forecast deleted successfully')
         return redirect('finance')
@@ -1284,6 +1562,9 @@ def delete_budget_forecast(request, pk):
 @require_http_methods(["POST"])
 def release_budget_forecasts(request, cost_centre_id):
     """Release budget forecasts to Monthly Expenditure Tracker - supports both all and selected"""
+    if not ensure_finance_editor(request):
+        return JsonResponse({'error': 'You do not have permission to change financial data'}, status=403)
+
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=400)
     
@@ -1293,6 +1574,8 @@ def release_budget_forecasts(request, cost_centre_id):
         forecast_ids = body.get('forecast_ids', [])
         
         cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+        if not ensure_finance_editor(request, cost_centre):
+            return JsonResponse({'error': 'You can only release forecasts for your assigned cost centre'}, status=403)
         BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
         Expenditure = apps.get_model('adminpanel', 'Expenditure')
         
@@ -1338,7 +1621,7 @@ def release_budget_forecasts(request, cost_centre_id):
                     str(forecast.amount),
                     str(opening_balance),
                     str(closing_balance),
-                    '0.00',
+                    None,
                     forecast.date_from,
                     forecast.date_to
                 ])
@@ -1366,6 +1649,9 @@ def release_budget_forecasts(request, cost_centre_id):
 @login_required
 def update_expenditure(request, pk):
     """Update an expenditure record"""
+    if not ensure_finance_editor(request):
+        return JsonResponse({'error': 'You do not have permission to change financial data'}, status=403)
+
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=400)
     
@@ -1374,15 +1660,20 @@ def update_expenditure(request, pk):
         body = json.loads(request.body)
         name = body.get('name')
         amount = body.get('amount')
+        oracle_balance = body.get('oracle_balance')
         
         Expenditure = apps.get_model('adminpanel', 'Expenditure')
         expenditure = get_object_or_404(Expenditure, id=pk)
+        if not ensure_finance_editor(request, expenditure.cost_centre):
+            return JsonResponse({'error': 'You can only update expenditures for your assigned cost centre'}, status=403)
         
         # Update fields
         if name:
             expenditure.name = name
         if amount:
             expenditure.amount = Decimal(amount)
+        if oracle_balance is not None:
+            expenditure.oracle_balance = optional_decimal(oracle_balance)
         
         expenditure.save()
         
@@ -1779,13 +2070,16 @@ def update_book_status(request, book_id):
 
 def admin_required(view_func):
     return user_passes_test(
-        lambda u: u.is_authenticated and u.role == 'admin'
+        can_view_admin_kanban
         # login_url='/login/'  # This is breaking code. wierd custom login_url override.
     )(view_func)
 
 @admin_required
 def admin_user_kanban(request, user_id):
     user = get_object_or_404(get_user_model(), id=user_id)
+    if request.user.role == 'centrehead' and user.research_centre_id != request.user.research_centre_id:
+        return HttpResponseBadRequest("You can only view task boards for users in your research centre.")
+
     tasks = Task.objects.filter(assigned_to=user)
 
     # Group by status

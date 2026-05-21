@@ -9,7 +9,27 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+class ResearchCentre(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class CostCentre(models.Model):
+    research_centre = models.ForeignKey(
+        ResearchCentre,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cost_centres',
+        help_text="Research centre this financial cost centre belongs to."
+    )
     code = models.CharField(max_length=20, unique=True, help_text="University-assigned cost centre code")
     name = models.CharField(max_length=100, unique=True)
     total_received = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
@@ -18,6 +38,17 @@ class CostCentre(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            base = ''.join(ch for ch in (self.name or 'CENTRE').upper() if ch.isalnum())[:12] or 'CENTRE'
+            candidate = base
+            suffix = 1
+            while CostCentre.objects.filter(code=candidate).exclude(pk=self.pk).exists():
+                suffix += 1
+                candidate = f"{base[:10]}{suffix}"
+            self.code = candidate
+        super().save(*args, **kwargs)
 
     @property
     def total_remaining(self):
@@ -109,7 +140,7 @@ class Expenditure(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     closing_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    oracle_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    oracle_balance = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     @property
     def months_count(self):

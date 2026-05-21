@@ -13,9 +13,9 @@ def register_view(request):
         if form.is_valid():
             role = request.POST.get('role')
 
-            # Prevent anyone from trying to register as an admin
-            if role == 'admin':
-                form.add_error(None, "You are not allowed to register as an admin.")
+            # Prevent public self-registration into privileged roles
+            if role in ['admin', 'dean', 'centrehead', 'financialadmin']:
+                form.add_error(None, "You are not allowed to register with this role.")
                 return render(request, 'users/register.html', {'form': form})
 
             user = form.save(commit=False)
@@ -43,6 +43,10 @@ def login_view(request):
         # Redirect based on user role
         if user.role == 'admin':
             return redirect('overview') # Admin
+        elif user.role == 'dean':
+            return redirect('overview') # Dean
+        elif user.role == 'centrehead':
+            return redirect('finance') # Centre Head
         elif user.role == 'supervisor':
             return redirect('supervisor_dashboard_portal') # Supervisor Portal
         elif user.role == 'manager':

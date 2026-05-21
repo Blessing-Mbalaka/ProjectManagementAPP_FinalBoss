@@ -52,9 +52,11 @@
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">Recent Notifications</h5>
       <!-- New Notification Button -->
+  {% if can_manage_overview %}
   <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createNotificationModal">
     <i class="bi bi-megaphone"></i> New Notification
   </button>
+  {% endif %}
 
   </div>
   <div class="card-body">
@@ -92,6 +94,7 @@
 
   </div>
 
+  {% if can_manage_overview %}
   <!-- Assign Projects and Project Managers -->
   <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -110,6 +113,7 @@
     </div>
     </div>
     <br>
+  {% endif %}
 
 
   <!-- Projects Table -->
@@ -251,6 +255,7 @@
   <h5>Time Tracking</h5>
   {% include 'adminpanel/partials/clock_widget.html' %}
 </div>
+{% if can_manage_overview %}
 <!-- Assign Project Modal -->
 <div class="modal fade" id="assignProjectModal" tabindex="-1" aria-labelledby="assignProjectModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -386,6 +391,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 
 
@@ -510,11 +516,13 @@
 })();
 </script>
 
+{% if can_manage_overview %}
 {% include 'adminpanel/partials/_load_students.html' %}
 
 
 <!-- Manage Projects Partial -->
 {% include "adminpanel/partials/addprojects.html" %}
+{% endif %}
 
 <style>
   /* Ensure modals appear above navbar */

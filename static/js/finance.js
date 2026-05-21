@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function populateExpenditureTable(expenditures) {
         expenditureTable.innerHTML = "";
         if (expenditures.length === 0) {
-            expenditureTable.innerHTML = `<tr><td colspan="13" class="text-center">No expenditures recorded.</td></tr>`;
+            expenditureTable.innerHTML = `<tr><td colspan="${canEditFinance ? 14 : 13}" class="text-center">No expenditures recorded.</td></tr>`;
             return;
         }
 
@@ -167,10 +167,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 Salary: '', Bursaries: '', Invoices: '', Fitness: '', Equipment: '', Travel: ''
             };
             categories[record.category] = `R ${parseFloat(record.amount).toLocaleString()}`;
+            const oracleValue = record.oracle_balance === null || record.oracle_balance === '' || typeof record.oracle_balance === 'undefined'
+                ? null
+                : parseFloat(record.oracle_balance);
+            const amountValue = parseFloat(record.amount);
+            const oracleMismatch = oracleValue !== null && Math.abs(amountValue - oracleValue) > 0.009;
+            const oracleDisplay = oracleValue === null ? '<span class="text-muted">Not captured</span>' : `R ${oracleValue.toLocaleString()}`;
+            const oracleStatus = oracleValue === null
+                ? '<span class="badge bg-secondary">Pending</span>'
+                : oracleMismatch
+                    ? '<span class="badge bg-warning text-dark">Review</span>'
+                    : '<span class="badge bg-success">Matched</span>';
+            const actionsCell = canEditFinance ? '<td></td>' : '';
 
             expenditureTable.innerHTML += `
-                <tr>
+                <tr data-cost-centre="${record.cost_centre_id || ''}" data-category="${record.category}" data-amount="${record.amount}" data-oracle="${oracleValue === null ? '' : oracleValue}">
                     <td>${record.month}</td>
+                    <td>${record.cost_centre_name || ''}</td>
                     <td>${record.name}</td>
                     <td>${categories['Salary']}</td>
                     <td>${categories['Bursaries']}</td>
@@ -180,9 +193,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     <td>${categories['Travel']}</td>
                     <td>R ${parseFloat(record.amount).toLocaleString()}</td>
                     <td>R ${parseFloat(record.opening_balance).toLocaleString()}</td>
-                    <td>R ${parseFloat(record.closing_balance).toLocaleString()}</td>
-                    <td>R ${parseFloat(record.oracle_balance).toLocaleString()}</td>
-                    <td>R ${parseFloat(record.closing_balance).toLocaleString()}</td>
+                    <td>${oracleDisplay}</td>
+                    <td class="oracle-status-cell">${oracleStatus}</td>
+                    ${actionsCell}
                 </tr>
             `;
         });
@@ -319,6 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     const forecastTableBody = document.querySelector('#forecastTableBody');
     const releaseForecastsBtn = document.querySelector('#releaseForecastsBtn');
+    const canEditFinance = window.canEditFinance !== false;
     const currentCostCentreForForecasts = {};
 
     if (costCentreDropdown) {
@@ -365,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Show release button if there are forecasts
-        if (releaseForecastsBtn) {
+        if (releaseForecastsBtn && canEditFinance) {
             releaseForecastsBtn.style.display = 'block';
         }
 
@@ -385,6 +399,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const categoryColor = categoryColors[forecast.category] || '#6c757d';
 
+            const actionsCell = canEditFinance ? `
+                    <td>
+                        <button type="button" class="btn btn-sm btn-warning edit-forecast-btn"
+                            data-id="${forecast.id}"
+                            data-name="${String(forecast.name).replace(/"/g, '&quot;')}"
+                            data-category="${forecast.category}"
+                            data-amount="${forecast.amount}"
+                            data-date-from="${forecast.date_from || ''}"
+                            data-date-to="${forecast.date_to || ''}">
+                            Edit
+                        </button>
+                        <form method="POST" action="/adminpanel/finance/delete-budget-forecast/${forecast.id}/" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Delete forecast" onclick="return confirm('Delete this forecast?');">Delete</button>
+                        </form>
+                    </td>` : '';
+
             forecastTableBody.innerHTML += `
                 <tr>
                     <td><small>${period}</small></td>
@@ -394,13 +424,70 @@ document.addEventListener('DOMContentLoaded', function () {
                     <td><span class="badge bg-info">${forecast.months}</span></td>
                     <td><strong>R ${parseFloat(forecast.total_cost).toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
                     <td><span class="badge bg-warning text-dark">Draft</span></td>
-                    <td>
-                        <form method="POST" action="/finance/delete-budget-forecast/${forecast.id}/" style="display: inline;">
-                            <button type="submit" class="btn btn-sm btn-danger" title="Delete forecast" onclick="return confirm('Delete this forecast?');">🗑️</button>
-                        </form>
-                    </td>
+                    ${actionsCell}
                 </tr>
             `;
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('.edit-forecast-btn');
+        if (!button) return;
+
+        const modalElement = document.getElementById('editForecastModal');
+        if (!modalElement) return;
+
+        modalElement.querySelector('[name="forecast_id"]').value = button.dataset.id;
+        modalElement.querySelector('[name="name"]').value = button.dataset.name || '';
+        modalElement.querySelector('[name="category"]').value = button.dataset.category || '';
+        modalElement.querySelector('[name="amount"]').value = button.dataset.amount || '';
+        modalElement.querySelector('[name="date_from"]').value = button.dataset.dateFrom || '';
+        modalElement.querySelector('[name="date_to"]').value = button.dataset.dateTo || '';
+
+        bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    });
+
+    const editForecastForm = document.getElementById('editForecastForm');
+    if (editForecastForm) {
+        editForecastForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const forecastId = editForecastForm.querySelector('[name="forecast_id"]').value;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')
+                ? document.querySelector('[name=csrfmiddlewaretoken]').value
+                : getCookie('csrftoken');
+
+            fetch(`/adminpanel/finance/edit-budget-forecast/${forecastId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: editForecastForm.querySelector('[name="name"]').value,
+                    category: editForecastForm.querySelector('[name="category"]').value,
+                    amount: editForecastForm.querySelector('[name="amount"]').value,
+                    date_from: editForecastForm.querySelector('[name="date_from"]').value,
+                    date_to: editForecastForm.querySelector('[name="date_to"]').value
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Error updating forecast');
+                    });
+                }
+                return response.json();
+            })
+            .then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('editForecastModal')).hide();
+                if (currentCostCentreForForecasts.id) {
+                    costCentreDropdown.dispatchEvent(new Event('change'));
+                }
+                loadAllArchiveForecasts();
+            })
+            .catch(error => {
+                alert(error.message);
+            });
         });
     }
 

@@ -1,7 +1,9 @@
 from django.contrib import admin
-from .models import CostCentre, Expenditure, Notification, SupervisorProfile, SupervisorFeedback, ClockInRecord, AuditLog, UserAvailability, UserLeaveRequest
+from .models import CostCentre, Expenditure, ResearchCentre, Notification, SupervisorProfile, SupervisorFeedback, ClockInRecord, AuditLog, UserAvailability, UserLeaveRequest
 
 from .media_models import SystemMedia
+
+admin.site.register(ResearchCentre)
 
 # Register SystemMedia model
 @admin.register(SystemMedia)
