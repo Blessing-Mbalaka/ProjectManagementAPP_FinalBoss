@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-_0c$9attqx23_v=(t13^$f8!z)yyn+kz+^)%a=)5r)sg_r8b0u')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False' if os.getenv('RENDER') else 'True').lower() == 'true'
+DEBUG = True
 
 # Enhanced ALLOWED_HOSTS configuration for Render, Azure Container Apps, and local development
 ALLOWED_HOSTS = [

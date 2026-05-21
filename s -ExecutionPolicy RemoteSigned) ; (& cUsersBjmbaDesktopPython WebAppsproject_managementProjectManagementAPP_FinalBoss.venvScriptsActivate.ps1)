@@ -1,0 +1,439 @@
+[33mcommit c3f7181ad03120788052b7f2216bfbf82369a0ac[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: st10466840 <st10466840@vcconnect.edu.za>
+Date:   Thu May 21 05:19:40 2026 +0200
+
+    Updated
+
+[33mcommit a307f411c666ff8857c819a8a5f3296e5051a408[m
+Author: st10466840 <st10466840@vcconnect.edu.za>
+Date:   Thu May 21 04:42:52 2026 +0200
+
+    Demo
+
+[33mcommit 9ebb6eb8b20db92cb9513e6dac1ce37487700b42[m
+Author: st10466840 <st10466840@vcconnect.edu.za>
+Date:   Thu May 21 04:27:52 2026 +0200
+
+    Paris requested Logic for CRM
+
+[33mcommit cdda244be61fbc4705fb9cff1cf452bd538f130c[m
+Author: st10466840 <st10466840@vcconnect.edu.za>
+Date:   Thu May 21 03:37:25 2026 +0200
+
+    Nonhlanahla changes
+
+[33mcommit ecd805d03b9a20f9f77c51e071d064e6884b8aa1[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Mon Mar 30 14:25:27 2026 +0200
+
+    Simple 2 line addition to the UI CSS to blur the background for the page. This is a safe checkpoint for changes made before the 30th of March Demo
+
+[33mcommit 0a655b2de50f94967ff16fb710ec8a10de7b4266[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Mon Mar 30 13:44:41 2026 +0200
+
+      Added manager_dashboardUrl to resolve 404 error on page redirect on back to dashboard action
+
+[33mcommit 16b0253ef9d3b80dabe629842412cfb055f25318[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Mon Mar 30 11:56:16 2026 +0200
+
+    set clockin to button
+
+[33mcommit e8605da803bee1af09b2e8b24e136d4b96c7093f[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Mon Mar 30 11:55:08 2026 +0200
+
+    Adding the blur on the login page, setting and styling
+
+[33mcommit 6c2abadac2a4089b995eee44207ecc3954b4fee8[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Mon Mar 30 11:07:32 2026 +0200
+
+    Adjusted the styling on http://127.0.0.1:8000/manager/manager_kanban/ to remove the ugly emojies and  put a better structured page that contains the updated professional look for better kanban consistency
+
+[33mcommit c9294ac96ee242d44f68cff5577b7c760623c2db[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Mon Mar 30 10:40:19 2026 +0200
+
+    Adding alignment to the misaligned dashboard-box, it was set to 500px margin-left, so the solution was to reduce the margin to 310px, and the alignment is fixed. I also manually adjusted some of the colours to amtch the UJ colours
+
+[33mcommit e62df1c360edabc0a7419861a07c6c215bdd4b0a[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Thu Mar 5 17:14:36 2026 +0200
+
+    Safe Version with ReadME ----Styling outstanding
+
+[33mcommit 37e8ce8359cf3eeb69da6ca1f3b8e53b75cc1cad[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Thu Mar 5 16:47:28 2026 +0200
+
+    Safe Version---Only left with styling
+
+[33mcommit 15f65cce94d8dd3b7be29b96a2b7d31192671899[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Sun Feb 15 22:04:42 2026 +0200
+
+    UJ branding
+
+[33mcommit 63888e705631f3516228227c78b2f57c1feeaada[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Sun Feb 15 21:36:49 2026 +0200
+
+    Auto schedular for team to know when someone is busy
+
+[33mcommit 2dc8707a05d6d62ccc8a7d031d99cfdb9186c0bf[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Sun Feb 15 20:44:38 2026 +0200
+
+    Chat feature fixed
+
+[33mcommit 5e8200b32b43bb7436340f97063e47da022a1312[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Sat Feb 14 13:08:16 2026 +0200
+
+    upload for message added
+
+[33mcommit 2df9ed85da59a5fe3d6a13fa97dbedc6a646fe42[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Sat Feb 14 02:50:43 2026 +0200
+
+    Demo-Ready Final Version awaiting UI and css only
+
+[33mcommit 4fcecd1e7fcf9d9601b5bbecf8de5a7787a41609[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Sat Feb 14 02:12:27 2026 +0200
+
+    communique
+
+[33mcommit d491ce23c431a68269f7166dd08533ad400b2c8a[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Sat Feb 14 01:47:04 2026 +0200
+
+    Plannign budget tool fixed
+
+[33mcommit 44b895121379b2f149282a2d0973ed1616a653c3[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Fri Feb 13 23:56:30 2026 +0200
+
+    salary range
+
+[33mcommit 75ca13cf6ba984a03c90e96f3e2f39a34f0031b3[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Fri Feb 13 23:09:49 2026 +0200
+
+    Scroll Logic
+
+[33mcommit a235652765064c3d45424a1a35011f85042a65f5[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Fri Feb 13 22:40:00 2026 +0200
+
+    Calender functionality and chat-app
+
+[33mcommit ab84657173e6597ec9b04954203970eafce93802[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Fri Feb 13 18:50:36 2026 +0200
+
+    Workforce Availability tool
+
+[33mcommit 3bce471f0c89cc0e57e8a2b90ef00c087797dfd0[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Thu Feb 12 14:38:31 2026 +0200
+
+    Small UI changes in finance
+
+[33mcommit c8f31c1cea2111cf1751991432ecad7c04de6e5d[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Thu Feb 5 00:28:51 2026 +0200
+
+    Production Ready---Final Boss
+
+[33mcommit 8049be6f3e2ef4fe8499ec2adb93f8cb5aabcf0b[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Thu Feb 5 00:21:27 2026 +0200
+
+    TestCases
+
+[33mcommit 48957f40140a2af2c507656dcc3c8d096255ec6c[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Wed Feb 4 23:54:15 2026 +0200
+
+    Fixed time;SMTP notifications; Notfications; User added inside the form so we can assign people to papers and conferences in a useful way and enable notifications based on those same assignments
+
+[33mcommit d26c841c9a752545759895970a50810c4e5c7343[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Wed Feb 4 19:00:06 2026 +0200
+
+    Added A way to track the clock in data and task performance inside the user management, to help monitor users and clockin data
+
+[33mcommit 57b65824e948763d4e51925572a623c5677a770d[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Wed Feb 4 15:05:37 2026 +0200
+
+    Add immutable audit trail system for finance transactions
+
+[33mcommit 5238c19a61b6255acd10df4d36e9c935bc013f9f[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Wed Feb 4 10:56:41 2026 +0200
+
+    Financial dashboard updated---we have a way to track packments and aggregate them under the same cost centre to help ensure that the costs can be aggreagated, what is outstanding is a field or the Project total expected MOA funds
+
+[33mcommit fc8f60e1022e626cad3d60d8cae1f1ccdfc9ba10[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Wed Feb 4 00:41:56 2026 +0200
+
+    Fixed the disfunctional Kanban---the fix was a simple referencing mismatch, leading to a 404 due to a failed API fetch
+
+[33mcommit 6732597d409e6e2186f35929ab3eeb0617671efc[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Wed Feb 4 00:20:13 2026 +0200
+
+    Added the comment field in the modal for paper viewing
+
+[33mcommit d680bf127c599b50a2f9fcca03a2b09175bbfee0[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Wed Jan 28 01:54:17 2026 +0200
+
+    2026 Working Version
+
+[33mcommit e4f9a03971487834859fc92674c4b1dab30990d9[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Wed Jan 28 00:52:25 2026 +0200
+
+    full system
+
+[33mcommit c8e9dbd5d881506bb507512c85d6e27b79df4846[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 20:33:11 2026 +0200
+
+    Improve drag-and-drop database persistence: add detailed logging and refresh_from_db
+
+[33mcommit 47220f97f0b4e273332ae16597c2b2ed05d2c0a0[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 20:29:51 2026 +0200
+
+    Add 'Saved Successfully' notification toast for drag-and-drop auto-save
+
+[33mcommit d2de19704d1ff76c39c47215bf0ad5de9bb8fbaf[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 20:26:52 2026 +0200
+
+    Fix drag-and-drop database save: add publisher field to all kanban cards
+
+[33mcommit 2f4ffb9e6e8fd16ba276f2aaa812b5e52be45f11[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 20:24:11 2026 +0200
+
+    Improve drag-and-drop error messages and logging
+
+[33mcommit eba13cf25651b0cf3528e539ffd2705211f944b6[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 20:24:06 2026 +0200
+
+    Add detailed logging and error handling for drag-and-drop database updates
+
+[33mcommit aea347e6a4a472e27a9234c705716459bdb20a13[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 20:08:52 2026 +0200
+
+    Complete drag-and-drop: prevent view switch during drag operations
+
+[33mcommit f51da8b5cc3c7eb036bbd09667d37a040f8c88ca[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 20:01:23 2026 +0200
+
+    Fix critical drag-and-drop bug: add setData() and debug logging
+    
+    - Added event.dataTransfer.setData() in dragStartBook()
+      * This was the missing piece preventing HTML5 drag from working
+      * Browser now recognizes this as a valid drag operation
+    - Added console.log statements for debugging all drag events
+    - Improved error handling with detailed console messages
+    - Drag-and-drop should now work properly
+
+[33mcommit 96305f3fe54782e433c510721fdbf7b37c1f7fbc[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 19:53:13 2026 +0200
+
+    Fix kanban drag-and-drop: complete all columns and handlers
+    
+    - Added draggable to review and production column cards
+    - Added ondragstart and ondragend handlers to all remaining cards
+    - Added ondragover and ondrop to review and production column containers
+    - Added dragEndBook() function to restore card state when drag cancelled
+    - Added isDragging flag to properly track drag state
+    - Added event.stopPropagation() to prevent event bubbling
+    - Cursor changes: move during drag, grab at rest
+    - Now drag-and-drop works across all 4 book status columns
+
+[33mcommit c257077a549c4c613d807c37440fe8811f30c6c5[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 19:44:15 2026 +0200
+
+    Implement kanban drag-and-drop for book status management
+    
+    - Added draggable=true to all kanban cards
+    - Added ondragstart handler to show visual feedback
+    - Added ondragover and ondrop handlers to kanban columns
+    - Implemented dragStartBook() to track dragged book ID
+    - Implemented allowDrop() to highlight drop zones
+    - Implemented dropBook() to update book status via API
+    - Card moves to target column on successful update
+    - Shows error alert if status update fails
+
+[33mcommit b01288b31c5f6edc6caaa769a119ffc8d748434a[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 19:22:03 2026 +0200
+
+    Fix missing chapters on page refresh in manager_book view
+    
+    - Added loadChapters(bookId) call to viewBookDetails() function
+    - Chapters now load from server when viewing a book
+    - Fixed: Table shows chapters persistently after adding and refreshing
+    - Enhanced loadChapters() with loading state and error handling
+    - Shows spinner during fetch, empty state if no chapters, error message if fetch fails
+
+[33mcommit 15317e6c48126a2db9deccf2ee6d56bd8a8e584c[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 18:50:57 2026 +0200
+
+    Add global progress display to all task templates
+    
+    - Added progress column to manager/assign.html table ( % display)
+    - Added progress badge to projects/staff_kanban.html task cards
+    - Added progress badge to manager/manager_kanban.html task cards
+    - Added progress element to adminpanel/admin_kanban.html JavaScript rendering
+    
+    All templates now display task.progress percentage automatically updated from status:
+    - todo  0%
+    - in_progress  33%
+    - review  66%
+    - done  100%
+    
+    Progress updates instantly when task status changes and persists across page reloads.
+
+[33mcommit eec0e389242a2b6c771de74c75dfdabc17ac76dc[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 18:23:50 2026 +0200
+
+    Add CSRF token to admin_book template and implement API persistence for books
+    
+    - Load books from database in admin_book view
+    - Pass books_json and status choices to template
+    - Replace hardcoded books with real database data
+    - Add CSRF token tag and hidden input for API calls
+    - Implement fetch calls for add/edit/delete book operations
+    - Connect to existing /manager/ API endpoints
+    - Add showEditBookForm function to separate form display from saving
+
+[33mcommit ab4d72e40d67c20cf77ae9861a1bff06ca09a426[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 17:48:42 2026 +0200
+
+    Use model choices for category dropdown - single source of truth
+    
+    - Pass EXPENSE_CATEGORY_CHOICES from Expenditure model to template
+    - Replace hardcoded category options in finance.html with template loop
+    - Eliminates duplicate category list between model and template
+    - Any future category updates only need to happen in the model
+
+[33mcommit 2d1d53673533fbe0564bc672fce1757340a40874[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 17:42:10 2026 +0200
+
+    Fix add_expenditure decimal errors - convert to raw SQL
+
+[33mcommit c9431053888f07602dd3277942a61b2a25533141[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 17:24:28 2026 +0200
+
+    Fix finance.html decimal rendering and switch to raw SQL queries
+    
+    - Update finance view to use raw SQL to avoid ORM decimal conversion errors
+    - Convert decimal values to float in Python before template rendering
+    - Add safe_decimal and safe_subtract template filters for future use
+    - Load admin_custom_filters in finance.html template
+    - Remove dependency on model properties that trigger decimal errors
+    - All decimals now safely converted with fallback to 0.00
+
+[33mcommit ea60ac01208121f9d4ddb868347641f9c7af2771[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 17:17:03 2026 +0200
+
+    Add comprehensive decimal error handling for financial data
+    
+    - Add InvalidOperation exception handling in edit_cost_centre()
+    - Add InvalidOperation exception handling in edit_expenditure()
+    - Validate decimal places (max 2) before saving
+    - Add safe defaults for empty/invalid number inputs
+    - Add user-friendly error messages using Django messages framework
+    - Enhanced Expenditure.save() with decimal validation and error catching
+    - Fixed database corruption by cleaning up invalid decimal values
+    - All operations now wrapped in try/except blocks
+
+[33mcommit e960a34b9aec0a318631a759426735dc2545b047[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 17:01:26 2026 +0200
+
+    Add ProjectManagementAPP_FinalBoss header
+
+[33mcommit fd73fcc2eb7e65225867f7e58784faf87ebba2a8[m
+Author: Blessing Mbalaka <bjmbalaka@gmail.com>
+Date:   Tue Jan 27 16:58:20 2026 +0200
+
+    Changes
+
+[33mcommit 915ffab552c2f9f8cc65cb7377488f0541041e7b[m
+Author: HopeLotriet <hopelotriet@gmail.com>
+Date:   Tue Aug 26 08:15:33 2025 +0300
+
+    Login
+
+[33mcommit ba3b4726349f2582ff6c3502c0a6af8bbe972d6d[m
+Author: HopeLotriet <hopelotriet@gmail.com>
+Date:   Tue Aug 26 07:46:43 2025 +0300
+
+    Changes
+
+[33mcommit 5db3f4370cf99df9ed8d0597c6bf16cfe992436a[m
+Author: HopeLotriet <hopelotriet@gmail.com>
+Date:   Tue Aug 12 10:26:28 2025 +0300
+
+    Changes
+
+[33mcommit 2000906d10cbd29259c050ba0d1ee9b07b8f132b[m
+Author: HopeLotriet <hopelotriet@gmail.com>
+Date:   Tue Aug 12 06:32:32 2025 +0300
+
+    changes in the overview
+
+[33mcommit 9c2ff5846cc38e8a2ae923743395264d3234001e[m
+Author: HopeLotriet <hopelotriet@gmail.com>
+Date:   Mon Aug 11 22:43:30 2025 +0300
+
+    Normalize line endings for shell scripts
+
+[33mcommit aca1484425b112c6eb3383ae729e18105a232aad[m
+Author: Tiisetsopudinyane <pudinyanesamueltiisetso@gmail.com>
+Date:   Mon Aug 11 17:38:22 2025 +0200
+
+    changed admin side
+
+[33mcommit fbe016a639ffc6018b4ac1fc2929a8976e525fda[m
+Merge: db23c64 4648d42
+Author: Tiisetsopudinyane <pudinyanesamueltiisetso@gmail.com>
+Date:   Mon Aug 11 17:33:14 2025 +0200
+
+    Merge branch 'main' of https://github.com/gnkadimeng/Project_Management
+
+[33mcommit db23c64b5bd04e8ef0fac6351860a65d124a39bf[m
+Author: Tiisetsopudinyane <pudinyanesamueltiisetso@gmail.com>
+Date:   Mon Aug 11 17:27:31 2025 +0200
+
+    fixed admin side
+
+[33mcommit 22e5044c35bb2d23e6b531df35c537d062e912b5[m
+Author: HopeLotriet <hopelotriet@gmail.com>
+Date:   Mon Aug 4 03:46:07 2025 +0300
+
+    changes
