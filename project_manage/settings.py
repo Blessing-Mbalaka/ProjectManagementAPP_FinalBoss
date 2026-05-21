@@ -131,6 +131,37 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+"""
+# if os.getenv('DATABASE_URL'):
+#     DATABASES = {
+#         'default': dj_database_url.config(
+#             conn_max_age=600,
+#             conn_health_checks=True,
+#             ssl_require=not DEBUG,
+#         )
+#     }
+# else:
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'db.sqlite3',
+#         }
+#     }
+"""
+
+# --- LOCAL POSTGRES SETTINGS FOR MIGRATIONS ---
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'pm_bof5',
+        'USER': 'pm_bof5_user',
+        'PASSWORD': '33FswS9wMfoopjW2ySxKkUP9vJAxrMar',
+        'HOST': 'dpg-d877cetckfvc739vedgg-a.oregon-postgres.render.com',
+        'PORT': '5432',
+    }
+}
+
+#postgresql://pm_bof5_user:33FswS9wMfoopjW2ySxKkUP9vJAxrMar@dpg-d877cetckfvc739vedgg-a.oregon-postgres.render.com/pm_bof5
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
