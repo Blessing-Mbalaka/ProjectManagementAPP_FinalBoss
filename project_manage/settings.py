@@ -24,14 +24,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-_0c$9attqx23_v=(t13^$f8!z)yyn+kz+^)%a=)5r)sg_r8b0u')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True os.getenv('DEBUG', 'False').lower() == 'true'
-DEBUG=True
-# Enhanced ALLOWED_HOSTS configuration for Azure Container Apps and other platforms
+DEBUG = os.getenv('DEBUG', 'False' if os.getenv('RENDER') else 'True').lower() == 'true'
+
+# Enhanced ALLOWED_HOSTS configuration for Render, Azure Container Apps, and local development
 ALLOWED_HOSTS = [
-    '127.0.0.1', 
-    'localhost', 
+    '127.0.0.1',
+    'localhost',
     'testserver',
-    'project_manage.onrender.com',
+    '.onrender.com',
 ]
 
 # Add Azure hostnames
@@ -43,6 +43,10 @@ if azure_hostname:
 container_app_hostname = os.getenv('CONTAINER_APP_HOSTNAME', '')
 if container_app_hostname:
     ALLOWED_HOSTS.append(container_app_hostname)
+
+render_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME', '')
+if render_hostname:
+    ALLOWED_HOSTS.append(render_hostname)
 
 # Allow custom ALLOWED_HOSTS from environment variable
 custom_hosts = os.getenv('ALLOWED_HOSTS', '')
@@ -61,11 +65,11 @@ ALLOWED_HOSTS = [host for host in ALLOWED_HOSTS if host]
 if not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-# CSRF Configuration - Enhanced for Azure Container Apps
+# CSRF Configuration - Enhanced for Render and Azure Container Apps
 CSRF_TRUSTED_ORIGINS = [
     'https://127.0.0.1',
-    'https://localhost', 
-    'https://project_manage.onrender.com',
+    'https://localhost',
+    'https://*.onrender.com',
 ]
 
 # allowed admin emails
@@ -74,16 +78,13 @@ ALLOWED_ADMIN_EMAILS = [
     'hopelotriet@gmail.com'
 ]
 
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# Use console backend for development/testing, switch to smtp for production
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Uncomment for production
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'lotriet.work@gmail.com'
-EMAIL_HOST_PASSWORD = 'g e c y h m n c v s y r y y z g'  # Use App Password, not your real password!
-DEFAULT_FROM_EMAIL = 'noreply@yourdomain.com'
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@yourdomain.com')
 
 # Add Azure hostnames to CSRF trusted origins
 if azure_hostname:
@@ -91,6 +92,9 @@ if azure_hostname:
 
 if container_app_hostname:
     CSRF_TRUSTED_ORIGINS.append(f'https://{container_app_hostname}')
+
+if render_hostname:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{render_hostname}')
 
 # Allow custom CSRF_TRUSTED_ORIGINS from environment variable
 custom_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
@@ -112,12 +116,21 @@ INSTALLED_APPS = [
     'manager',
 ]
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.getenv('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=not DEBUG,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -202,11 +215,18 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Use WhiteNoise for static files
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Azure Web Apps specific security settings
-if os.getenv('WEBSITE_HOSTNAME'):
-    # We're running on Azure
+# Production security settings for Render/Azure/reverse-proxy hosting
+if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_HSTS_SECONDS = 31536000

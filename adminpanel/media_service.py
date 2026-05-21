@@ -63,6 +63,8 @@ class MediaService:
     ):
         """
         Create a SystemMedia record for an uploaded file.
+        Files are backed up to the database by default so filesystem media can
+        be treated as a rebuildable cache on ephemeral hosts like Render.
         
         Args:
             file_obj: The file object from request.FILES
@@ -75,33 +77,15 @@ class MediaService:
         Returns:
             SystemMedia instance
         """
-        # Determine filename
-        actual_filename = filename or file_obj.name
-        
-        # Guess MIME type
-        mime_type = MediaService.guess_mime_type(actual_filename)
-        file_type = MediaService.get_file_type(mime_type)
-        
-        # Prepare SystemMedia data
-        media_data = {
-            'file': file_obj,
-            'filename': actual_filename,
-            'file_type': file_type,
-            'mime_type': mime_type,
-            'uploaded_by': uploaded_by,
-            'purpose': purpose,
-            'description': description,
-        }
-        
-        # Add generic relationship if related object provided
-        if related_object:
-            content_type = ContentType.objects.get_for_model(related_object.__class__)
-            media_data['content_type'] = content_type
-            media_data['object_id'] = related_object.pk
-        
-        # Create and return SystemMedia record
-        system_media = SystemMedia.objects.create(**media_data)
-        return system_media
+        return MediaService.create_media_record_with_backup(
+            file_obj=file_obj,
+            uploaded_by=uploaded_by,
+            purpose=purpose,
+            description=description,
+            related_object=related_object,
+            filename=filename,
+            backup_to_db=True,
+        )
     
     @staticmethod
     def create_media_record_with_backup(
