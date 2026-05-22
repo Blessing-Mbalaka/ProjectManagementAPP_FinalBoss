@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,8 +13,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-_0c$9attqx23_v=(t13^$f8!z)yyn+kz+^)%a=)5r)sg_r8b0u'
 
+# Load .env file
+load_dotenv(os.path.join(BASE_DIR, 'project_manage', '.env'))
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 # Enhanced ALLOWED_HOSTS configuration for Render, Azure Container Apps, and local development
 ALLOWED_HOSTS = [
@@ -54,10 +58,17 @@ ALLOWED_ADMIN_EMAILS = [
     'hopelotriet@gmail.com'
 ]
 
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+
+# Email config: use SMTP unless EMAIL_USE_CONSOLE is true
+EMAIL_USE_CONSOLE = os.getenv('EMAIL_USE_CONSOLE', 'False').lower() == 'true'
+if EMAIL_USE_CONSOLE:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() == 'true'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@yourdomain.com')
@@ -84,50 +95,27 @@ INSTALLED_APPS = [
     'manager',
 ]
 
-# if os.getenv('DATABASE_URL'):
-#     DATABASES = {
-#         'default': dj_database_url.config(
-#             conn_max_age=600,
-#             conn_health_checks=True,
-#             ssl_require=not DEBUG,
-#         ) }
-    
-# else:
-DATABASES = {
+
+# Use dj_database_url with .env DB config
+if os.getenv('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=not DEBUG,
+        )
+    }
+else:
+    DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', ''),
+            'USER': os.getenv('DB_USER_NAME', ''),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', ''),
+            'PORT': os.getenv('DB_PORT', '5432'),
         }
     }
-# """
-# # if os.getenv('DATABASE_URL'):
-# #     DATABASES = {
-# #         'default': dj_database_url.config(
-# #             conn_max_age=600,
-# #             conn_health_checks=True,
-# #             ssl_require=not DEBUG,
-# #         )
-# #     }
-# # else:
-# #     DATABASES = {
-# #         'default': {
-# #             'ENGINE': 'django.db.backends.sqlite3',
-# #             'NAME': BASE_DIR / 'db.sqlite3',
-# #         }
-# #     }
-# """
-
-# --- LOCAL POSTGRES SETTINGS FOR MIGRATIONS ---
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'pm_bof5',
-#         'USER': 'pm_bof5_user',
-#         'PASSWORD': '33FswS9wMfoopjW2ySxKkUP9vJAxrMar',
-#         'HOST': 'dpg-d877cetckfvc739vedgg-a.oregon-postgres.render.com',
-#         'PORT': '5432',
-#     }
-# }
 
 #postgresql://pm_bof5_user:33FswS9wMfoopjW2ySxKkUP9vJAxrMar@dpg-d877cetckfvc739vedgg-a.oregon-postgres.render.com/pm_bof5
 MIDDLEWARE = [
