@@ -57,42 +57,6 @@
             <canvas id="analyticsChart"></canvas>
         </div>
 
-        <!-- Summary Stats -->
-        <div class="row mt-5">
-            <div class="col-md-3">
-                <div class="card bg-light">
-                    <div class="card-body text-center">
-                        <p class="text-muted mb-2">Total Expenditure</p>
-                        <h4 class="text-primary mb-0" id="statTotalExp">R 0.00</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-light">
-                    <div class="card-body text-center">
-                        <p class="text-muted mb-2">Average per Month</p>
-                        <h4 class="text-success mb-0" id="statAvgMonth">R 0.00</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-light">
-                    <div class="card-body text-center">
-                        <p class="text-muted mb-2">Highest Category</p>
-                        <h4 class="text-warning mb-0" id="statHighestCat">-</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-light">
-                    <div class="card-body text-center">
-                        <p class="text-muted mb-2">Records Count</p>
-                        <h4 class="text-info mb-0" id="statRecordCount">0</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Table View Container (hidden by default) -->
         <div id="analyticsTableContainer" class="mt-4" style="display:none;">
             <div class="table-responsive">
@@ -179,11 +143,17 @@
     }
 
     function updateSummaryStats(filtered) {
+        const totalStat = document.getElementById('statTotalExp');
+        const avgStat = document.getElementById('statAvgMonth');
+        const highestStat = document.getElementById('statHighestCat');
+        const countStat = document.getElementById('statRecordCount');
+        if (!totalStat || !avgStat || !highestStat || !countStat) return;
+
         if (filtered.length === 0) {
-            document.getElementById('statTotalExp').textContent = 'R 0.00';
-            document.getElementById('statAvgMonth').textContent = 'R 0.00';
-            document.getElementById('statHighestCat').textContent = '-';
-            document.getElementById('statRecordCount').textContent = '0';
+            totalStat.textContent = 'R 0.00';
+            avgStat.textContent = 'R 0.00';
+            highestStat.textContent = '-';
+            countStat.textContent = '0';
             return;
         }
 
@@ -200,10 +170,10 @@
         let highestCat = Object.keys(categoryTotals).reduce((max, cat) =>
             categoryTotals[cat] > (categoryTotals[max] || 0) ? cat : max, '');
 
-        document.getElementById('statTotalExp').textContent = 'R ' + totalExp.toFixed(2);
-        document.getElementById('statAvgMonth').textContent = 'R ' + avgMonth.toFixed(2);
-        document.getElementById('statHighestCat').textContent = highestCat || '-';
-        document.getElementById('statRecordCount').textContent = filtered.length;
+        totalStat.textContent = 'R ' + totalExp.toFixed(2);
+        avgStat.textContent = 'R ' + avgMonth.toFixed(2);
+        highestStat.textContent = highestCat || '-';
+        countStat.textContent = filtered.length;
     }
 
     function renderChart(filtered, vizType) {

@@ -32,6 +32,7 @@ class CostCentre(models.Model):
     )
     code = models.CharField(max_length=20, unique=True, help_text="University-assigned cost centre code")
     name = models.CharField(max_length=100, unique=True)
+    client_name = models.CharField(max_length=150, blank=True, help_text="Client or stakeholder name linked to this cost centre")
     total_received = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     total_spent = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     moa_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, null=True, blank=True, help_text="Memorandum of Understanding - Total expected/budgeted amount")

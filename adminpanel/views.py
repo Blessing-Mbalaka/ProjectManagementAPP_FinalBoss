@@ -449,12 +449,20 @@ def overview(request):
         models.Q(expires_at__isnull=True)   | models.Q(expires_at__gt=now),
     ).order_by('-is_pinned', '-created_at')[:8]
 
+    dashboard_stats = {
+        'users': users.count(),
+        'projects': projects.count(),
+        'cost_centres': CostCentre.objects.count(),
+        'research_outputs': Book.objects.count() + Paper.objects.count(),
+    }
+
     return render(request, 'adminpanel/overview.html', {
         'projects': projects,
         'users': users,
         'insights_json': json.dumps(insights),
         'recent_notifications': recent_notifications,
         'can_manage_overview': request.user.role == 'admin',
+        'dashboard_stats': dashboard_stats,
     })
 
 
@@ -688,10 +696,12 @@ def update_task_progress(request, task_id):
 @login_required
 @login_required
 @login_required
-def finance(request):
+def finance(request, section=None):
     from django.db import connection
 
     if request.user.role in READONLY_FINANCE_ROLES:
+        if section:
+            return redirect('finance_readonly_section', section=section)
         return redirect('finance_readonly')
     if not can_edit_finance(request.user):
         messages.error(request, "You do not have access to the finance dashboard.")
@@ -731,15 +741,15 @@ def finance(request):
             })
 
         cursor.execute("""
-            SELECT cc.id, cc.code, cc.name, cc.moa_amount, cc.research_centre_id, rc.name
+            SELECT cc.id, cc.code, cc.name, cc.client_name, cc.moa_amount, cc.research_centre_id, rc.name
             FROM adminpanel_costcentre cc
             LEFT JOIN adminpanel_researchcentre rc ON cc.research_centre_id = rc.id
             ORDER BY cc.name
         """)
-        for cc_id, code, name, moa_amount, research_centre_id, research_centre_name in cursor.fetchall():
+        for cc_id, code, name, client_name, moa_amount, research_centre_id, research_centre_name in cursor.fetchall():
             if scoped_cost_centre_ids is not None and cc_id not in scoped_cost_centre_ids:
                 continue
-            cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
+            cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'client_name': client_name or '', 'display_name': client_name or name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
 
         cursor.execute("""
             SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id
@@ -808,6 +818,14 @@ def finance(request):
     # Convert to list of dicts for template
     category_totals = [{'category': cat, 'total': total} for cat, total in sorted(category_totals_dict.items())]
     monthly_totals = [{'month': month, 'total': total} for month, total in sorted(monthly_totals_dict.items())]
+    total_expenditure = sum((exp['amount'] for exp in all_expenditures), 0)
+    highest_category = max(category_totals_dict, key=category_totals_dict.get) if category_totals_dict else '-'
+    finance_summary = {
+        'total_expenditure': total_expenditure,
+        'average_per_month': total_expenditure / len(monthly_totals_dict) if monthly_totals_dict else 0,
+        'highest_category': highest_category,
+        'records_count': len(all_expenditures),
+    }
 
     # Fetch audit logs (most recent first)
     audit_logs = AuditLog.objects.all().order_by('-timestamp')[:100]  # Get last 100 entries
@@ -824,11 +842,13 @@ def finance(request):
             'can_add_cost_centre': request.user.role == 'admin',
             'can_edit_finance': True,
             'research_centres': ResearchCentre.objects.all(),
+            'finance_section': section,
+            'finance_summary': finance_summary,
     })
 
 @login_required
 @user_passes_test(lambda u: u.role in ['admin', 'dean', 'financialadmin'])
-def finance_readonly(request):
+def finance_readonly(request, section=None):
     """Read-only finance dashboard for financial admin users"""
     from django.db import connection
 
@@ -857,13 +877,13 @@ def finance_readonly(request):
             })
 
         cursor.execute("""
-            SELECT cc.id, cc.code, cc.name, cc.moa_amount, cc.research_centre_id, rc.name
+            SELECT cc.id, cc.code, cc.name, cc.client_name, cc.moa_amount, cc.research_centre_id, rc.name
             FROM adminpanel_costcentre cc
             LEFT JOIN adminpanel_researchcentre rc ON cc.research_centre_id = rc.id
             ORDER BY cc.name
         """)
-        for cc_id, code, name, moa_amount, research_centre_id, research_centre_name in cursor.fetchall():
-            cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
+        for cc_id, code, name, client_name, moa_amount, research_centre_id, research_centre_name in cursor.fetchall():
+            cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'client_name': client_name or '', 'display_name': client_name or name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
 
         cursor.execute("""
             SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance, expense_id
@@ -902,6 +922,8 @@ def finance_readonly(request):
             'id': cc_id,
             'code': cc_info.get('code', ''),
             'name': cc_info['name'],
+            'client_name': cc_info.get('client_name', ''),
+            'display_name': cc_info.get('display_name') or cc_info['name'],
             'research_centre_id': cc_info.get('research_centre_id'),
             'research_centre_name': cc_info.get('research_centre_name'),
             'payment_count': summary['count'],
@@ -928,6 +950,14 @@ def finance_readonly(request):
 
     category_totals = [{'category': cat, 'total': total} for cat, total in sorted(category_totals_dict.items())]
     monthly_totals = [{'month': month, 'total': total} for month, total in sorted(monthly_totals_dict.items())]
+    total_expenditure = sum((exp['amount'] for exp in all_expenditures), 0)
+    highest_category = max(category_totals_dict, key=category_totals_dict.get) if category_totals_dict else '-'
+    finance_summary = {
+        'total_expenditure': total_expenditure,
+        'average_per_month': total_expenditure / len(monthly_totals_dict) if monthly_totals_dict else 0,
+        'highest_category': highest_category,
+        'records_count': len(all_expenditures),
+    }
 
     audit_logs = AuditLog.objects.all().order_by('-timestamp')[:100]
 
@@ -943,6 +973,8 @@ def finance_readonly(request):
         'can_add_cost_centre': False,
         'can_edit_finance': False,
         'research_centres': ResearchCentre.objects.all(),
+        'finance_section': section,
+        'finance_summary': finance_summary,
     })
 
 
@@ -1158,6 +1190,7 @@ def add_cost_centre(request):
     if request.method == 'POST':
         code = request.POST.get('code', '').strip()
         name = request.POST.get('name')
+        client_name = request.POST.get('client_name', '').strip()
         research_centre_id = request.POST.get('research_centre')
         received = request.POST.get('received', '').strip()
         moa_amount = request.POST.get('moa_amount', '').strip()
@@ -1185,6 +1218,7 @@ def add_cost_centre(request):
             cost_centre = CostCentre.objects.create(
                 code=code,
                 name=name.strip(),
+                client_name=client_name,
                 research_centre=ResearchCentre.objects.filter(id=research_centre_id).first() if research_centre_id else None,
                 total_received=Decimal('0.00'),
                 total_spent=Decimal('0.00'),
@@ -1438,6 +1472,7 @@ def edit_cost_centre(request, pk):
         
         if request.method == 'POST':
             name = request.POST.get('name', cost_centre.name)
+            client_name = request.POST.get('client_name', '').strip()
             research_centre_id = request.POST.get('research_centre')
             moa_amount = request.POST.get('moa_amount', '').strip()
             
@@ -1449,10 +1484,12 @@ def edit_cost_centre(request, pk):
                 # Store previous values for audit log
                 previous_values = {
                     'name': cost_centre.name,
+                    'client_name': cost_centre.client_name,
                     'moa_amount': str(cost_centre.moa_amount)
                 }
                 
-                cost_centre.name = name
+                cost_centre.name = name.strip()
+                cost_centre.client_name = client_name
                 cost_centre.research_centre = ResearchCentre.objects.filter(id=research_centre_id).first() if research_centre_id else None
                 if moa_amount:
                     cost_centre.moa_amount = Decimal(moa_amount)

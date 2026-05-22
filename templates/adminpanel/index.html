@@ -98,11 +98,29 @@
                 {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' %}
                 <li><a href="{% url 'overview' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
                 <!-- <li><a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li> -->
-                <li><a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a></li>
+                <li>
+                    <details class="sidebar-dropdown">
+                        <summary class="nav-link sidebar-dropdown-toggle">
+                            <i class="bi bi-tools"></i><span>PM Tools</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i>
+                        </summary>
+                        <div class="sidebar-submenu">
+                            <a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a>
+                        </div>
+                    </details>
+                </li>
                 {% if user.role == 'admin' or user.role == 'dean' %}
-                <li><a href="{% url 'admin_journal' %}" class="nav-link"><i class="bi bi-file-earmark-text"></i><span>Paper</span></a></li>
-                <li><a href="{% url 'admin_conferences' %}" class="nav-link"><i class="bi bi-megaphone"></i><span>Conferences</span></a></li>
-                <li><a href="{% url 'admin_book' %}" class="nav-link"><i class="bi bi-book"></i><span>Books</span></a></li>
+                <li>
+                    <details class="sidebar-dropdown">
+                        <summary class="nav-link sidebar-dropdown-toggle">
+                            <i class="bi bi-journals"></i><span>Research Outputs</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i>
+                        </summary>
+                        <div class="sidebar-submenu">
+                            <a href="{% url 'admin_book' %}" class="nav-link"><i class="bi bi-book"></i><span>Books</span></a>
+                            <a href="{% url 'admin_journal' %}" class="nav-link"><i class="bi bi-file-earmark-text"></i><span>Journals</span></a>
+                            <a href="{% url 'admin_conferences' %}" class="nav-link"><i class="bi bi-megaphone"></i><span>Conferences</span></a>
+                        </div>
+                    </details>
+                </li>
                 <!-- <li><a href="{% url 'admin_ganttchart' %}" class="nav-link"><i class="bi bi-graph-up"></i><span>Project Analytics</span></a></li> -->
                 <li><a href="{% url 'supervisor_dashboard' %}" class="nav-link"><i class="bi bi-collection-play"></i><span>Supervision</span></a></li>
                 <li><a href="{% url 'manage_users' %}" class="nav-link"><i class="bi bi-people"></i><span>Manage Users</span></a></li>

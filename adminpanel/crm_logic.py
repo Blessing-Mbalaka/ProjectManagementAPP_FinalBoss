@@ -122,7 +122,8 @@ def build_clients(cost_centres, users):
         clients.append({
             'id': cost_centre.id,
             'code': cost_centre.code,
-            'name': cost_centre.name,
+            'name': cost_centre.client_name or cost_centre.name,
+            'cost_centre_name': cost_centre.name,
             'sector': cost_centre.research_centre.name if cost_centre.research_centre else 'Unassigned',
             'ownership': cost_centre.research_centre.name if cost_centre.research_centre else 'Institutional',
             'lead': next((user for user in users if user.role == 'centrehead' and user.research_centre_id == cost_centre.research_centre_id), None),
