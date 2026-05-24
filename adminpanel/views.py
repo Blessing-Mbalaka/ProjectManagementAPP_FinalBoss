@@ -2194,7 +2194,7 @@ def update_expenditure(request, pk):
 def admin_kanban(request):
     board_users = CustomUser.objects.filter(is_active=True).exclude(role__in=['admin', 'dean']).order_by('first_name', 'last_name', 'username')
     return render(request, 'adminpanel/admin_kanban.html', {
-        'is_kanban_readonly': request.user.role == 'dean',
+        'is_kanban_readonly': request.user.role in ['admin', 'dean'],
         'board_users': board_users,
     })
 
