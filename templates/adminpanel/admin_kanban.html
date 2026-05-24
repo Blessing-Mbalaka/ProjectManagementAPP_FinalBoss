@@ -496,52 +496,71 @@
 
             <!-- Welcome Box -->
             <div class="welcome-box">
-                <h3>Kanban Board!</h3>
-                <p>Organize your tasks efficiently with the Kanban method.</p>
+                <h3>{% if is_kanban_readonly %}Read-Only Kanban Board{% else %}Kanban Board{% endif %}</h3>
+                <p>{% if is_kanban_readonly %}View staff task boards without moving, editing, or deleting cards.{% else %}Organize your tasks efficiently with the Kanban method.{% endif %}</p>
                 <div class="progress mt-2" style="width: 75%; height: 10px;">
                     <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 75%"></div>
                 </div>
             </div>
 
             <div class="container-fluid py-4">
+                {% if is_kanban_readonly %}
+                <div class="alert alert-info shadow-sm">
+                    Dean access is read-only. Cards can be reviewed, but board changes are disabled.
+                </div>
                 <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h5 class="mb-0">Staff Kanban Viewer</h5>
+                        <select id="readonlyKanbanUserSelect" class="form-select" style="max-width: 320px;">
+                            <option value="">Select staff member</option>
+                            {% for staff_user in board_users %}
+                            <option value="{{ staff_user.id }}">{{ staff_user.get_full_name|default:staff_user.username }} - {{ staff_user.get_role_display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="card-body" id="readonlyKanbanBoardArea">
+                        <p class="text-muted mb-0">Choose a staff member to view their task board.</p>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="card mb-4 {% if is_kanban_readonly %}d-none{% endif %}">
                     <div class="card-body">
                         <div class="row g-3">
                             <!-- Main Task Fields -->
                             <div class="col-md-3">
-                                <input type="text" id="taskTitle" class="form-control" placeholder="Project Name">
+                                <input type="text" id="taskTitle" class="form-control" placeholder="Project Name" {% if is_kanban_readonly %}disabled{% endif %}>
                             </div>
                             <div class="col-md-3">
-                                <textarea id="task-description" class="form-control" placeholder="Task Name" rows="1"></textarea>
+                                <textarea id="task-description" class="form-control" placeholder="Task Name" rows="1" {% if is_kanban_readonly %}disabled{% endif %}></textarea>
                             </div>
                             <div class="col-md-2">
-                                <select id="taskPriority" class="form-select">
+                                <select id="taskPriority" class="form-select" {% if is_kanban_readonly %}disabled{% endif %}>
                                     <option value="low">Low</option>
                                     <option value="medium" selected>Medium</option>
                                     <option value="high">High</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <input type="date" id="taskDate" class="form-control">
+                                <input type="date" id="taskDate" class="form-control" {% if is_kanban_readonly %}disabled{% endif %}>
                             </div>
                             
                             <!-- Task Type Checkboxes -->
                             <div class="col-md-12 mt-3">
                                 <div class="d-flex flex-wrap gap-3">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="documentTag">
+                                        <input class="form-check-input" type="checkbox" id="documentTag" {% if is_kanban_readonly %}disabled{% endif %}>
                                         <label class="form-check-label" for="documentTag">Document</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="meetingTag">
+                                        <input class="form-check-input" type="checkbox" id="meetingTag" {% if is_kanban_readonly %}disabled{% endif %}>
                                         <label class="form-check-label" for="meetingTag">Meeting</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="presentationTag">
+                                        <input class="form-check-input" type="checkbox" id="presentationTag" {% if is_kanban_readonly %}disabled{% endif %}>
                                         <label class="form-check-label" for="presentationTag">Presentation</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="reportTag">
+                                        <input class="form-check-input" type="checkbox" id="reportTag" {% if is_kanban_readonly %}disabled{% endif %}>
                                         <label class="form-check-label" for="reportTag">Report</label>
                                     </div>
                                 </div>
@@ -549,14 +568,14 @@
                             
                             <!-- Submit Button -->
                             <div class="col-12 text-center mt-4">
-                                <button class="btn btn-primary px-5" id="saveTask">Add Task</button>
+                                <button class="btn btn-primary px-5" id="saveTask" {% if is_kanban_readonly %}disabled{% endif %}>Add Task</button>
                             </div>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Kanban Board -->
-                <div class="kanban-container d-flex gap-4">
+                <div class="kanban-container d-flex gap-4 {% if is_kanban_readonly %}d-none{% endif %}">
                     <div class="kanban-column" id="todo">
                         <h4>To Do</h4>
                     </div>
@@ -571,10 +590,10 @@
                     </div>
                 </div>
                 
-                <div class="mb-4 d-flex justify-content-center">
-                    <button id="generate-report-btn" class="btn btn-primary me-2">Generate Report</button>
-                    <button id="download-report-btn" class="btn btn-primary me-2">Download Report</button>
-                    <button id="send-report-btn" class="btn btn-primary">Send Report</button>
+                <div class="mb-4 d-flex justify-content-center {% if is_kanban_readonly %}d-none{% endif %}">
+                    <button id="generate-report-btn" class="btn btn-primary me-2" {% if is_kanban_readonly %}disabled{% endif %}>Generate Report</button>
+                    <button id="download-report-btn" class="btn btn-primary me-2" {% if is_kanban_readonly %}disabled{% endif %}>Download Report</button>
+                    <button id="send-report-btn" class="btn btn-primary" {% if is_kanban_readonly %}disabled{% endif %}>Send Report</button>
                 </div>
             </div>
         </div>
@@ -642,6 +661,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const isReadOnly = {{ is_kanban_readonly|yesno:"true,false" }};
             // Sidebar toggle functionality
             const toggleBtn = document.getElementById('toggleBtn');
             const sidebar = document.getElementById('sidebar');
@@ -684,6 +704,28 @@
             const inProgressColumn = document.getElementById('in-progress');
             const reviewColumn = document.getElementById('review');
             const completeColumn = document.getElementById('complete');
+            const readonlyKanbanUserSelect = document.getElementById('readonlyKanbanUserSelect');
+            const readonlyKanbanBoardArea = document.getElementById('readonlyKanbanBoardArea');
+
+            if (readonlyKanbanUserSelect && readonlyKanbanBoardArea) {
+                readonlyKanbanUserSelect.addEventListener('change', function() {
+                    if (!this.value) {
+                        readonlyKanbanBoardArea.innerHTML = '<p class="text-muted mb-0">Choose a staff member to view their task board.</p>';
+                        return;
+                    }
+
+                    readonlyKanbanBoardArea.innerHTML = '<p class="text-muted mb-0">Loading task board...</p>';
+                    const url = "{% url 'admin_user_kanban' 0 %}".replace('/0/', `/${this.value}/`);
+                    fetch(url)
+                        .then(response => response.text())
+                        .then(html => {
+                            readonlyKanbanBoardArea.innerHTML = html;
+                        })
+                        .catch(() => {
+                            readonlyKanbanBoardArea.innerHTML = '<div class="alert alert-danger mb-0">Unable to load this task board.</div>';
+                        });
+                });
+            }
             
             // Edit modal elements
             const editTaskModal = new bootstrap.Modal(document.getElementById('editTaskModal'));
@@ -755,8 +797,9 @@
                     }
                 });
                 
-                // Make tasks draggable
-                makeTasksDraggable();
+                if (!isReadOnly) {
+                    makeTasksDraggable();
+                }
             }
             
             // Create a task element
@@ -764,7 +807,7 @@
                 const taskElement = document.createElement('div');
                 taskElement.className = `kanban-task ${task.priority}`;
                 taskElement.dataset.taskId = task.id;
-                taskElement.draggable = true;
+                taskElement.draggable = !isReadOnly;
                 
                 // Task title (will be red if overdue)
                 const titleElement = document.createElement('div');
@@ -816,7 +859,9 @@
                         checkbox.type = 'checkbox';
                         checkbox.className = 'subtask-checkbox';
                         checkbox.checked = subtask.completed;
+                        checkbox.disabled = isReadOnly;
                         checkbox.addEventListener('change', function() {
+                            if (isReadOnly) return;
                             subtask.completed = this.checked;
                             saveTasks();
                         });
@@ -834,7 +879,7 @@
                 }
                 
                 // Add subtask button (only for incomplete tasks)
-                if (task.status !== 'complete') {
+                if (!isReadOnly && task.status !== 'complete') {
                     const addSubtaskDiv = document.createElement('div');
                     addSubtaskDiv.className = 'add-subtask';
                     
@@ -887,7 +932,9 @@
                 taskElement.appendChild(progressElement);
                 taskElement.appendChild(tagsElement);
                 taskElement.appendChild(subtaskContainer);
-                taskElement.appendChild(actionsElement);
+                if (!isReadOnly) {
+                    taskElement.appendChild(actionsElement);
+                }
                 
                 return taskElement;
             }
@@ -908,6 +955,7 @@
             
             // Make tasks draggable
             function makeTasksDraggable() {
+                if (isReadOnly) return;
                 const taskElements = document.querySelectorAll('.kanban-task');
                 
                 taskElements.forEach(task => {
@@ -929,6 +977,7 @@
             let draggedTask = null;
             
             function dragStart() {
+                if (isReadOnly) return;
                 draggedTask = this;
                 setTimeout(() => this.style.opacity = '0.4', 0);
             }
@@ -938,10 +987,12 @@
             }
             
             function dragOver(e) {
+                if (isReadOnly) return;
                 e.preventDefault();
             }
             
             function dragEnter(e) {
+                if (isReadOnly) return;
                 e.preventDefault();
                 this.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
             }
@@ -951,6 +1002,7 @@
             }
             
             function dragDrop() {
+                if (isReadOnly) return;
                 this.style.backgroundColor = '';
                 
                 if (draggedTask) {
@@ -969,6 +1021,7 @@
             
             // Add new task
             saveTaskBtn.addEventListener('click', function() {
+                if (isReadOnly) return;
                 const title = taskTitleInput.value.trim();
                 const description = taskDescriptionInput.value.trim();
                 const priority = taskPrioritySelect.value;
@@ -1009,6 +1062,7 @@
             
             // Open edit modal
             function openEditModal(taskId) {
+                if (isReadOnly) return;
                 const task = tasks.find(t => t.id === taskId);
                 if (task) {
                     currentEditingTaskId = taskId;
@@ -1062,6 +1116,7 @@
             
             // Add subtask in edit modal
             editAddSubtaskBtn.addEventListener('click', function() {
+                if (isReadOnly) return;
                 if (editNewSubtask.value.trim()) {
                     const task = tasks.find(t => t.id === currentEditingTaskId);
                     if (task) {
@@ -1078,6 +1133,7 @@
             
             // Save edited task
             saveTaskBtnModal.addEventListener('click', function() {
+                if (isReadOnly) return;
                 const task = tasks.find(t => t.id === currentEditingTaskId);
                 if (task) {
                     task.title = editTaskTitle.value.trim();
@@ -1097,6 +1153,7 @@
             
             // Delete task
             function deleteTask(taskId) {
+                if (isReadOnly) return;
                 if (confirm('Are you sure you want to delete this task?')) {
                     tasks = tasks.filter(t => t.id !== taskId);
                     saveTasks();

@@ -12,7 +12,7 @@
 <div class="welcome-box" style="margin-bottom: 30px; position: relative; z-index: 5;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <h3>Finance Overview</h3>
+            <h3>{% if user.role == 'dean' %}Detailed Finance Overview{% else %}Finance Overview{% endif %}</h3>
             <p>Track cost centres and monthly expenditures</p>
             <div class="alert alert-info mt-2">
                 <strong>Read-Only Access:</strong> You can view financial data and visualizations, but cannot make changes.

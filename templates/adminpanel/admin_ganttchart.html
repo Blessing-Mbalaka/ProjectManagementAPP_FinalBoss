@@ -7,10 +7,10 @@
 <link rel="stylesheet" href="{% static 'css/gant.css' %}">
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
             <div class="welcome-box">
-                <h3>Gantt Chatt!</h3>
+                <h3>{% if is_gantt_readonly %}Read-Only Gantt Chart{% else %}Gantt Chart{% endif %}</h3>
                 <p class="text-muted">Project Timeline Planner</p>
 
-                <p>You have 3 tasks to complete today. Let's make progress!</p>
+                <p>{% if is_gantt_readonly %}View staff project timelines without changing task dates or project structure.{% else %}You have 3 tasks to complete today. Let's make progress!{% endif %}</p>
                 <div class="progress mt-2" style="width: 75%; height: 10px;">
                     <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 75%"></div>
                 </div>
@@ -19,18 +19,28 @@
            
 
             <!-- Project Header -->
-            <!-- <div class="project-header">
+            <div class="project-header">
                 <h1 class="project-title" id="project-title">Project Timeline</h1>
-            </div> -->
+            </div>
 
             <!-- Controls -->
             <div class="controls">
+                {% if is_gantt_readonly %}
+                <select id="ganttOwnerFilter" class="form-control" style="max-width: 320px;">
+                    <option value="">All staff timelines</option>
+                    {% for staff_user in gantt_staff_users %}
+                    <option value="{{ staff_user.id }}">{{ staff_user.get_full_name|default:staff_user.username }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+                {% if not is_gantt_readonly %}
                 <button class="btn" id="addTask">
                     <span>+</span> Add Task
                 </button>
                 <button class="btn" id="editProject">
                     <span>✏️</span> Edit Project Name
                 </button>
+                {% endif %}
                 <div style="flex-grow: 1;"></div>
                 <button class="btn" id="zoomIn">
                     <span>🔍</span> Zoom In
@@ -93,17 +103,11 @@
 
             <script>
                 document.addEventListener('DOMContentLoaded', function () {
+                    const isReadOnly = {{ is_gantt_readonly|yesno:"true,false" }};
                     // Initial data
                     let projectName = "Project Timeline";
-                    let tasks = [
-                        { id: 1, name: "Project Initiation", start: 1, end: 3 },
-                        { id: 2, name: "Market Research", start: 2, end: 6 },
-                        { id: 3, name: "UI/UX Design", start: 4, end: 8 },
-                        { id: 4, name: "Frontend Development", start: 7, end: 12 },
-                        { id: 5, name: "Backend Development", start: 9, end: 14 },
-                        { id: 6, name: "Testing & QA", start: 13, end: 16 },
-                        { id: 7, name: "Deployment", start: 16, end: 18 }
-                    ];
+                    const allTasks = JSON.parse('{{ gantt_tasks_json|escapejs }}');
+                    let tasks = [...allTasks];
 
                     let daysToShow = 20;
                     let dayWidth = 40;
@@ -114,17 +118,27 @@
                     const ganttChart = document.getElementById('gantt-chart');
                     const taskModal = document.getElementById('task-modal');
                     const projectModal = document.getElementById('project-modal');
+                    const ownerFilter = document.getElementById('ganttOwnerFilter');
 
                     // Initialize the chart
                     renderGanttChart();
 
-                    // Event listeners for controls
-                    document.getElementById('addTask').addEventListener('click', showAddTaskModal);
+                    if (ownerFilter) {
+                        ownerFilter.addEventListener('change', function () {
+                            tasks = this.value ? allTasks.filter(task => String(task.ownerId) === this.value) : [...allTasks];
+                            renderGanttChart();
+                        });
+                    }
 
-                    document.getElementById('editProject').addEventListener('click', function () {
-                        document.getElementById('project-name').value = projectName;
-                        projectModal.style.display = 'flex';
-                    });
+                    // Event listeners for controls
+                    if (!isReadOnly) {
+                        document.getElementById('addTask').addEventListener('click', showAddTaskModal);
+
+                        document.getElementById('editProject').addEventListener('click', function () {
+                            document.getElementById('project-name').value = projectName;
+                            projectModal.style.display = 'flex';
+                        });
+                    }
 
                     document.getElementById('zoomIn').addEventListener('click', function () {
                         dayWidth = Math.min(dayWidth + 10, 80);
@@ -151,10 +165,12 @@
                     document.getElementById('save-project').addEventListener('click', saveProject);
 
                     // Edit project name by clicking title
-                    projectTitle.addEventListener('click', function () {
-                        document.getElementById('project-name').value = projectName;
-                        projectModal.style.display = 'flex';
-                    });
+                    if (!isReadOnly) {
+                        projectTitle.addEventListener('click', function () {
+                            document.getElementById('project-name').value = projectName;
+                            projectModal.style.display = 'flex';
+                        });
+                    }
 
                     // Close modals when clicking outside
                     window.addEventListener('click', function (event) {
@@ -168,6 +184,7 @@
 
                     // Functions
                     function showAddTaskModal() {
+                        if (isReadOnly) return;
                         document.getElementById('task-name').value = '';
                         document.getElementById('task-start').value = 1;
                         document.getElementById('task-end').value = 3;
@@ -176,6 +193,7 @@
                     }
 
                     function saveTask() {
+                        if (isReadOnly) return;
                         const name = document.getElementById('task-name').value.trim();
                         const start = parseInt(document.getElementById('task-start').value);
                         const end = parseInt(document.getElementById('task-end').value);
@@ -207,6 +225,7 @@
                     }
 
                     function saveProject() {
+                        if (isReadOnly) return;
                         const name = document.getElementById('project-name').value.trim();
                         if (name) {
                             projectName = name;
@@ -220,6 +239,14 @@
                     function renderGanttChart() {
                         ganttChart.innerHTML = '';
 
+                        if (!tasks.length) {
+                            const emptyState = document.createElement('div');
+                            emptyState.className = 'p-4 text-muted';
+                            emptyState.textContent = 'No project timelines found for this selection.';
+                            ganttChart.appendChild(emptyState);
+                            return;
+                        }
+
                         // Calculate days needed based on tasks
                         const maxEndDay = tasks.reduce((max, task) => Math.max(max, task.end), 0);
                         daysToShow = Math.max(20, maxEndDay + 5);
@@ -232,7 +259,7 @@
                         const headerLabel = document.createElement('div');
                         headerLabel.className = 'gantt-header-item';
                         headerLabel.style.width = '250px';
-                        headerLabel.textContent = 'Tasks';
+                        headerLabel.textContent = 'Project / Task';
                         header.appendChild(headerLabel);
 
                         // Add day headers
@@ -259,7 +286,8 @@
                             // Task name display/edit
                             const nameSpan = document.createElement('span');
                             nameSpan.className = 'task-name';
-                            nameSpan.textContent = task.name;
+                            nameSpan.textContent = task.project ? `${task.project}: ${task.name}` : task.name;
+                            nameSpan.title = `${task.owner || 'Unassigned'} | ${task.status || 'No status'} | ${task.progress || 0}%`;
 
                             // Task actions
                             const actionsDiv = document.createElement('div');
@@ -289,7 +317,9 @@
                             actionsDiv.appendChild(deleteBtn);
 
                             label.appendChild(nameSpan);
-                            label.appendChild(actionsDiv);
+                            if (!isReadOnly) {
+                                label.appendChild(actionsDiv);
+                            }
                             row.appendChild(label);
 
                             // Add bars container
@@ -316,10 +346,11 @@
                             bar.style.left = `${(task.start - 1) * dayWidth}px`;
                             bar.style.width = `${(task.end - task.start + 1) * dayWidth}px`;
                             bar.textContent = task.name;
-                            bar.title = `${task.name}\nStart: Day ${task.start}\nEnd: Day ${task.end}\nDuration: ${task.end - task.start + 1} days`;
+                            bar.title = `${task.name}\nProject: ${task.project || 'Unassigned'}\nOwner: ${task.owner || 'Unassigned'}\nStatus: ${task.status || 'No status'}\nProgress: ${task.progress || 0}%\nStart: ${task.startLabel || `Day ${task.start}`}\nEnd: ${task.endLabel || `Day ${task.end}`}`;
 
-                            // Make bar draggable and resizable
-                            makeDraggable(bar, task);
+                            if (!isReadOnly) {
+                                makeDraggable(bar, task);
+                            }
 
                             barsContainer.appendChild(bar);
                             row.appendChild(barsContainer);
@@ -328,6 +359,7 @@
                     }
 
                     function editTaskName(task) {
+                        if (isReadOnly) return;
                         const row = document.querySelector(`.gantt-row[data-task-id="${task.id}"]`);
                         const nameSpan = row.querySelector('.task-name');
 
@@ -357,6 +389,7 @@
                     }
 
                     function deleteTask(taskId) {
+                        if (isReadOnly) return;
                         if (confirm('Are you sure you want to delete this task?')) {
                             tasks = tasks.filter(t => t.id !== taskId);
                             renderGanttChart();
@@ -364,6 +397,7 @@
                     }
 
                     function makeDraggable(bar, task) {
+                        if (isReadOnly) return;
                         let isDragging = false;
                         let isResizing = false;
                         let startX, startLeft, startWidth;

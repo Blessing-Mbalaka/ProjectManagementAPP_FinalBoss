@@ -46,9 +46,12 @@ import os
 import re
 import zipfile
 from xml.etree import ElementTree
+import logging
 
 from .media_models import SystemMedia
 from .crm_logic import build_context as build_crm_logic_context
+
+logger = logging.getLogger(__name__)
 
 
 def safe_decimal(value, default=Decimal('0.00')):
@@ -290,10 +293,15 @@ def admin_dashboard(request):
     return render(request, 'adminpanel/overview.html')
 
 @login_required
-def communique(request):
+def communique(request, section=None):
     if request.user.role not in COMMUNIQUE_ROLES:
         messages.error(request, "You do not have access to the Communique page.")
         return redirect('dashboard')
+
+    allowed_sections = {None, 'availability', 'messages', 'templates'}
+    if section not in allowed_sections:
+        messages.error(request, "That Communique section does not exist.")
+        return redirect('communique')
 
     template_uploads = SystemMedia.objects.filter(
         purpose='template',
@@ -304,6 +312,7 @@ def communique(request):
     return render(request, 'adminpanel/communique.html', {
         'template_uploads': template_uploads,
         'can_upload_templates': request.user.role == 'admin',
+        'communique_section': section,
     })
 
 
@@ -336,7 +345,7 @@ def upload_communique_template(request):
         backup_to_db=True,
     )
     messages.success(request, f'Template "{template_name}" uploaded successfully.')
-    return redirect('communique')
+    return redirect('communique_section', section='templates')
 
 
 @login_required
@@ -372,8 +381,77 @@ def app_kanban(request):
 @login_required
 @user_passes_test(lambda u: u.role in ['admin', 'dean', 'manager'])
 def admin_ganttchart(request):
-    projects = Project.objects.prefetch_related('tasks__subtasks')
-    return render(request, 'adminpanel/admin_ganttchart.html', {'projects': projects})
+    projects = Project.objects.select_related('assigned_user', 'created_by').prefetch_related('tasks__assigned_to', 'tasks__subtasks')
+    timeline_items = []
+
+    for project in projects:
+        project_tasks = list(project.tasks.all())
+        if not project_tasks:
+            start_date = timezone.localdate(project.created_at) if project.created_at else timezone.localdate()
+            end_date = project.due_date or start_date + timedelta(days=3)
+            owner = project.assigned_user or project.created_by
+            timeline_items.append({
+                'id': f'project-{project.id}',
+                'name': project.name,
+                'project': project.name,
+                'owner': owner.get_full_name() or owner.username if owner else 'Unassigned',
+                'ownerId': owner.id if owner else '',
+                'status': project.get_status_display(),
+                'progress': 0,
+                'startDate': start_date,
+                'endDate': end_date if end_date >= start_date else start_date,
+            })
+            continue
+
+        for task in project_tasks:
+            start_date = timezone.localdate(task.created_at) if task.created_at else timezone.localdate(project.created_at)
+            end_date = task.due_date or project.due_date or start_date + timedelta(days=3)
+            owner = task.assigned_to or project.assigned_user or project.created_by
+            timeline_items.append({
+                'id': f'task-{task.id}',
+                'name': task.title,
+                'project': project.name,
+                'owner': owner.get_full_name() or owner.username if owner else 'Unassigned',
+                'ownerId': owner.id if owner else '',
+                'status': task.get_status_display(),
+                'progress': task.progress,
+                'startDate': start_date,
+                'endDate': end_date if end_date >= start_date else start_date,
+            })
+
+    if timeline_items:
+        first_date = min(item['startDate'] for item in timeline_items)
+    else:
+        first_date = timezone.localdate()
+
+    gantt_tasks = []
+    for item in timeline_items:
+        start = (item['startDate'] - first_date).days + 1
+        end = (item['endDate'] - first_date).days + 1
+        gantt_tasks.append({
+            'id': item['id'],
+            'name': item['name'],
+            'project': item['project'],
+            'owner': item['owner'],
+            'ownerId': item['ownerId'],
+            'status': item['status'],
+            'progress': item['progress'],
+            'start': start,
+            'end': max(start, end),
+            'startLabel': item['startDate'].strftime('%Y-%m-%d'),
+            'endLabel': item['endDate'].strftime('%Y-%m-%d'),
+        })
+
+    staff_users = CustomUser.objects.filter(
+        id__in=[item['ownerId'] for item in gantt_tasks if item['ownerId']]
+    ).order_by('first_name', 'last_name', 'username')
+
+    return render(request, 'adminpanel/admin_ganttchart.html', {
+        'projects': projects,
+        'is_gantt_readonly': request.user.role == 'dean',
+        'gantt_tasks_json': json.dumps(gantt_tasks),
+        'gantt_staff_users': staff_users,
+    })
 
 
 def register_users(request):
@@ -472,6 +550,7 @@ def overview(request):
 def manage_users(request):
     search = request.GET.get('search', '')
     role_filter = request.GET.get('role', '')
+    is_dean = request.user.role == 'dean'
 
     users = CustomUser.objects.exclude(role='admin').select_related('research_centre')
     all_users = CustomUser.objects.exclude(role='admin').select_related('research_centre')  # All users for filter dropdown
@@ -483,6 +562,11 @@ def manage_users(request):
 
     role_totals = Counter(CustomUser.objects.exclude(role='admin').values_list('role', flat=True))
     role_labels = dict(CustomUser.ROLE_CHOICES)
+    if is_dean:
+        role_labels = {
+            'centrehead': role_labels.get('centrehead', 'Centre Head'),
+            'staff': role_labels.get('staff', 'Staff'),
+        }
 
         #Create a dict of user_id → pre-filled edit form
     edit_forms = {user.id: CustomUserCreationForm(instance=user) for user in users}
@@ -495,7 +579,7 @@ def manage_users(request):
         'role_totals': role_totals,
         'role_counts': role_labels,
         'research_centres': ResearchCentre.objects.all(),
-        'is_readonly_user_management': request.user.role == 'dean',
+        'is_readonly_user_management': is_dean,
     })
 
 
@@ -513,6 +597,7 @@ def create_user(request):
             user.save()
             # Send email to new user
             subject = "You've been registered on the Project Management System"
+            login_url = request.build_absolute_uri('/')
             message = f"""
             Hello {user.username},
 
@@ -522,7 +607,7 @@ def create_user(request):
             Username: {user.username}
             Password: {password}
 
-            🔗 Login URL: https://django-project-app.lemonisland-3cb848d5.southafricanorth.azurecontainerapps.io
+            Login URL: {login_url}
 
             Please change your password after your first login.
 
@@ -530,18 +615,23 @@ def create_user(request):
             UJ Project Management Admin Team
             """.strip()
 
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-
-            messages.success(request, f"User {user.username} created and notified via email.")
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=False,
+                )
+                messages.success(request, f"User {user.username} created and notified via email.")
+            except Exception:
+                logger.exception("User %s was created, but the registration email failed.", user.username)
+                messages.warning(request, f"User {user.username} was created, but the notification email could not be sent.")
         else:
-            print(form.errors)
-            messages.error(request, "Failed to create user. Please check the form.")
+            for field_name, field_errors in form.errors.items():
+                field_label = form.fields[field_name].label if field_name in form.fields else "Form"
+                for error in field_errors:
+                    messages.error(request, f"{field_label}: {error}")
     return redirect('manage_users')
 
 
@@ -2102,7 +2192,11 @@ def update_expenditure(request, pk):
 
 @login_required
 def admin_kanban(request):
-    return render(request, 'adminpanel/admin_kanban.html')
+    board_users = CustomUser.objects.filter(is_active=True).exclude(role__in=['admin', 'dean']).order_by('first_name', 'last_name', 'username')
+    return render(request, 'adminpanel/admin_kanban.html', {
+        'is_kanban_readonly': request.user.role == 'dean',
+        'board_users': board_users,
+    })
 
 
 def get_crm_selected_centre(request):

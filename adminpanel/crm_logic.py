@@ -21,6 +21,16 @@ CRM_TABS = [
     ('reports', 'Reports', 'bi-bar-chart'),
 ]
 
+CRM_WELCOME = {
+    'clients': ('CRM Clients', 'Review institutional client relationships, ownership, pipeline, and current revenue.'),
+    'centres': ('CRM Centres', 'Compare centre leadership, staff coverage, client load, and engagement progress.'),
+    'engagements': ('CRM Engagements', 'Track relationship activity, delivery stage, due dates, and workload status.'),
+    'directory': ('CRM Directory', 'Read the staff and publication directory connected to active CRM work.'),
+    'financials': ('CRM Financials', 'Monitor revenue, spend, pipeline, and estimated profit across centres.'),
+    'alerts': ('CRM Alerts', 'Review relationship, payment, deadline, and data quality risks.'),
+    'reports': ('CRM Reports', 'Export and inspect institutional CRM reporting summaries.'),
+}
+
 
 def safe_decimal(value, default=Decimal('0.00')):
     if value is None:
@@ -287,6 +297,7 @@ def build_context(request, active_tab):
         **scope,
         'active_tab': active_tab,
         'crm_tabs': CRM_TABS,
+        'crm_welcome': CRM_WELCOME.get(active_tab, CRM_WELCOME['clients']),
         'clients': clients,
         'centres': centres,
         'engagements': engagements,

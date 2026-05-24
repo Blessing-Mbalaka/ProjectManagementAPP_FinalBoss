@@ -14,6 +14,7 @@ urlpatterns = [
     # Admin Routes
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('communique/', views.communique, name='communique'),
+    path('communique/<str:section>/', views.communique, name='communique_section'),
     path('communique/templates/upload/', views.upload_communique_template, name='upload_communique_template'),
     path('communique/templates/<int:media_id>/download/', views.download_communique_template, name='download_communique_template'),
     path('admin_book/', views.admin_book, name='admin_book'),

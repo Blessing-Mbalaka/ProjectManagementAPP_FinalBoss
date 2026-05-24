@@ -6,6 +6,7 @@
 {% block content %}
 <style>
   .crm-shell { padding: 34px 18px 60px; }
+  .crm-welcome { margin-bottom: 20px; }
   .crm-header { display: flex; justify-content: space-between; gap: 18px; align-items: end; margin-bottom: 20px; }
   .crm-title h3 { margin: 0; font-weight: 700; }
   .crm-title p { margin: 6px 0 0; color: #6c757d; }
@@ -40,6 +41,14 @@
 </style>
 
 <div class="crm-shell">
+  <div class="welcome-box crm-welcome">
+    <h3>{{ crm_welcome.0 }}</h3>
+    <p>{{ crm_welcome.1 }}</p>
+    <div class="progress mt-2" style="width: 75%; height: 10px;">
+      <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 75%"></div>
+    </div>
+  </div>
+
   <div class="crm-header">
     <div class="crm-title">
       <h3>CRM</h3>

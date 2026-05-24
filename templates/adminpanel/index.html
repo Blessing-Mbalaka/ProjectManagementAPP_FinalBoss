@@ -98,6 +98,25 @@
                 {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' %}
                 <li><a href="{% url 'overview' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
                 <!-- <li><a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li> -->
+                {% if user.role == 'dean' %}
+                <li>
+                    <details class="sidebar-dropdown">
+                        <summary class="nav-link sidebar-dropdown-toggle">
+                            <i class="bi bi-grid-1x2"></i><span>CRM</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i>
+                        </summary>
+                        <div class="sidebar-submenu">
+                            <a href="{% url 'crm_tab' 'clients' %}" class="nav-link"><i class="bi bi-building"></i><span>Clients</span></a>
+                            <a href="{% url 'crm_tab' 'centres' %}" class="nav-link"><i class="bi bi-diagram-3"></i><span>Centres</span></a>
+                            <a href="{% url 'crm_tab' 'engagements' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Engagements</span></a>
+                            <a href="{% url 'crm_tab' 'directory' %}" class="nav-link"><i class="bi bi-journal-text"></i><span>Directory</span></a>
+                            <a href="{% url 'crm_tab' 'financials' %}" class="nav-link"><i class="bi bi-cash-stack"></i><span>Financials</span></a>
+                            <a href="{% url 'finance_readonly' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Detailed Finance Overview</span></a>
+                            <a href="{% url 'crm_tab' 'alerts' %}" class="nav-link"><i class="bi bi-exclamation-triangle"></i><span>Alerts</span></a>
+                            <a href="{% url 'crm_tab' 'reports' %}" class="nav-link"><i class="bi bi-bar-chart"></i><span>Reports</span></a>
+                        </div>
+                    </details>
+                </li>
+                {% endif %}
                 <li>
                     <details class="sidebar-dropdown">
                         <summary class="nav-link sidebar-dropdown-toggle">
@@ -105,6 +124,9 @@
                         </summary>
                         <div class="sidebar-submenu">
                             <a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a>
+                            {% if user.role == 'admin' or user.role == 'dean' %}
+                            <a href="{% url 'admin_ganttchart' %}" class="nav-link"><i class="bi bi-graph-up"></i><span>Gantt Chart</span></a>
+                            {% endif %}
                         </div>
                     </details>
                 </li>
@@ -122,15 +144,19 @@
                     </details>
                 </li>
                 <!-- <li><a href="{% url 'admin_ganttchart' %}" class="nav-link"><i class="bi bi-graph-up"></i><span>Project Analytics</span></a></li> -->
+                {% if user.role == 'admin' %}
                 <li><a href="{% url 'supervisor_dashboard' %}" class="nav-link"><i class="bi bi-collection-play"></i><span>Supervision</span></a></li>
+                {% endif %}
                 <li><a href="{% url 'manage_users' %}" class="nav-link"><i class="bi bi-people"></i><span>Manage Users</span></a></li>
                 {% endif %}
                 {% endif %}
                 <li><a href="{% url 'communique' %}" class="nav-link"><i class="bi bi-chat-dots"></i><span>Communique</span></a></li>
-                <li><a href="{% url 'communique' %}#templatesSection" class="nav-link"><i class="bi bi-file-earmark-word"></i><span>Templates</span></a></li>
-                {% if user.role == 'dean' or user.role == 'centrehead' %}
+                {% if user.role != 'dean' %}
+                <li><a href="{% url 'communique_section' 'templates' %}" class="nav-link"><i class="bi bi-file-earmark-word"></i><span>Templates</span></a></li>
+                {% endif %}
+                {% if user.role == 'centrehead' %}
                 <li>
-                    <details class="sidebar-dropdown" open>
+                    <details class="sidebar-dropdown">
                         <summary class="nav-link sidebar-dropdown-toggle">
                             <i class="bi bi-grid-1x2"></i><span>CRM</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i>
                         </summary>
@@ -146,8 +172,9 @@
                     </details>
                 </li>
                 {% endif %}
-                {% if user.role == 'financialadmin' or user.role == 'dean' %}
+                {% if user.role == 'financialadmin' %}
                 <li><a href="{% url 'finance_readonly' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
+                {% elif user.role == 'dean' %}
                 {% else %}
                 <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
                 {% endif %}
@@ -171,7 +198,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="{% static 'js/dashboard.js' %}"></script>
+{% comment "Floating clock widget disabled by request" %}
 {% include 'adminpanel/partials/clock_widget.html' %}
+{% endcomment %}
 </body>
 
 </html>
