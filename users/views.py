@@ -46,7 +46,7 @@ def login_view(request):
         elif user.role == 'dean':
             return redirect('overview') # Dean
         elif user.role == 'centrehead':
-            return redirect('finance') # Centre Head
+            return redirect('overview') # Centre Head
         elif user.role == 'supervisor':
             return redirect('supervisor_dashboard_portal') # Supervisor Portal
         elif user.role == 'manager':

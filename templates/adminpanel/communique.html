@@ -6,122 +6,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Communique - Communication Hub</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
-        /* ========================
-           Professional Communique Page
-           ======================== */
-
-        /* Prevent scrollbar shift */
-        html {
-            overflow-y: scroll;
+        html { overflow-y: scroll; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+            overflow-x: hidden;
         }
-
-        /* Fix modals */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: url("{% static 'img/2.png' %}");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            filter: blur(1px);
+            transform: scale(1.1);
+            opacity: 0.5;
+            z-index: -1;
+        }
         .modal, .new-message-modal {
             position: fixed !important;
             z-index: 2000 !important;
         }
-
-       
-
-      
-
-     body {
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    position: relative; /* Required for the pseudo-element to align correctly */
-    overflow-x: hidden;
-}
-
-  .mega-container {
-            background-color: #ffffffdc;
-            margin-top: -24px;
-        }
-
-body::before {
-    content: "";
-    position: fixed; /* Keeps it as a fixed background */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    
-    /* Your original background properties move here */
-    background-image: url("{% static 'img/2.png' %}");
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    
-    /* The blur effect */
-    filter: blur(1px); /* Adjust the pixels to increase/decrease blur */
-    -webkit-filter: blur(1px); /* For Safari support */
-    
-    z-index: -1; /* Pushes the image behind your text/content */
-    
-    /* Optional: Slight zoom to hide the blurred white edges */
-    transform: scale(1.1); 
-    opacity:0.5;
-}
-
-
         .communique-wrapper {
             max-width: 1400px;
             margin: 0 auto;
             padding: 2rem 1rem;
         }
-
-        /* Header Section */
         .communique-header {
             background: linear-gradient(135deg, #F26522 0%, #E55100 100%);
             color: white;
             padding: 3rem 2rem;
             border-radius: 12px;
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1.5rem;
         }
-
-        .communique-header-left h1 {
-            margin: 0;
+        .communique-header h1 {
+            margin: 0 0 0.5rem;
             font-size: 2.5rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
         }
-
-        .communique-header-left p {
+        .communique-header p {
             margin: 0;
             font-size: 1.1rem;
             opacity: 0.95;
         }
-
-        .communique-header-right {
-            text-align: right;
-        }
-
         .user-info {
             background: rgba(255, 255, 255, 0.15);
             padding: 1rem 1.5rem;
             border-radius: 8px;
             backdrop-filter: blur(10px);
+            text-align: right;
         }
-
         .user-info p {
             margin: 0.3rem 0;
             font-size: 0.95rem;
         }
-
-        .user-info strong {
-            font-weight: 600;
-        }
-
         .back-button {
             display: inline-block;
             padding: 0.6rem 1.2rem;
@@ -131,30 +82,67 @@ body::before {
             border-radius: 6px;
             font-weight: 500;
             margin-top: 1rem;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             border: 1px solid rgba(255, 255, 255, 0.3);
         }
-
         .back-button:hover {
-            background: rgba(242, 101, 34, 0.3);
-            transform: translateX(-3px);
+            background: rgba(255, 255, 255, 0.28);
             color: white;
+            transform: translateX(-3px);
         }
-
-        /* Section Cards */
+        .communique-tile-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(220px, 1fr));
+            gap: 1.25rem;
+        }
+        .communique-tile {
+            background: #fff;
+            color: #1f2937;
+            text-decoration: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            min-height: 190px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .communique-tile:hover {
+            color: #1f2937;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        .communique-tile-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(242, 101, 34, 0.12);
+            color: #E55100;
+            font-size: 1.35rem;
+            margin-bottom: 1rem;
+        }
+        .communique-tile h3 {
+            font-size: 1.15rem;
+            margin: 0 0 0.5rem;
+            font-weight: 700;
+        }
+        .communique-tile p {
+            margin: 0;
+            color: #6b7280;
+            line-height: 1.5;
+        }
         .section-card {
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
             overflow: hidden;
-            transition: all 0.3s ease;
         }
-
-        .section-card:hover {
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-
         .section-card-header {
             background: linear-gradient(135deg, #F26522 0%, #E55100 100%);
             color: white;
@@ -163,63 +151,16 @@ body::before {
             align-items: center;
             gap: 1rem;
         }
-
         .section-card-header h2 {
             margin: 0;
             font-size: 1.5rem;
             font-weight: 600;
         }
-
         .section-card-header i {
             font-size: 2rem;
-            opacity: 0.8;
+            opacity: 0.85;
         }
-
-        .section-card-body {
-            padding: 2rem;
-        }
-
-        /* Availability Section */
-        #availabilityContainer {
-            background: #f8f9fa;
-        }
-
-        /* Messages Section */
-        #messagesContainer {
-            background: #f8f9fa;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .communique-header {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .communique-header-left h1 {
-                font-size: 1.8rem;
-            }
-
-            .communique-header-right {
-                text-align: center;
-                margin-top: 1.5rem;
-            }
-
-            .communique-wrapper {
-                padding: 1rem;
-            }
-
-            .section-card-header {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .section-card-body {
-                padding: 1.5rem;
-            }
-        }
-
-        /* Status Badge */
+        .section-card-body { padding: 2rem; }
         .status-badge {
             display: inline-block;
             background: #F26522;
@@ -230,70 +171,120 @@ body::before {
             font-weight: 500;
             margin-bottom: 1rem;
         }
-
-        /* Smooth animations */
-        .section-card {
-            animation: fadeInUp 0.6s ease-out;
+        .section-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
+        @media (max-width: 900px) {
+            .communique-header {
+                flex-direction: column;
+                text-align: center;
             }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+            .user-info { text-align: center; }
+            .communique-tile-grid { grid-template-columns: 1fr; }
+            .section-card-header {
+                flex-direction: column;
+                text-align: center;
             }
+            .section-card-body { padding: 1.5rem; }
         }
     </style>
 </head>
-
 <body>
-
 <div class="communique-wrapper">
-    <!-- Header -->
     <div class="communique-header">
-        <div class="communique-header-left">
-            <h1><img src="{% static 'img/logo_uj-removebg-preview.png' %}" alt="UJ" style="height: 45px; width: auto; vertical-align: middle; margin-right: 0.5rem;">Communique</h1>
-            <p>Team Communication & Scheduling Hub</p>
+        <div>
+            <h1>
+                <img src="{% static 'img/logo_uj-removebg-preview.png' %}" alt="UJ" style="height: 45px; width: auto; vertical-align: middle; margin-right: 0.5rem;">
+                Communique
+            </h1>
+            <p>{% if communique_section %}Focused communication workspace{% else %}Team communication and scheduling hub{% endif %}</p>
         </div>
-        <div class="communique-header-right">
+        <div>
             <div class="user-info">
                 <p><strong>User:</strong> {{ user.get_full_name|default:user.username }}</p>
-                <p><strong>Role:</strong> {{ user.role|title }}</p>
+                <p><strong>Role:</strong> {{ user.get_role_display }}</p>
             </div>
-            <a id="backBtn" href="#" class="back-button">
-                ← Back to Dashboard
-            </a>
+            <a id="backBtn" href="#" class="back-button">Back to Dashboard</a>
         </div>
     </div>
 
-    <!-- Availability Section -->
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not communique_section %}
+    <div class="communique-tile-grid">
+        <a class="communique-tile" href="{% url 'communique_section' 'availability' %}">
+            <div>
+                <div class="communique-tile-icon"><i class="fas fa-calendar-alt"></i></div>
+                <h3>Team Availability</h3>
+                <p>Manage schedules, meetings, leave requests, and daily availability in one focused workspace.</p>
+            </div>
+            <span class="text-muted small">Open scheduling</span>
+        </a>
+        <a class="communique-tile" href="{% url 'communique_section' 'messages' %}">
+            <div>
+                <div class="communique-tile-icon"><i class="fas fa-envelope"></i></div>
+                <h3>Staff Messages</h3>
+                <p>Send direct messages, follow conversations, and share attachments with team members.</p>
+            </div>
+            <span class="text-muted small">Open inbox</span>
+        </a>
+        <a class="communique-tile" href="{% url 'communique_section' 'templates' %}">
+            <div>
+                <div class="communique-tile-icon"><i class="fas fa-file-word"></i></div>
+                <h3>Communique Templates</h3>
+                <p>Access approved Word and PDF templates with database-backed file storage.</p>
+            </div>
+            <span class="text-muted small">{{ template_uploads|length }} template{{ template_uploads|length|pluralize }}</span>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if communique_section == 'availability' %}
     <div class="section-card">
         <div class="section-card-header">
             <i class="fas fa-calendar-alt"></i>
             <h2>Team Availability & Scheduling</h2>
         </div>
         <div class="section-card-body">
-            <div class="status-badge">✓ Manage schedules, meetings, and leave requests</div>
+            <div class="section-topbar">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'communique' %}"><i class="bi bi-arrow-left"></i> Back to Communique Tiles</a>
+            </div>
+            <div class="status-badge">Manage schedules, meetings, and leave requests</div>
             {% include "adminpanel/partials/Staff_Bookings.html" %}
         </div>
     </div>
+    {% endif %}
 
-    <!-- Messages Section -->
+    {% if communique_section == 'messages' %}
     <div class="section-card">
         <div class="section-card-header">
             <i class="fas fa-envelope"></i>
             <h2>Staff Messages & Communication</h2>
         </div>
         <div class="section-card-body">
-            <div class="status-badge">✓ Send messages, share attachments, and collaborate</div>
+            <div class="section-topbar">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'communique' %}"><i class="bi bi-arrow-left"></i> Back to Communique Tiles</a>
+            </div>
+            <div class="status-badge">Send messages, share attachments, and collaborate</div>
             {% include "adminpanel/partials/staff_messages_inbox.html" %}
         </div>
     </div>
+    {% endif %}
 
-    <!-- Templates Section -->
+    {% if communique_section == 'templates' %}
     <div class="section-card" id="templatesSection">
         <div class="section-card-header">
             <i class="fas fa-file-word"></i>
@@ -305,6 +296,9 @@ body::before {
             {% endif %}
         </div>
         <div class="section-card-body">
+            <div class="section-topbar">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'communique' %}"><i class="bi bi-arrow-left"></i> Back to Communique Tiles</a>
+            </div>
             <div class="status-badge">Word and PDF templates stored with database backup</div>
             <div class="table-responsive">
                 <table class="table table-sm table-hover align-middle">
@@ -325,9 +319,7 @@ body::before {
                             <td>{{ template.uploader_name }}</td>
                             <td>{{ template.uploaded_at|date:"Y-m-d H:i" }}</td>
                             <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="{% url 'download_communique_template' template.id %}">
-                                    Download
-                                </a>
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'download_communique_template' template.id %}">Download</a>
                             </td>
                         </tr>
                         {% empty %}
@@ -340,6 +332,7 @@ body::before {
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 {% if can_upload_templates %}
@@ -375,76 +368,38 @@ body::before {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Set up back button based on referrer or user role
     const userRole = '{{ user.role }}';
+    const communiqueSection = '{{ communique_section|default_if_none:"" }}';
     const backBtn = document.getElementById('backBtn');
-    const referrer = document.referrer;
-    
-    let targetUrl = null;
-    
-    // Check if coming from finance-readonly page
-    if (referrer && referrer.includes('finance-readonly')) {
-        targetUrl = '{% url "finance_readonly" %}';
-    } else {
-        // Fall back to role-based dashboard
-        const dashboardUrls = {
-            'admin': '{% url "overview" %}',
-            'dean': '{% url "overview" %}',
-            'centrehead': '{% url "overview" %}',
-            'manager': '{% url "manager_dashboard" %}',
-            'staff': '{% url "dashboard" %}',
-            'student': '{% url "student_dashboard" %}',
-            'financialadmin': '{% url "finance" %}',
-            'supervisor': '{% url "supervisor_dashboard_portal" %}'
-        };
-        targetUrl = dashboardUrls[userRole] || '{% url "overview" %}';
+    const dashboardUrls = {
+        'admin': '{% url "overview" %}',
+        'dean': '{% url "overview" %}',
+        'centrehead': '{% url "overview" %}',
+        'manager': '{% url "manager_dashboard" %}',
+        'staff': '{% url "dashboard" %}',
+        'student': '{% url "student_dashboard" %}',
+        'financialadmin': '{% url "finance_readonly" %}',
+        'supervisor': '{% url "supervisor_dashboard_portal" %}'
+    };
+    if (backBtn) {
+        backBtn.href = communiqueSection ? '{% url "communique" %}' : (dashboardUrls[userRole] || '{% url "overview" %}');
+        backBtn.textContent = communiqueSection ? 'Back to Communique Tiles' : 'Back to Dashboard';
     }
-    
-    if (backBtn && targetUrl) {
-        backBtn.href = targetUrl;
-    }
-
-    // Smooth scroll behavior
     document.documentElement.style.scrollBehavior = 'smooth';
 
-    // Function to initialize all partials
-    function initializeAllPartials() {
-        // Load messaging conversations
-        if (typeof loadConversations === 'function') {
-            loadConversations();
-        }
-        
-        // Load team availability
-        if (typeof loadTeamAvailability === 'function') {
-            loadTeamAvailability();
-        }
-        
-        // Render calendar
-        if (typeof renderCalendar === 'function') {
-            renderCalendar();
-        }
-        
-        // Update current time display
-        if (typeof updateSouthAfricaTime === 'function') {
-            updateSouthAfricaTime();
-        }
-        
-        // Setup modal handlers
-        if (typeof setupModalHandlers === 'function') {
-            setupModalHandlers();
-        }
+    function initializeSectionPartials() {
+        if (typeof loadConversations === 'function') loadConversations();
+        if (typeof loadTeamAvailability === 'function') loadTeamAvailability();
+        if (typeof renderCalendar === 'function') renderCalendar();
+        if (typeof updateSouthAfricaTime === 'function') updateSouthAfricaTime();
+        if (typeof setupModalHandlers === 'function') setupModalHandlers();
     }
 
-    // Initialize on DOM ready with slight delay to ensure all scripts are loaded
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initializeAllPartials, 100);
-        });
+        document.addEventListener('DOMContentLoaded', () => setTimeout(initializeSectionPartials, 100));
     } else {
-        // DOM is already loaded, initialize immediately
-        setTimeout(initializeAllPartials, 100);
+        setTimeout(initializeSectionPartials, 100);
     }
 </script>
-
 </body>
 </html>
