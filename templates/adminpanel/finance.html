@@ -125,7 +125,7 @@
                         <th>Client Name</th>
                         <th>Company</th>
                         <th>Research Centre</th>
-                        <th>Client Phase Due Dates</th>
+                        <th class="d-none">Client Phase Due Dates</th>
 
                         <th>Total MOA Amount</th>
                         <th>Total MOA Outstanding</th>
@@ -145,7 +145,7 @@
                         <tr>
                             <td><strong>{{ cc.name }}</strong></td>
                             <td>{{ cc.client_name|default:"Not captured" }}</td>
-                            <td>
+                            <td class="d-none">
                                 <strong>{{ cc.company_name|default:"Not captured" }}</strong>
                                 {% if cc.company_registration_number %}
                                     <div class="small text-muted">Reg: {{ cc.company_registration_number }}</div>

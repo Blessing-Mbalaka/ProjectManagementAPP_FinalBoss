@@ -293,6 +293,12 @@ def collect_company_details(post_data):
     }
 
 
+def get_cost_centre_available_funds(cost_centre):
+    total_received = cost_centre.get_total_received()
+    total_spent = Expenditure.objects.filter(cost_centre=cost_centre).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    return safe_decimal(total_received) - safe_decimal(total_spent)
+
+
 def ensure_finance_editor(request, cost_centre=None):
     if not can_edit_finance(request.user):
         messages.error(request, "You do not have permission to change financial data.")
@@ -1499,6 +1505,13 @@ def add_expenditure(request):
             if expense_id and Expenditure.objects.filter(expense_id=expense_id).exists():
                 messages.error(request, f'Expense ID "{expense_id}" already exists. Use a unique ID to prevent duplicates.')
                 return redirect('finance')
+            available_funds = get_cost_centre_available_funds(cost_centre)
+            if amount > available_funds:
+                messages.error(
+                    request,
+                    f'Insufficient funds in {cost_centre.name}. Available balance is R {available_funds:.2f}; this payment/expenditure needs R {amount:.2f}. Please use another cost centre or add funds first.'
+                )
+                return redirect('finance')
             
             # Parse date range
             date_from = None
@@ -1903,6 +1916,15 @@ def edit_expenditure(request, pk):
                     # Calculate closing balance
                     opening_balance = Decimal(str(old_opening_balance))
                     closing_balance = opening_balance - amount
+                    cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+                    existing_amount = safe_decimal(old_amount)
+                    available_funds = get_cost_centre_available_funds(cost_centre) + existing_amount
+                    if amount > available_funds:
+                        messages.error(
+                            request,
+                            f'Insufficient funds in {cost_centre.name}. Available balance is R {available_funds:.2f}; this updated expenditure needs R {amount:.2f}. Please use another cost centre or add funds first.'
+                        )
+                        return redirect('finance')
                     
                     # Update expenditure
                     cursor.execute("""
@@ -2237,9 +2259,19 @@ def release_budget_forecasts(request, cost_centre_id):
         
         forecasts_list = list(forecasts)
         forecast_count = len(forecasts_list)
+        forecast_total = sum((safe_decimal(forecast.total_cost) for forecast in forecasts_list), Decimal('0.00'))
+        available_funds = get_cost_centre_available_funds(cost_centre)
+        if forecast_total > available_funds:
+            return JsonResponse({
+                'error': (
+                    f'Insufficient funds in {cost_centre.name}. Available balance is R {available_funds:.2f}; '
+                    f'the selected forecast release needs R {forecast_total:.2f}. Please use another cost centre or add funds first.'
+                )
+            }, status=400)
         
         with connection.cursor() as cursor:
             for forecast in forecasts_list:
+                forecast_total_cost = safe_decimal(forecast.total_cost)
                 # Get current balance
                 cursor.execute("""
                     SELECT total_spent FROM adminpanel_costcentre WHERE id = %s
@@ -2249,7 +2281,7 @@ def release_budget_forecasts(request, cost_centre_id):
                 
                 # Calculate closing balance
                 opening_balance = current_spent
-                closing_balance = opening_balance - forecast.amount
+                closing_balance = opening_balance - forecast_total_cost
                 
                 # Insert into expenditure
                 cursor.execute("""
@@ -2261,7 +2293,7 @@ def release_budget_forecasts(request, cost_centre_id):
                     forecast.month,
                     forecast.name,
                     forecast.category,
-                    str(forecast.amount),
+                    str(forecast_total_cost),
                     str(opening_balance),
                     str(closing_balance),
                     None,
@@ -2270,7 +2302,7 @@ def release_budget_forecasts(request, cost_centre_id):
                 ])
                 
                 # Update cost centre total_spent
-                new_total = opening_balance + forecast.amount
+                new_total = opening_balance + forecast_total_cost
                 cursor.execute("""
                     UPDATE adminpanel_costcentre 
                     SET total_spent = %s

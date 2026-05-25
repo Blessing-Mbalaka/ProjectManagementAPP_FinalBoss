@@ -519,9 +519,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         alert('Forecasts released successfully!');
                         location.reload();
                     } else {
-                        return response.text().then(text => {
-                            throw new Error('Error releasing forecasts: ' + text);
-                        });
+                        return readReleaseResponse(response);
                     }
                 })
                 .catch(error => {
@@ -546,6 +544,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
         return cookieValue;
+    }
+
+    function readReleaseResponse(response) {
+        return response.text().then(text => {
+            let data = {};
+            try {
+                data = text ? JSON.parse(text) : {};
+            } catch (e) {
+                data = {};
+            }
+            if (!response.ok) {
+                throw new Error(data.error || text || 'Error releasing forecasts');
+            }
+            return data;
+        });
     }
 
     // ===========================
@@ -799,7 +812,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     },
                     body: JSON.stringify({ forecast_ids: forecastsByCostCentre[ccId] })
                 })
-                .then(response => {
+                .then(response => readReleaseResponse(response))
+                .then(() => {
                     completedCount++;
                     if (completedCount === totalRequests) {
                         alert('All forecasts released successfully!');
@@ -829,9 +843,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     loadAllArchiveForecasts();
                     reloadExpendituresForSelectedCostCentre();
                 } else {
-                    return response.text().then(text => {
-                        throw new Error('Error releasing forecasts: ' + text);
-                    });
+                    return readReleaseResponse(response);
                 }
             })
             .catch(error => {
@@ -854,9 +866,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     alert('Forecasts released successfully!');
                     location.reload();
                 } else {
-                    return response.text().then(text => {
-                        throw new Error('Error releasing forecasts: ' + text);
-                    });
+                    return readReleaseResponse(response);
                 }
             })
             .catch(error => {
