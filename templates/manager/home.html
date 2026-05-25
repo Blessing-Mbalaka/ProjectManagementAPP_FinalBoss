@@ -78,6 +78,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'admin/dashboard.js' %}"></script>
+    <script src="{% static 'js/table-tooltips.js' %}"></script>
+    <style>
+      .table-heading-help { cursor: help; }
+      .table-heading-help-icon { font-size: .78rem; opacity: .65; vertical-align: middle; }
+    </style>
     {% comment "Floating clock widget disabled by request" %}
     {% include 'adminpanel/partials/clock_widget.html' %}
     {% endcomment %}
