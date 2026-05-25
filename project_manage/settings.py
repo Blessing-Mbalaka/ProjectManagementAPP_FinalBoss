@@ -47,9 +47,7 @@ if not ALLOWED_HOSTS:
 
 # CSRF Configuration - Enhanced for Render and Azure Container Apps
 CSRF_TRUSTED_ORIGINS = [
-    'https://127.0.0.1',
-    'https://localhost',
-    'https://*.onrender.com',
+    'http://*.onrender.com',
 ]
 
 # allowed admin emails
@@ -212,17 +210,9 @@ STORAGES = {
 }
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Production security settings for Render/Azure/reverse-proxy hosting
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+
+
+# SSL/HTTPS production security logic removed for local and production simplicity
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -1,11 +1,15 @@
 from collections import Counter, defaultdict
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db.models import F, Q, Sum
+from django.conf import settings
+from django.core.mail import send_mail
 from django.utils import timezone
 
-from manager.models import Book, Paper
+from manager.models import Book, Conference, Paper
 from projects.models import Project
+from projects.scope import output_centre_q, project_centre_q
 from users.models import CustomUser
 
 from .models import CostCentre, Expenditure, ResearchCentre
@@ -17,6 +21,7 @@ CRM_TABS = [
     ('engagements', 'Engagements', 'bi-kanban'),
     ('directory', 'Directory', 'bi-journal-text'),
     ('financials', 'Financials', 'bi-cash-stack'),
+    ('active_projects', 'Active Projects', 'bi-list-task'),
     ('alerts', 'Alerts', 'bi-exclamation-triangle'),
     ('reports', 'Reports', 'bi-bar-chart'),
 ]
@@ -27,6 +32,7 @@ CRM_WELCOME = {
     'engagements': ('CRM Engagements', 'Track relationship activity, delivery stage, due dates, and workload status.'),
     'directory': ('CRM Directory', 'Read the staff and publication directory connected to active CRM work.'),
     'financials': ('CRM Financials', 'Monitor revenue, spend, pipeline, and estimated profit across centres.'),
+    'active_projects': ('CRM Active Projects', 'Inspect active delivery work and the alerts attached to each project.'),
     'alerts': ('CRM Alerts', 'Review relationship, payment, deadline, and data quality risks.'),
     'reports': ('CRM Reports', 'Export and inspect institutional CRM reporting summaries.'),
 }
@@ -48,6 +54,8 @@ def get_user_research_centre_id(user):
 def get_selected_centre(request):
     if request.user.role == 'centrehead':
         return ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)).first()
+    if request.user.role == 'admin' and get_user_research_centre_id(request.user):
+        return ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)).first()
     centre_id = request.GET.get('centre')
     return ResearchCentre.objects.filter(id=centre_id).first() if centre_id else None
 
@@ -57,26 +65,22 @@ def get_scope(request):
     research_centres = ResearchCentre.objects.all().order_by('name')
     if request.user.role == 'centrehead':
         research_centres = research_centres.filter(id=get_user_research_centre_id(request.user))
+    if request.user.role == 'admin' and get_user_research_centre_id(request.user):
+        research_centres = research_centres.filter(id=get_user_research_centre_id(request.user))
 
     cost_centres = CostCentre.objects.select_related('research_centre').all().order_by('name')
     users = CustomUser.objects.select_related('research_centre').filter(is_active=True).order_by('first_name', 'last_name', 'username')
-    projects = Project.objects.select_related('assigned_user', 'created_by').prefetch_related('tasks', 'assignments__team_member__user').all().order_by('-created_at')
+    projects = Project.objects.select_related('assigned_user', 'created_by', 'research_centre').prefetch_related('tasks', 'assignments__team_member__user').all().order_by('-created_at')
     papers = Paper.objects.select_related('lead_author_user', 'created_by').prefetch_related('co_authors_users').all().order_by('-updated_at')
+    conferences = Conference.objects.select_related('lead_author_user', 'created_by').prefetch_related('co_authors_users').all().order_by('-updated_at')
     books = Book.objects.prefetch_related('chapters').select_related('created_by').all().order_by('-created_at')
 
     if selected_centre:
         cost_centres = cost_centres.filter(research_centre=selected_centre)
         users = users.filter(research_centre=selected_centre)
-        projects = projects.filter(
-            Q(assigned_user__research_centre=selected_centre)
-            | Q(created_by__research_centre=selected_centre)
-            | Q(assignments__team_member__user__research_centre=selected_centre)
-        ).distinct()
-        papers = papers.filter(
-            Q(lead_author_user__research_centre=selected_centre)
-            | Q(created_by__research_centre=selected_centre)
-            | Q(co_authors_users__research_centre=selected_centre)
-        ).distinct()
+        projects = projects.filter(project_centre_q(selected_centre)).distinct()
+        papers = papers.filter(output_centre_q(selected_centre)).distinct()
+        conferences = conferences.filter(output_centre_q(selected_centre)).distinct()
         books = books.filter(created_by__research_centre=selected_centre)
 
     return {
@@ -86,6 +90,7 @@ def get_scope(request):
         'users': users,
         'projects': projects,
         'papers': papers,
+        'conferences': conferences,
         'books': books,
     }
 
@@ -98,6 +103,8 @@ def project_progress(project):
 
 
 def project_centre_name(project):
+    if project.research_centre:
+        return project.research_centre.name
     if project.assigned_user and project.assigned_user.research_centre:
         return project.assigned_user.research_centre.name
     if project.created_by and project.created_by.research_centre:
@@ -132,8 +139,27 @@ def build_clients(cost_centres, users):
         clients.append({
             'id': cost_centre.id,
             'code': cost_centre.code,
-            'name': cost_centre.client_name or cost_centre.name,
+            'name': cost_centre.client_name or cost_centre.company_name or cost_centre.name,
             'cost_centre_name': cost_centre.name,
+            'company_name': cost_centre.company_name,
+            'company_registration_number': cost_centre.company_registration_number,
+            'vat_number': cost_centre.vat_number,
+            'industry': cost_centre.industry,
+            'company_website': cost_centre.company_website,
+            'company_email': cost_centre.company_email,
+            'company_phone': cost_centre.company_phone,
+            'company_address': cost_centre.company_address,
+            'contact_person_name': cost_centre.contact_person_name,
+            'contact_person_role': cost_centre.contact_person_role,
+            'contact_email': cost_centre.contact_email,
+            'contact_phone': cost_centre.contact_phone,
+            'crm_notes': cost_centre.crm_notes,
+            'phase_due_dates': [
+                ('Phase 1', cost_centre.phase_1_due_date),
+                ('Phase 2', cost_centre.phase_2_due_date),
+                ('Phase 3', cost_centre.phase_3_due_date),
+                ('Phase 4', cost_centre.phase_4_due_date),
+            ],
             'sector': cost_centre.research_centre.name if cost_centre.research_centre else 'Unassigned',
             'ownership': cost_centre.research_centre.name if cost_centre.research_centre else 'Institutional',
             'lead': next((user for user in users if user.role == 'centrehead' and user.research_centre_id == cost_centre.research_centre_id), None),
@@ -170,7 +196,7 @@ def build_engagements(projects):
     return engagements
 
 
-def build_publications(papers, books, projects):
+def build_publications(papers, conferences, books, projects):
     publications = []
     for paper in papers:
         publications.append({
@@ -180,6 +206,15 @@ def build_publications(papers, books, projects):
             'authors': paper_authors(paper),
             'owner': paper.created_by,
             'updated_at': paper.updated_at,
+        })
+    for conference in conferences:
+        publications.append({
+            'type': 'Conference',
+            'title': conference.title,
+            'status': conference.get_status_display(),
+            'authors': paper_authors(conference),
+            'owner': conference.created_by,
+            'updated_at': conference.updated_at,
         })
     for book in books:
         publications.append({
@@ -201,6 +236,49 @@ def build_publications(papers, books, projects):
                 'updated_at': project.created_at,
             })
     return publications
+
+
+def client_risk_explainer():
+    return [
+        'Overdue active project dates raise client delivery risk.',
+        'Missing or overdue client phase due dates on the cost centre/MOA record raise delivery-governance risk.',
+        'No project activity for 60+ days raises retention risk.',
+        'Missing recorded payments or outstanding MOA value raises payment and renewal risk.',
+        'Oracle amount mismatches and duplicate clients across centres raise data-quality risk.',
+        'This is a rules-based score now; it is structured so a future trained churn model can replace or supplement the score.',
+    ]
+
+
+def send_dean_alert_email_once(request, alerts):
+    if request.user.role != 'dean' or not alerts or not getattr(request.user, 'email', None):
+        return
+
+    today_key = timezone.now().strftime('%Y%m%d')
+    session_key = f'crm_dean_alert_email_sent_{today_key}'
+    if request.session.get(session_key):
+        return
+
+    high_alerts = [alert for alert in alerts if alert.get('level') == 'High']
+    subject = 'CRM risk alerts need review'
+    lines = [
+        f'{len(alerts)} CRM alert(s) are currently visible in your CRM scope.',
+        f'{len(high_alerts)} high severity alert(s).',
+        '',
+    ]
+    for alert in alerts[:10]:
+        lines.append(f"- {alert.get('level')}: {alert.get('type')} - {alert.get('message')}")
+
+    try:
+        send_mail(
+            subject,
+            '\n'.join(lines),
+            getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+            [request.user.email],
+            fail_silently=True,
+        )
+        request.session[session_key] = True
+    except Exception:
+        pass
 
 
 def build_reports(clients, centres, engagements, alerts, publications, users):
@@ -246,6 +324,7 @@ def build_context(request, active_tab):
     users = list(scope['users'])
     projects = list(scope['projects'])
     papers = list(scope['papers'])
+    conferences = list(scope['conferences'])
     books = list(scope['books'])
     clients, total_revenue, total_spent = build_clients(cost_centres, users)
     engagements = build_engagements(projects)
@@ -269,17 +348,46 @@ def build_context(request, active_tab):
             'avg_progress': int(sum(item['progress'] for item in centre_engagements) / len(centre_engagements)) if centre_engagements else 0,
         })
 
-    alerts = []
+    client_risk_alerts = []
+    publication_risk_alerts = []
     for engagement in engagements:
         if engagement['is_overdue']:
-            alerts.append({'level': 'High', 'type': 'Deadline', 'message': f"{engagement['name']} is past its due date.", 'owner': engagement['lead']})
+            alert = {'level': 'High', 'type': 'Client Risk', 'message': f"{engagement['name']} is past its due date.", 'owner': engagement['lead'], 'engagement_id': engagement['id']}
+            client_risk_alerts.append(alert)
+            if engagement['status'] != 'completed':
+                publication_type = next((project.project_type for project in projects if project.id == engagement['id']), None)
+                if publication_type in ['book', 'paper']:
+                    publication_risk_alerts.append({'level': 'High', 'type': 'Publication Deadline', 'message': f"{engagement['name']} is overdue and may affect publication delivery.", 'owner': engagement['lead'], 'engagement_id': engagement['id']})
         if engagement['last_contact'] and (timezone.now() - engagement['last_contact']).days > 60 and engagement['status'] != 'completed':
-            alerts.append({'level': 'Medium', 'type': 'Contact Risk', 'message': f"{engagement['name']} has no recent activity in 60+ days.", 'owner': engagement['lead']})
+            client_risk_alerts.append({'level': 'Medium', 'type': 'Client Risk', 'message': f"{engagement['name']} has no recent activity in 60+ days.", 'owner': engagement['lead'], 'engagement_id': engagement['id']})
     for cost_centre in cost_centres:
         if cost_centre.get_total_received() <= 0:
-            alerts.append({'level': 'Medium', 'type': 'Payment', 'message': f"{cost_centre.name} has no recorded payments.", 'owner': None})
+            client_risk_alerts.append({'level': 'Medium', 'type': 'Client Risk', 'message': f"{cost_centre.name} has no recorded payments.", 'owner': None})
+        phase_dates = [
+            ('Phase 1', cost_centre.phase_1_due_date),
+            ('Phase 2', cost_centre.phase_2_due_date),
+            ('Phase 3', cost_centre.phase_3_due_date),
+            ('Phase 4', cost_centre.phase_4_due_date),
+        ]
+        if safe_decimal(cost_centre.moa_amount) > 0:
+            missing_phases = [label for label, due_date in phase_dates if not due_date]
+            if missing_phases:
+                client_risk_alerts.append({
+                    'level': 'Medium',
+                    'type': 'Client Risk',
+                    'message': f"{cost_centre.name} is missing due dates for {', '.join(missing_phases)}.",
+                    'owner': None,
+                })
+        for phase_label, due_date in phase_dates:
+            if due_date and due_date < timezone.now().date():
+                client_risk_alerts.append({
+                    'level': 'High',
+                    'type': 'Client Risk',
+                    'message': f"{cost_centre.name} {phase_label} due date passed on {due_date}.",
+                    'owner': None,
+                })
     for expenditure in Expenditure.objects.select_related('cost_centre').filter(cost_centre__in=cost_centres, oracle_balance__isnull=False).exclude(oracle_balance=F('amount'))[:20]:
-        alerts.append({'level': 'High', 'type': 'Oracle', 'message': f"{expenditure.cost_centre.name}: Oracle balance differs for {expenditure.name}.", 'owner': None})
+        client_risk_alerts.append({'level': 'High', 'type': 'Client Risk', 'message': f"{expenditure.cost_centre.name}: Oracle balance differs for {expenditure.name}.", 'owner': None})
 
     names = defaultdict(list)
     for client in clients:
@@ -287,11 +395,29 @@ def build_context(request, active_tab):
     for duplicates in names.values():
         centre_names = {client['sector'] for client in duplicates}
         if len(duplicates) > 1 and len(centre_names) > 1:
-            alerts.append({'level': 'Medium', 'type': 'Overlap', 'message': f"{duplicates[0]['name']} appears across multiple centres.", 'owner': None})
+            client_risk_alerts.append({'level': 'Medium', 'type': 'Client Risk', 'message': f"{duplicates[0]['name']} appears across multiple centres.", 'owner': None})
 
-    publications = build_publications(papers, books, projects)
+    stale_cutoff = timezone.now() - timedelta(days=60)
+    for paper in papers:
+        if paper.status not in ['published', 'accepted', 'rejected'] and paper.updated_at < stale_cutoff:
+            publication_risk_alerts.append({'level': 'Medium', 'type': 'Publication Risk', 'message': f"{paper.title} has had no paper update in 60+ days.", 'owner': paper.created_by})
+    for conference in conferences:
+        if conference.status not in ['presented', 'accepted', 'rejected'] and conference.updated_at < stale_cutoff:
+            publication_risk_alerts.append({'level': 'Medium', 'type': 'Publication Risk', 'message': f"{conference.title} has had no conference update in 60+ days.", 'owner': conference.created_by})
+    for book in books:
+        if book.due_date and book.due_date < timezone.now().date() and book.status != 'published':
+            publication_risk_alerts.append({'level': 'High', 'type': 'Publication Risk', 'message': f"{book.title} is past its book due date.", 'owner': book.created_by})
+
+    alerts = client_risk_alerts + publication_risk_alerts
+    publications = build_publications(papers, conferences, books, projects)
     reporting = build_reports(clients, centres, engagements, alerts, publications, users)
     active_engagements = [item for item in engagements if item['status'] in ['planning', 'in-progress']]
+    active_alert_counts = Counter(alert.get('engagement_id') for alert in alerts if alert.get('engagement_id'))
+    for engagement in active_engagements:
+        engagement['alert_count'] = active_alert_counts.get(engagement['id'], 0)
+        engagement['risk_level'] = 'High' if engagement['is_overdue'] else ('Medium' if engagement['alert_count'] else 'Low')
+
+    send_dean_alert_email_once(request, alerts)
 
     return {
         **scope,
@@ -301,8 +427,12 @@ def build_context(request, active_tab):
         'clients': clients,
         'centres': centres,
         'engagements': engagements,
+        'active_projects': active_engagements,
         'directory_engagements': [item for item in engagements if item['visibility'] != 'Private'],
         'alerts': alerts,
+        'client_risk_alerts': client_risk_alerts,
+        'publication_risk_alerts': publication_risk_alerts,
+        'client_risk_explainer': client_risk_explainer(),
         'staff_directory': users,
         'publications': publications,
         'reporting': reporting,

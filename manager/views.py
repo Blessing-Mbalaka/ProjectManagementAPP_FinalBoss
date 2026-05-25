@@ -24,6 +24,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.shortcuts import render
 from adminpanel.models import Notification
+from projects.scope import scope_books_for_user, scope_outputs_for_user, scope_projects_for_user
 
 User = get_user_model()
 
@@ -71,18 +72,18 @@ def app_kanban(request):
 
 @login_required
 def manager_ganttchart(request):
-    projects = Project.objects.filter(
+    projects = scope_projects_for_user(Project.objects.filter(
         Q(created_by=request.user) | Q(assigned_user=request.user)
-    ).distinct()
+    ), request.user).distinct()
 
     return render(request, 'manager/manager_ganttchart.html', {'projects': projects})
 
 
 @login_required
 def manager_gantt_all_data(request):
-    projects = Project.objects.filter(
+    projects = scope_projects_for_user(Project.objects.filter(
         Q(created_by=request.user) | Q(assigned_user=request.user)
-    ).distinct()
+    ), request.user).distinct()
 
     data = []
 
@@ -115,7 +116,11 @@ def manager_kanban(request):
     priorities = ['Low', 'Medium', 'High']
 
     #Fetch all tasks created by the manager or from projects tehy created/assigned
-    tasks = Task.objects.filter(Q(created_by=request.user) | Q(project__created_by=request.user) | Q(project__assigned_user=request.user))
+    scoped_projects = scope_projects_for_user(Project.objects.all(), request.user)
+    tasks = Task.objects.filter(
+        Q(created_by=request.user) | Q(project__created_by=request.user) | Q(project__assigned_user=request.user),
+        project__in=scoped_projects,
+    )
     
     #Group tasks by their status
     tasks_by_status = defaultdict(list)
@@ -123,7 +128,7 @@ def manager_kanban(request):
         tasks_by_status[task.status].append(task)
 
     # Include all projects the manager is involved in (created or assigned)
-    projects = Project.objects.filter(
+    projects = scoped_projects.filter(
         Q(created_by=request.user) |
         Q(assigned_user=request.user)
     ).distinct()
@@ -163,9 +168,9 @@ def assign_projects_view(request):
     project_id = request.GET.get('project_id')
 
     # Projects where the current user is creator or (acting) manager
-    projects = Project.objects.filter(
+    projects = scope_projects_for_user(Project.objects.filter(
         Q(created_by=request.user) | Q(assigned_user=request.user)
-    ).distinct()
+    ), request.user).distinct()
 
     selected_project = None
     assignments = None
@@ -187,7 +192,7 @@ def assign_projects_view(request):
 
     if project_id:
         selected_project = get_object_or_404(
-            Project,
+            scope_projects_for_user(Project.objects.all(), request.user),
             Q(created_by=request.user) | Q(assigned_user=request.user),
             id=project_id,
         )
@@ -195,7 +200,7 @@ def assign_projects_view(request):
         # Prefetch to avoid N+1 when listing assignments
         assignments = selected_project.assignments.select_related("team_member__user")
 
-        assignment_form = AssignmentForm(project=selected_project)
+        assignment_form = AssignmentForm(project=selected_project, user=request.user)
 
         # users on this project's team
         team_user_ids = Assignment.objects.filter(project=selected_project)\
@@ -224,6 +229,7 @@ def create_project(request):
         if form.is_valid():
             project = form.save(commit=False)
             project.created_by = request.user
+            project.research_centre = getattr(request.user, 'research_centre', None)
             project.save()
             messages.success(request, 'Project created successfully!')
             return redirect('assign_projects') 
@@ -234,14 +240,14 @@ def create_project(request):
 @login_required
 def assign_team_member(request, project_id):
     project = get_object_or_404(
-        Project.objects.filter(
+        scope_projects_for_user(Project.objects.filter(
             models.Q(created_by=request.user) | models.Q(assigned_user=request.user),
             id=project_id
-        )
+        ), request.user)
     )
     
     if request.method == 'POST':
-        form = AssignmentForm(request.POST, project=project)
+        form = AssignmentForm(request.POST, project=project, user=request.user)
        
         if form.is_valid():
             assignment = form.save(commit=False)
@@ -252,12 +258,14 @@ def assign_team_member(request, project_id):
         else:
             messages.error(request, 'Assignment failed. Please check the form.')
 
-            projects = Project.objects.filter(
+            projects = scope_projects_for_user(Project.objects.filter(
                 models.Q(created_by=request.user) | models.Q(assigned_user=request.user)
-            ).distinct()
+            ), request.user).distinct()
 
             assignments = project.assignments.all()
             eligible_users = get_user_model().objects.exclude(role='student')
+            if getattr(request.user, 'research_centre_id', None):
+                eligible_users = eligible_users.filter(research_centre_id=request.user.research_centre_id)
             project_form = ProjectForm()
 
             context = {
@@ -278,9 +286,9 @@ def remove_assignment(request, assignment_id):
     assignment = get_object_or_404(
         Assignment,
         id=assignment_id,
-        project__in=Project.objects.filter(
-            Q(created_by=request.user) | Q(assigned_user=request.user)
-        )
+            project__in=scope_projects_for_user(Project.objects.filter(
+                Q(created_by=request.user) | Q(assigned_user=request.user)
+            ), request.user)
     )
     if request.method == 'POST':
         assignment.delete()
@@ -291,7 +299,7 @@ def remove_assignment(request, assignment_id):
 @login_required
 def add_task(request, project_id):
     project = get_object_or_404(
-        Project.objects.filter(Q(id=project_id) & (Q(created_by=request.user) | Q(assigned_user=request.user)))
+        scope_projects_for_user(Project.objects.filter(Q(id=project_id) & (Q(created_by=request.user) | Q(assigned_user=request.user))), request.user)
     )
     if request.method == 'POST':
         form = TaskForm(request.POST, project=project)
@@ -306,11 +314,11 @@ def add_task(request, project_id):
             # Form has errors - render the page with error messages displayed
             messages.error(request, 'Please fix the errors in the task form.')
             User = get_user_model()
-            projects = Project.objects.filter(
+            projects = scope_projects_for_user(Project.objects.filter(
                 Q(created_by=request.user) | Q(assigned_user=request.user)
-            ).distinct()
+            ), request.user).distinct()
             assignments = project.assignments.select_related("team_member__user")
-            assignment_form = AssignmentForm(project=project)
+            assignment_form = AssignmentForm(project=project, user=request.user)
             project_form = ProjectForm()
             
             context = {
@@ -572,8 +580,9 @@ def delete_template(request, pk):
 
 @login_required
 def manager_journal(request):
-    internal_papers = Paper.objects.filter(internal_external='internal')
-    external_papers = Paper.objects.filter(internal_external='external')
+    papers = scope_outputs_for_user(Paper.objects.all(), request.user)
+    internal_papers = papers.filter(internal_external='internal')
+    external_papers = papers.filter(internal_external='external')
     return render(request, 'manager/manager_journal.html', {
         'internal_papers': internal_papers,
         'external_papers': external_papers,
@@ -647,7 +656,7 @@ def upload_excel_papers(request):
 
 @login_required
 def edit_paper(request, paper_id):
-    paper = get_object_or_404(Paper, id=paper_id)
+    paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
     if request.method == 'POST':
         paper.title = request.POST.get('paperTitle')
         paper.status = request.POST.get('paperStatus')
@@ -667,7 +676,7 @@ def edit_paper(request, paper_id):
 @require_POST
 @login_required
 def delete_paper(request, paper_id):
-    paper = get_object_or_404(Paper, id=paper_id)
+    paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
     paper.delete()
     messages.success(request, "Paper deleted.")
     return redirect('manager_journal')
@@ -677,7 +686,7 @@ def delete_paper(request, paper_id):
 def edit_paper_ajax(request, paper_id):
     """Handle paper edit via Django form with validation"""
     try:
-        paper = get_object_or_404(Paper, id=paper_id)
+        paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
         
         # Capture old M2M values before form processing
         old_co_authors = set(paper.co_authors_users.values_list('id', flat=True))
@@ -726,11 +735,12 @@ def edit_paper_ajax(request, paper_id):
 
 @login_required
 def manager_book(request):
-    books = Book.objects.all().order_by('-created_at')  # You can filter by user if needed
+    books = scope_books_for_user(Book.objects.all(), request.user).order_by('-created_at')
     return render(request, 'manager/manager_book.html', {'books': books})
 
 
 @csrf_exempt
+@login_required
 def add_book(request):
     if request.method == 'POST':
         try:
@@ -743,7 +753,8 @@ def add_book(request):
                 total_chapters=data.get('total_chapters') or 0,
                 completed_chapters=data.get('completed_chapters') or 0,
                 publisher=data.get('publisher'),
-                status=data.get('status')
+                status=data.get('status'),
+                created_by=request.user if request.user.is_authenticated else None,
             )
             return JsonResponse({'success': True, 'book_id': book.id})
         except Exception as e:
@@ -752,9 +763,10 @@ def add_book(request):
 
 
 @csrf_exempt
+@login_required
 def edit_book(request, book_id):
     try:
-        book = Book.objects.get(id=book_id)
+        book = scope_books_for_user(Book.objects.all(), request.user).get(id=book_id)
         if request.method == 'POST':
             data = json.loads(request.body)
             print(f"DEBUG: Received data for book {book_id}: {data}")
@@ -779,16 +791,19 @@ def edit_book(request, book_id):
         return JsonResponse({'success': False, 'error': str(e)})
 
 @csrf_exempt
+@login_required
 def delete_book(request, book_id):
     if request.method == 'POST':
-        Book.objects.filter(id=book_id).delete()
+        scope_books_for_user(Book.objects.filter(id=book_id), request.user).delete()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'message': 'Invalid method'})
 
 
 @csrf_exempt
+@login_required
 def get_chapters(request, book_id):
-    chapters = Chapter.objects.filter(book_id=book_id).order_by("chapter_number")
+    book = get_object_or_404(scope_books_for_user(Book.objects.all(), request.user), id=book_id)
+    chapters = Chapter.objects.filter(book=book).order_by("chapter_number")
     chapter_list = [
         {
             "id": c.id,
@@ -804,10 +819,11 @@ def get_chapters(request, book_id):
     return JsonResponse({"chapters": chapter_list})
 
 @csrf_exempt
+@login_required
 def add_chapter(request, book_id):
     if request.method == "POST":
         data = json.loads(request.body)
-        book = Book.objects.get(id=book_id)
+        book = scope_books_for_user(Book.objects.all(), request.user).get(id=book_id)
         chapter = Chapter.objects.create(
             book=book,
             chapter_number=data["chapter_number"],
@@ -822,11 +838,12 @@ def add_chapter(request, book_id):
     return JsonResponse({"success": False, "error": "Invalid request method"})
 
 @csrf_exempt
+@login_required
 def edit_chapter(request, chapter_id):
     if request.method == "POST":
         data = json.loads(request.body)
         try:
-            chapter = Chapter.objects.get(id=chapter_id)
+            chapter = Chapter.objects.get(id=chapter_id, book__in=scope_books_for_user(Book.objects.all(), request.user))
             chapter.chapter_number = data["chapter_number"]
             chapter.title = data["title"]
             chapter.author = data["author"]
@@ -839,9 +856,10 @@ def edit_chapter(request, chapter_id):
     return JsonResponse({"success": False, "error": "Invalid request method"})
 
 @csrf_exempt
+@login_required
 def delete_chapter(request, chapter_id):
     if request.method == "POST":
-        Chapter.objects.filter(id=chapter_id).delete()
+        Chapter.objects.filter(id=chapter_id, book__in=scope_books_for_user(Book.objects.all(), request.user)).delete()
         return JsonResponse({"success": True})
     return JsonResponse({"success": False, "error": "Invalid request"})
 
@@ -849,7 +867,7 @@ def delete_chapter(request, chapter_id):
 @login_required
 def get_paper_comments(request, paper_id):
     """Get or add comments for a paper"""
-    paper = get_object_or_404(Paper, id=paper_id)
+    paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
     
     if request.method == 'POST':
         # Add new comment
@@ -911,7 +929,7 @@ def get_paper_comments(request, paper_id):
 def get_paper_form_html(request, paper_id):
     """Return the rendered Django form HTML for editing a paper"""
     try:
-        paper = get_object_or_404(Paper, id=paper_id)
+        paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
         form = PaperForm(instance=paper)
         
         from django.template.loader import render_to_string
@@ -931,7 +949,7 @@ def get_paper_form_html(request, paper_id):
 def get_paper_data(request, paper_id):
     """Return paper data as JSON for populating the edit form"""
     try:
-        paper = get_object_or_404(Paper, id=paper_id)
+        paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
         
         # Serialize co_authors_users and assigned_reviewers IDs
         co_authors_ids = list(paper.co_authors_users.values_list('id', flat=True))

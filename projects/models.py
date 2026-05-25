@@ -23,6 +23,13 @@ class Project(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_projects')
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateField(blank=True, null=True)
+    research_centre = models.ForeignKey(
+        'adminpanel.ResearchCentre',
+        on_delete=models.SET_NULL,
+        related_name='projects',
+        null=True,
+        blank=True,
+    )
     assigned_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='assigned_projects', null=True, blank=True)
 
     def __str__(self):

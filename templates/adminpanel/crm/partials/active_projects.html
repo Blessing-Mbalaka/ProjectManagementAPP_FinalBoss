@@ -1,0 +1,58 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-1">Active Projects</h5>
+    <div class="text-muted small">Active CRM delivery work with project status, due dates, progress, and linked alert counts.</div>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle crm-table">
+    <thead class="table-light">
+      <tr>
+        <th>Project</th>
+        <th>Client/Centre</th>
+        <th>Status</th>
+        <th>Lead</th>
+        <th>Due Date</th>
+        <th>Risk</th>
+        <th>Alerts</th>
+        <th>Progress</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for project in active_projects %}
+      <tr>
+        <td><strong>{{ project.name }}</strong></td>
+        <td>{{ project.client }}</td>
+        <td><span class="badge bg-info text-dark">{{ project.stage }}</span></td>
+        <td>{{ project.lead.get_full_name|default:project.lead.username }}</td>
+        <td>
+          {% if project.due_date %}
+            <span class="{% if project.is_overdue %}text-danger fw-bold{% endif %}">{{ project.due_date }}</span>
+          {% else %}
+            <span class="text-muted">Not set</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="crm-badge {% if project.risk_level == 'High' %}high{% elif project.risk_level == 'Medium' %}medium{% else %}low{% endif %}">
+            {{ project.risk_level }}
+          </span>
+        </td>
+        <td>
+          {% if project.alert_count %}
+            <a href="{% url 'crm_tab' 'alerts' %}{% if selected_centre %}?centre={{ selected_centre.id }}{% endif %}" class="fw-semibold">{{ project.alert_count }}</a>
+          {% else %}
+            <span class="text-muted">0</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="crm-progress"><div style="width: {{ project.progress }}%;"></div></div>
+          <small>{{ project.progress }}%</small>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center text-muted">No active projects found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

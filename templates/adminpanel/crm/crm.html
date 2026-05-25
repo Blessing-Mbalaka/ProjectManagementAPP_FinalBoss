@@ -56,7 +56,7 @@
     </div>
     <form method="get" class="crm-filter">
       <label class="form-label mb-1">Research Centre</label>
-      <select name="centre" class="form-select" onchange="this.form.submit()" {% if user.role == 'centrehead' %}disabled{% endif %}>
+      <select name="centre" class="form-select" onchange="this.form.submit()" {% if user.role == 'centrehead' or user.role == 'admin' and user.research_centre %}disabled{% endif %}>
         <option value="">All centres</option>
         {% for centre in research_centres %}
           <option value="{{ centre.id }}" {% if selected_centre and selected_centre.id == centre.id %}selected{% endif %}>{{ centre.name }}</option>
@@ -91,6 +91,8 @@
       {% include 'adminpanel/crm/partials/directory.html' %}
     {% elif active_tab == 'financials' %}
       {% include 'adminpanel/crm/partials/financials.html' %}
+    {% elif active_tab == 'active_projects' %}
+      {% include 'adminpanel/crm/partials/active_projects.html' %}
     {% elif active_tab == 'alerts' %}
       {% include 'adminpanel/crm/partials/alerts.html' %}
     {% elif active_tab == 'reports' %}

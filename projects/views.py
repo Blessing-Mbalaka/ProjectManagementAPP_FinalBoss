@@ -19,6 +19,7 @@ from django.db.models import Q
 from django.utils import timezone
 from adminpanel.models import Notification
 from adminpanel.media_service import MediaService
+from .scope import scope_projects_for_user
 
 
 @login_required
@@ -103,10 +104,10 @@ def staff_kanban(request):
         'done': tasks.filter(status='done'),
     }
 
-    projects = Project.objects.filter(
+    projects = scope_projects_for_user(Project.objects.filter(
         Q(assigned_user=request.user) |
         Q(assignments__team_member__user=request.user)
-    ).distinct()
+    ), request.user).distinct()
     
     return render(request, 'projects/staff_kanban.html', {
         'grouped_tasks': grouped_tasks,
@@ -141,11 +142,11 @@ def staff_create_task(request):
         project = None
         if project_id:
             # Only allow projects the staff is actually assigned to
-            project = Project.objects.filter(
+            project = scope_projects_for_user(Project.objects.filter(
                 Q(assigned_user=request.user) |
                 Q(assignments__team_member__user=request.user),
                 id=project_id
-            ).distinct().first()
+            ), request.user).distinct().first()
 
         # Create the task
         Task.objects.create(
@@ -182,7 +183,13 @@ def edit_task(request, task_id):
                 due_date = None
 
         if project_name:
-            project, _ = Project.objects.get_or_create(name=project_name, defaults={'created_by': request.user})
+            project, _ = Project.objects.get_or_create(
+                name=project_name,
+                defaults={
+                    'created_by': request.user,
+                    'research_centre': getattr(request.user, 'research_centre', None),
+                }
+            )
             task.project = project
 
         task.due_date = due_date

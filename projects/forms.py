@@ -88,17 +88,19 @@ class AssignmentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         project = kwargs.pop('project', None)
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
         # Only show TeamMembers not already assigned to this project
-        qs = TeamMember.objects.all().select_related('user')
+        qs = TeamMember.objects.select_related('user').exclude(user__role='student')
+        if user and getattr(user, 'role', None) not in {'admin', 'dean'}:
+            centre_id = getattr(user, 'research_centre_id', None)
+            qs = qs.filter(user__research_centre_id=centre_id) if centre_id else qs.none()
+
         if project:
             assigned_ids = Assignment.objects.filter(project=project)\
                 .values_list('team_member_id', flat=True)
             qs = qs.exclude(id__in=assigned_ids)
-
-        # (Optional) exclude students entirely
-        # qs = qs.exclude(user__role='student')
 
         self.fields['team_member'].queryset = qs.order_by('full_name')
 

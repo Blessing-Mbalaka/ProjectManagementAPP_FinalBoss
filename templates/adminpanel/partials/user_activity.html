@@ -30,24 +30,24 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label fw-bold">📊 View</label>
+                <label class="form-label fw-bold"> View</label>
                 <select id="activityView" class="form-select">
-                    <option value="overview">📊 Overview</option>
-                    <option value="daily">📅 Daily Breakdown</option>
-                    <option value="weekly">📆 Weekly Summary</option>
-                    <option value="monthly">📈 Monthly Trends</option>
+                    <option value="overview"> Overview</option>
+                    <option value="daily"> Daily Breakdown</option>
+                    <option value="weekly"> Weekly Summary</option>
+                    <option value="monthly"> Monthly Trends</option>
                 </select>
             </div>
             <div class="col-md-3">
                 <label class="form-label fw-bold">&nbsp;</label>
-                <button class="btn btn-primary w-100" onclick="applyActivityFilters()">🔄 Apply Filters</button>
+                <button class="btn btn-primary w-100" onclick="applyActivityFilters()"> Apply Filters</button>
             </div>
         </div>
     </div>
 
     <!-- KPI Cards -->
     <div class="card-body border-top">
-        <h6 class="fw-bold mb-3">📊 Key Performance Indicators</h6>
+        <h6 class="fw-bold mb-3"> Key Performance Indicators</h6>
         <div class="row g-3">
             <div class="col-md-3">
                 <div class="card bg-light border-0">
@@ -86,7 +86,7 @@
 
     <!-- Clock-in Analytics Section -->
     <div class="card-body border-top">
-        <h6 class="fw-bold mb-3">⏰ Clock-In Analytics</h6>
+        <h6 class="fw-bold mb-3"> Clock-In Analytics</h6>
         <div class="row">
             <div class="col-lg-8">
                 <div style="position: relative; height: 300px;">
@@ -94,7 +94,7 @@
                 </div>
             </div>
             <div class="col-lg-4">
-                <h6 class="fw-bold mb-2">📋 Day Distribution</h6>
+                <h6 class="fw-bold mb-2"> Day Distribution</h6>
                 <div style="position: relative; height: 300px;">
                     <canvas id="dayDistributionChart"></canvas>
                 </div>
@@ -104,7 +104,7 @@
 
     <!-- Weekly Summary -->
     <div class="card-body border-top">
-        <h6 class="fw-bold mb-3">📆 Weekly Summary</h6>
+        <h6 class="fw-bold mb-3"> Weekly Summary</h6>
         <table class="table table-sm table-hover">
             <thead class="table-light">
                 <tr>
@@ -128,7 +128,7 @@
 
     <!-- Task Progress (Gantt-style) -->
     <div class="card-body border-top">
-        <h6 class="fw-bold mb-3">📊 Task Progress Timeline</h6>
+        <h6 class="fw-bold mb-3"> Task Progress Timeline</h6>
         <div style="position: relative; height: 400px; overflow-x: auto;">
             <canvas id="taskProgressChart"></canvas>
         </div>
@@ -136,7 +136,7 @@
 
     <!-- Recent Clock Records -->
     <div class="card-body border-top">
-        <h6 class="fw-bold mb-3">⏱️ Recent Clock Records</h6>
+        <h6 class="fw-bold mb-3"> Recent Clock Records</h6>
         <table class="table table-sm table-hover">
             <thead class="table-light">
                 <tr>
@@ -160,7 +160,7 @@
 
     <!-- Activity Heatmap -->
     <div class="card-body border-top">
-        <h6 class="fw-bold mb-3">🔥 Activity Heatmap (Hours by Day & Time)</h6>
+        <h6 class="fw-bold mb-3"> Activity Heatmap (Hours by Day & Time)</h6>
         <div id="heatmapContainer" style="position: relative; height: 250px;">
             <canvas id="heatmapChart"></canvas>
         </div>
@@ -179,7 +179,7 @@
 
     // Apply filters and load data
     function applyActivityFilters() {
-        console.log('🔄 Applying activity filters...');
+        console.log(' Applying activity filters...');
         
         const employeeId = document.getElementById('activityEmployeeFilter').value;
         const dateRange = document.getElementById('activityDateRange').value;
@@ -198,11 +198,11 @@
                 return response.json();
             })
             .then(data => {
-                console.log('✅ Data received:', data);
+                console.log(' Data received:', data);
                 updateActivityDashboard(data, viewType);
             })
             .catch(error => {
-                console.error('❌ Error fetching activity data:', error);
+                console.error(' Error fetching activity data:', error);
                 showActivityError(error.message);
             });
     }

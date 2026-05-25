@@ -39,6 +39,7 @@ from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 from django.apps import apps
 from projects.models import StudentProfile
+from projects.scope import scope_books_for_user, scope_outputs_for_user
 import csv
 from datetime import datetime, timedelta
 import io
@@ -259,9 +260,12 @@ def get_user_research_centre_id(user):
 
 
 def get_accessible_cost_centre_ids(user):
-    if getattr(user, 'role', None) != 'centrehead':
-        return None
+    role = getattr(user, 'role', None)
     research_centre_id = get_user_research_centre_id(user)
+    if role == 'admin' and not research_centre_id:
+        return None
+    if role not in ['admin', 'centrehead', 'financialadmin']:
+        return None
     if not research_centre_id:
         return []
     return list(CostCentre.objects.filter(research_centre_id=research_centre_id).values_list('id', flat=True))
@@ -271,14 +275,34 @@ def get_finance_redirect(user):
     return 'finance_readonly' if getattr(user, 'role', None) in READONLY_FINANCE_ROLES else 'finance'
 
 
+def collect_company_details(post_data):
+    return {
+        'company_name': post_data.get('company_name', '').strip(),
+        'company_registration_number': post_data.get('company_registration_number', '').strip(),
+        'vat_number': post_data.get('vat_number', '').strip(),
+        'industry': post_data.get('industry', '').strip(),
+        'company_website': post_data.get('company_website', '').strip(),
+        'company_email': post_data.get('company_email', '').strip(),
+        'company_phone': post_data.get('company_phone', '').strip(),
+        'company_address': post_data.get('company_address', '').strip(),
+        'contact_person_name': post_data.get('contact_person_name', '').strip(),
+        'contact_person_role': post_data.get('contact_person_role', '').strip(),
+        'contact_email': post_data.get('contact_email', '').strip(),
+        'contact_phone': post_data.get('contact_phone', '').strip(),
+        'crm_notes': post_data.get('crm_notes', '').strip(),
+    }
+
+
 def ensure_finance_editor(request, cost_centre=None):
     if not can_edit_finance(request.user):
         messages.error(request, "You do not have permission to change financial data.")
         return False
 
-    if request.user.role == 'centrehead':
+    if request.user.role in ['admin', 'centrehead']:
         research_centre_id = get_user_research_centre_id(request.user)
-        if not research_centre_id:
+        if request.user.role == 'admin' and not research_centre_id:
+            return True
+        if request.user.role == 'centrehead' and not research_centre_id:
             messages.error(request, "Your account is not assigned to a research centre.")
             return False
         if cost_centre is not None and cost_centre.research_centre_id != research_centre_id:
@@ -552,15 +576,20 @@ def manage_users(request):
     role_filter = request.GET.get('role', '')
     is_dean = request.user.role == 'dean'
 
-    users = CustomUser.objects.exclude(role='admin').select_related('research_centre')
-    all_users = CustomUser.objects.exclude(role='admin').select_related('research_centre')  # All users for filter dropdown
+    users = CustomUser.objects.select_related('research_centre')
+    all_users = CustomUser.objects.select_related('research_centre')
+
+    if is_dean:
+        users = users.exclude(role='admin')
+        all_users = all_users.exclude(role='admin')
 
     if search:
         users = users.filter(Q(username__icontains=search) | Q(email__icontains=search))
     if role_filter:
         users = users.filter(role=role_filter)
 
-    role_totals = Counter(CustomUser.objects.exclude(role='admin').values_list('role', flat=True))
+    role_total_source = CustomUser.objects.exclude(role='admin') if is_dean else CustomUser.objects.all()
+    role_totals = Counter(role_total_source.values_list('role', flat=True))
     role_labels = dict(CustomUser.ROLE_CHOICES)
     if is_dean:
         role_labels = {
@@ -592,6 +621,8 @@ def create_user(request):
             user = form.save(commit=False)
             user.role = form.cleaned_data['role']
             user.research_centre = form.cleaned_data.get('research_centre')
+            if user.role == 'admin':
+                user.is_staff = True
             password = form.cleaned_data['password1']
             user.set_password(password)
             user.save()
@@ -797,12 +828,10 @@ def finance(request, section=None):
         messages.error(request, "You do not have access to the finance dashboard.")
         return redirect('overview')
 
-    scoped_cost_centre_ids = None
-    if request.user.role == 'centrehead':
-        scoped_cost_centre_ids = get_accessible_cost_centre_ids(request.user)
-        if not scoped_cost_centre_ids:
-            messages.error(request, "Your account is not assigned to a research centre with cost centres.")
-            return redirect('communique')
+    scoped_cost_centre_ids = get_accessible_cost_centre_ids(request.user)
+    if scoped_cost_centre_ids == [] and request.user.role == 'centrehead':
+        messages.error(request, "Your account is not assigned to a research centre with cost centres.")
+        return redirect('communique')
 
     payment_summary = defaultdict(lambda: {'count': 0, 'total': Decimal('0.00')})
     payments_by_cc = defaultdict(list)
@@ -831,15 +860,37 @@ def finance(request, section=None):
             })
 
         cursor.execute("""
-            SELECT cc.id, cc.code, cc.name, cc.client_name, cc.moa_amount, cc.research_centre_id, rc.name
+            SELECT cc.id, cc.code, cc.name, cc.client_name,
+                   cc.company_name, cc.company_registration_number, cc.vat_number, cc.industry,
+                   cc.company_website, cc.company_email, cc.company_phone, cc.company_address,
+                   cc.contact_person_name, cc.contact_person_role, cc.contact_email, cc.contact_phone,
+                   cc.crm_notes, cc.moa_amount, cc.research_centre_id, rc.name,
+                   cc.phase_1_due_date, cc.phase_2_due_date, cc.phase_3_due_date, cc.phase_4_due_date
             FROM adminpanel_costcentre cc
             LEFT JOIN adminpanel_researchcentre rc ON cc.research_centre_id = rc.id
             ORDER BY cc.name
         """)
-        for cc_id, code, name, client_name, moa_amount, research_centre_id, research_centre_name in cursor.fetchall():
+        for (
+            cc_id, code, name, client_name, company_name, company_registration_number, vat_number, industry,
+            company_website, company_email, company_phone, company_address, contact_person_name,
+            contact_person_role, contact_email, contact_phone, crm_notes, moa_amount, research_centre_id,
+            research_centre_name, phase_1_due_date, phase_2_due_date, phase_3_due_date, phase_4_due_date
+        ) in cursor.fetchall():
             if scoped_cost_centre_ids is not None and cc_id not in scoped_cost_centre_ids:
                 continue
-            cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'client_name': client_name or '', 'display_name': client_name or name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
+            cost_centres_map[cc_id] = {
+                'id': cc_id, 'code': code, 'name': name, 'client_name': client_name or '',
+                'company_name': company_name or '', 'company_registration_number': company_registration_number or '',
+                'vat_number': vat_number or '', 'industry': industry or '', 'company_website': company_website or '',
+                'company_email': company_email or '', 'company_phone': company_phone or '',
+                'company_address': company_address or '', 'contact_person_name': contact_person_name or '',
+                'contact_person_role': contact_person_role or '', 'contact_email': contact_email or '',
+                'contact_phone': contact_phone or '', 'crm_notes': crm_notes or '',
+                'display_name': client_name or name, 'moa_amount': safe_decimal(moa_amount),
+                'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name,
+                'phase_1_due_date': phase_1_due_date, 'phase_2_due_date': phase_2_due_date,
+                'phase_3_due_date': phase_3_due_date, 'phase_4_due_date': phase_4_due_date,
+            }
 
         cursor.execute("""
             SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id
@@ -931,7 +982,7 @@ def finance(request, section=None):
             'is_readonly': False,
             'can_add_cost_centre': request.user.role == 'admin',
             'can_edit_finance': True,
-            'research_centres': ResearchCentre.objects.all(),
+            'research_centres': ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)) if request.user.role == 'admin' and get_user_research_centre_id(request.user) else ResearchCentre.objects.all(),
             'finance_section': section,
             'finance_summary': finance_summary,
     })
@@ -942,6 +993,8 @@ def finance_readonly(request, section=None):
     """Read-only finance dashboard for financial admin users"""
     from django.db import connection
 
+    scoped_cost_centre_ids = get_accessible_cost_centre_ids(request.user)
+    scoped_cost_centre_id_set = set(scoped_cost_centre_ids) if scoped_cost_centre_ids is not None else None
     payment_summary = defaultdict(lambda: {'count': 0, 'total': Decimal('0.00')})
     payments_by_cc = defaultdict(list)
     cost_centres_map = {}
@@ -955,6 +1008,8 @@ def finance_readonly(request, section=None):
             ORDER BY payment_date DESC
         """)
         for payment_id, cc_id, amount, description, payment_date in cursor.fetchall():
+            if scoped_cost_centre_id_set is not None and cc_id not in scoped_cost_centre_id_set:
+                continue
             amount_dec = safe_decimal(amount)
             summary = payment_summary[cc_id]
             summary['count'] += 1
@@ -967,13 +1022,37 @@ def finance_readonly(request, section=None):
             })
 
         cursor.execute("""
-            SELECT cc.id, cc.code, cc.name, cc.client_name, cc.moa_amount, cc.research_centre_id, rc.name
+            SELECT cc.id, cc.code, cc.name, cc.client_name,
+                   cc.company_name, cc.company_registration_number, cc.vat_number, cc.industry,
+                   cc.company_website, cc.company_email, cc.company_phone, cc.company_address,
+                   cc.contact_person_name, cc.contact_person_role, cc.contact_email, cc.contact_phone,
+                   cc.crm_notes, cc.moa_amount, cc.research_centre_id, rc.name,
+                   cc.phase_1_due_date, cc.phase_2_due_date, cc.phase_3_due_date, cc.phase_4_due_date
             FROM adminpanel_costcentre cc
             LEFT JOIN adminpanel_researchcentre rc ON cc.research_centre_id = rc.id
             ORDER BY cc.name
         """)
-        for cc_id, code, name, client_name, moa_amount, research_centre_id, research_centre_name in cursor.fetchall():
-            cost_centres_map[cc_id] = {'id': cc_id, 'code': code, 'name': name, 'client_name': client_name or '', 'display_name': client_name or name, 'moa_amount': safe_decimal(moa_amount), 'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name}
+        for (
+            cc_id, code, name, client_name, company_name, company_registration_number, vat_number, industry,
+            company_website, company_email, company_phone, company_address, contact_person_name,
+            contact_person_role, contact_email, contact_phone, crm_notes, moa_amount, research_centre_id,
+            research_centre_name, phase_1_due_date, phase_2_due_date, phase_3_due_date, phase_4_due_date
+        ) in cursor.fetchall():
+            if scoped_cost_centre_id_set is not None and cc_id not in scoped_cost_centre_id_set:
+                continue
+            cost_centres_map[cc_id] = {
+                'id': cc_id, 'code': code, 'name': name, 'client_name': client_name or '',
+                'company_name': company_name or '', 'company_registration_number': company_registration_number or '',
+                'vat_number': vat_number or '', 'industry': industry or '', 'company_website': company_website or '',
+                'company_email': company_email or '', 'company_phone': company_phone or '',
+                'company_address': company_address or '', 'contact_person_name': contact_person_name or '',
+                'contact_person_role': contact_person_role or '', 'contact_email': contact_email or '',
+                'contact_phone': contact_phone or '', 'crm_notes': crm_notes or '',
+                'display_name': client_name or name, 'moa_amount': safe_decimal(moa_amount),
+                'research_centre_id': research_centre_id, 'research_centre_name': research_centre_name,
+                'phase_1_due_date': phase_1_due_date, 'phase_2_due_date': phase_2_due_date,
+                'phase_3_due_date': phase_3_due_date, 'phase_4_due_date': phase_4_due_date,
+            }
 
         cursor.execute("""
             SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance, expense_id
@@ -981,6 +1060,8 @@ def finance_readonly(request, section=None):
             ORDER BY month DESC
         """)
         for exp_id, cc_id, month, name, category, amount, opening_balance, oracle_balance, expense_id in cursor.fetchall():
+            if scoped_cost_centre_id_set is not None and cc_id not in scoped_cost_centre_id_set:
+                continue
             amount_dec = safe_decimal(amount)
             opening_balance_dec = safe_decimal(opening_balance)
             oracle_dec = optional_decimal(oracle_balance)
@@ -1016,6 +1097,10 @@ def finance_readonly(request, section=None):
             'display_name': cc_info.get('display_name') or cc_info['name'],
             'research_centre_id': cc_info.get('research_centre_id'),
             'research_centre_name': cc_info.get('research_centre_name'),
+            'phase_1_due_date': cc_info.get('phase_1_due_date'),
+            'phase_2_due_date': cc_info.get('phase_2_due_date'),
+            'phase_3_due_date': cc_info.get('phase_3_due_date'),
+            'phase_4_due_date': cc_info.get('phase_4_due_date'),
             'payment_count': summary['count'],
             'total_received': decimal_to_float(summary['total']),
             'get_total_received': decimal_to_float(summary['total']),
@@ -1062,7 +1147,7 @@ def finance_readonly(request, section=None):
         'is_readonly': True,
         'can_add_cost_centre': False,
         'can_edit_finance': False,
-        'research_centres': ResearchCentre.objects.all(),
+        'research_centres': ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)) if request.user.role in ['admin', 'financialadmin'] and get_user_research_centre_id(request.user) else ResearchCentre.objects.all(),
         'finance_section': section,
         'finance_summary': finance_summary,
     })
@@ -1070,7 +1155,10 @@ def finance_readonly(request, section=None):
 
 def get_finance_scope_queryset(user):
     queryset = CostCentre.objects.select_related('research_centre').all().order_by('name')
-    if getattr(user, 'role', None) == 'centrehead':
+    role = getattr(user, 'role', None)
+    if role == 'admin' and not get_user_research_centre_id(user):
+        return queryset
+    if role in ['admin', 'centrehead', 'financialadmin']:
         queryset = queryset.filter(research_centre_id=get_user_research_centre_id(user))
     return queryset
 
@@ -1282,8 +1370,15 @@ def add_cost_centre(request):
         name = request.POST.get('name')
         client_name = request.POST.get('client_name', '').strip()
         research_centre_id = request.POST.get('research_centre')
+        if request.user.role == 'admin' and get_user_research_centre_id(request.user):
+            research_centre_id = str(get_user_research_centre_id(request.user))
         received = request.POST.get('received', '').strip()
         moa_amount = request.POST.get('moa_amount', '').strip()
+        company_details = collect_company_details(request.POST)
+        phase_1_due_date = parse_date(request.POST.get('phase_1_due_date') or '')
+        phase_2_due_date = parse_date(request.POST.get('phase_2_due_date') or '')
+        phase_3_due_date = parse_date(request.POST.get('phase_3_due_date') or '')
+        phase_4_due_date = parse_date(request.POST.get('phase_4_due_date') or '')
         
         if not name or not name.strip():
             messages.error(request, 'Cost Centre name is required')
@@ -1309,10 +1404,15 @@ def add_cost_centre(request):
                 code=code,
                 name=name.strip(),
                 client_name=client_name,
+                **company_details,
                 research_centre=ResearchCentre.objects.filter(id=research_centre_id).first() if research_centre_id else None,
                 total_received=Decimal('0.00'),
                 total_spent=Decimal('0.00'),
-                moa_amount=moa
+                moa_amount=moa,
+                phase_1_due_date=phase_1_due_date,
+                phase_2_due_date=phase_2_due_date,
+                phase_3_due_date=phase_3_due_date,
+                phase_4_due_date=phase_4_due_date,
             )
             
             # Log the cost centre creation
@@ -1451,7 +1551,7 @@ def get_expenditures(request, cost_centre_id):
     """Get expenditures for a cost centre using raw SQL"""
     try:
         cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
-        if request.user.role == 'centrehead' and cost_centre.research_centre_id != get_user_research_centre_id(request.user):
+        if not ensure_finance_editor(request, cost_centre):
             return JsonResponse({'error': 'You can only view expenditures for your assigned research centre'}, status=403)
 
         data = []
@@ -1524,6 +1624,9 @@ def delete_cost_centre(request, pk):
                 return redirect('finance')
             
             cost_centre_id, cost_centre_name = row
+            cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+            if not ensure_finance_editor(request, cost_centre):
+                return redirect(get_finance_redirect(request.user))
             
             if request.method == 'POST':
                 # Log the deletion
@@ -1559,12 +1662,21 @@ def edit_cost_centre(request, pk):
 
     try:
         cost_centre = CostCentre.objects.get(id=pk)
+        if not ensure_finance_editor(request, cost_centre):
+            return redirect(get_finance_redirect(request.user))
         
         if request.method == 'POST':
             name = request.POST.get('name', cost_centre.name)
             client_name = request.POST.get('client_name', '').strip()
             research_centre_id = request.POST.get('research_centre')
+            if request.user.role == 'admin' and get_user_research_centre_id(request.user):
+                research_centre_id = str(get_user_research_centre_id(request.user))
             moa_amount = request.POST.get('moa_amount', '').strip()
+            company_details = collect_company_details(request.POST)
+            phase_1_due_date = parse_date(request.POST.get('phase_1_due_date') or '')
+            phase_2_due_date = parse_date(request.POST.get('phase_2_due_date') or '')
+            phase_3_due_date = parse_date(request.POST.get('phase_3_due_date') or '')
+            phase_4_due_date = parse_date(request.POST.get('phase_4_due_date') or '')
             
             if not name or name.strip() == '':
                 messages.error(request, 'Cost Centre name cannot be empty')
@@ -1575,14 +1687,37 @@ def edit_cost_centre(request, pk):
                 previous_values = {
                     'name': cost_centre.name,
                     'client_name': cost_centre.client_name,
-                    'moa_amount': str(cost_centre.moa_amount)
+                    'company_name': cost_centre.company_name,
+                    'company_registration_number': cost_centre.company_registration_number,
+                    'vat_number': cost_centre.vat_number,
+                    'industry': cost_centre.industry,
+                    'company_website': cost_centre.company_website,
+                    'company_email': cost_centre.company_email,
+                    'company_phone': cost_centre.company_phone,
+                    'company_address': cost_centre.company_address,
+                    'contact_person_name': cost_centre.contact_person_name,
+                    'contact_person_role': cost_centre.contact_person_role,
+                    'contact_email': cost_centre.contact_email,
+                    'contact_phone': cost_centre.contact_phone,
+                    'crm_notes': cost_centre.crm_notes,
+                    'moa_amount': str(cost_centre.moa_amount),
+                    'phase_1_due_date': str(cost_centre.phase_1_due_date or ''),
+                    'phase_2_due_date': str(cost_centre.phase_2_due_date or ''),
+                    'phase_3_due_date': str(cost_centre.phase_3_due_date or ''),
+                    'phase_4_due_date': str(cost_centre.phase_4_due_date or ''),
                 }
                 
                 cost_centre.name = name.strip()
                 cost_centre.client_name = client_name
+                for field, value in company_details.items():
+                    setattr(cost_centre, field, value)
                 cost_centre.research_centre = ResearchCentre.objects.filter(id=research_centre_id).first() if research_centre_id else None
                 if moa_amount:
                     cost_centre.moa_amount = Decimal(moa_amount)
+                cost_centre.phase_1_due_date = phase_1_due_date
+                cost_centre.phase_2_due_date = phase_2_due_date
+                cost_centre.phase_3_due_date = phase_3_due_date
+                cost_centre.phase_4_due_date = phase_4_due_date
                 cost_centre.save()
                 
                 # Log the edit
@@ -1705,7 +1840,8 @@ def edit_expenditure(request, pk):
                 return redirect('finance')
             
             exp_id, cost_centre_id, old_month, old_name, old_category, old_amount, old_opening_balance, old_oracle_balance, old_expense_id = row
-            if request.user.role == 'centrehead' and cost_centre_id not in get_accessible_cost_centre_ids(request.user):
+            scoped_ids = get_accessible_cost_centre_ids(request.user)
+            if scoped_ids is not None and cost_centre_id not in scoped_ids:
                 messages.error(request, "You can only edit expenditures for your assigned research centre.")
                 return redirect('finance')
             
@@ -1812,7 +1948,8 @@ def delete_expenditure(request, pk):
                 return redirect('finance')
             
             exp_id, cost_centre_id, exp_name, exp_category, exp_month = row
-            if request.user.role == 'centrehead' and cost_centre_id not in get_accessible_cost_centre_ids(request.user):
+            scoped_ids = get_accessible_cost_centre_ids(request.user)
+            if scoped_ids is not None and cost_centre_id not in scoped_ids:
                 messages.error(request, "You can only delete expenditures for your assigned research centre.")
                 return redirect('finance')
             
@@ -1966,7 +2103,8 @@ def get_budget_forecasts(request, cost_centre_id):
     """Get budget forecasts for a cost centre as JSON"""
     try:
         cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
-        if request.user.role == 'centrehead' and cost_centre.research_centre_id != get_user_research_centre_id(request.user):
+        scoped_ids = get_accessible_cost_centre_ids(request.user)
+        if scoped_ids is not None and cost_centre.id not in scoped_ids:
             return JsonResponse({'error': 'You can only view forecasts for your assigned research centre'}, status=403)
 
         BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
@@ -2393,7 +2531,7 @@ def build_crm_context(request, active_tab):
 @login_required
 @user_passes_test(can_view_crm)
 def crm(request, tab='clients'):
-    valid_tabs = {'clients', 'centres', 'engagements', 'directory', 'financials', 'alerts', 'reports'}
+    valid_tabs = {'clients', 'centres', 'engagements', 'directory', 'financials', 'active_projects', 'alerts', 'reports'}
     if tab not in valid_tabs:
         tab = 'clients'
     return render(request, 'adminpanel/crm/crm.html', build_crm_logic_context(request, tab))
@@ -2557,8 +2695,9 @@ def student_detail_view(request, student_id):
 def admin_journal(request):
     from manager.models import PaperStatusHistory
     
-    internal_papers = Paper.objects.filter(internal_external='internal').order_by('-updated_at')
-    external_papers = Paper.objects.filter(internal_external='external').order_by('-updated_at')
+    papers = scope_outputs_for_user(Paper.objects.all(), request.user)
+    internal_papers = papers.filter(internal_external='internal').order_by('-updated_at')
+    external_papers = papers.filter(internal_external='external').order_by('-updated_at')
     
     # Add available statuses for the UI
     for paper in list(internal_papers) + list(external_papers):
@@ -2577,7 +2716,7 @@ def move_paper_external(request, paper_id):
     """Move a paper from internal to external with submission details"""
     from manager.models import PaperStatusHistory
     
-    paper = get_object_or_404(Paper, id=paper_id)
+    paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
     
     if request.method == 'POST':
         # Change type to external
@@ -2609,7 +2748,7 @@ def return_paper_internal(request, paper_id):
     """Return a paper from external to internal with feedback"""
     from manager.models import PaperStatusHistory
     
-    paper = get_object_or_404(Paper, id=paper_id)
+    paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
     
     if request.method == 'POST':
         # Change type back to internal
@@ -2639,8 +2778,9 @@ def return_paper_internal(request, paper_id):
 def admin_conferences(request):
     from manager.models import Conference
     
-    internal_conferences = Conference.objects.filter(internal_external='internal').order_by('-updated_at')
-    external_conferences = Conference.objects.filter(internal_external='external').order_by('-updated_at')
+    conferences = scope_outputs_for_user(Conference.objects.all(), request.user)
+    internal_conferences = conferences.filter(internal_external='internal').order_by('-updated_at')
+    external_conferences = conferences.filter(internal_external='external').order_by('-updated_at')
     
     return render(request, 'adminpanel/conferences.html', {
         'internal_conferences': internal_conferences,
@@ -2683,7 +2823,7 @@ def edit_conference(request, conference_id):
     from django.http import JsonResponse
     
     try:
-        conference = get_object_or_404(Conference, id=conference_id)
+        conference = get_object_or_404(scope_outputs_for_user(Conference.objects.all(), request.user), id=conference_id)
         
         # Capture old M2M values before form processing
         old_co_authors = set(conference.co_authors_users.values_list('id', flat=True))
@@ -2734,7 +2874,7 @@ def delete_conference(request, conference_id):
     from manager.models import Conference
     
     try:
-        conference = Conference.objects.get(id=conference_id)
+        conference = scope_outputs_for_user(Conference.objects.all(), request.user).get(id=conference_id)
         conference.delete()
         messages.success(request, 'Conference deleted successfully!')
     except Conference.DoesNotExist:
@@ -2747,7 +2887,7 @@ def admin_book(request):
     from manager.models import Book, Chapter
     
     # Fetch all books with their chapters
-    books = Book.objects.prefetch_related('chapters').order_by('-created_at')
+    books = scope_books_for_user(Book.objects.prefetch_related('chapters'), request.user).order_by('-created_at')
     
     # Convert to JSON-friendly format for template
     books_data = []
@@ -2793,7 +2933,7 @@ def update_book_status(request, book_id):
             data = json.loads(request.body)
             new_status = data.get('status')
             
-            book = get_object_or_404(Book, id=book_id)
+            book = get_object_or_404(scope_books_for_user(Book.objects.all(), request.user), id=book_id)
             
             # Validate status is in allowed choices
             valid_statuses = [choice[0] for choice in Book.STATUS_CHOICES]
@@ -3020,6 +3160,7 @@ def create_project(request):
         if form.is_valid():
             project = form.save(commit=False)
             project.created_by = request.user
+            project.research_centre = getattr(request.user, 'research_centre', None)
             project.save()
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -3274,7 +3415,7 @@ def get_conference_form_html(request, conference_id):
         from manager.models import Conference
         from manager.forms import ConferenceForm
         
-        conference = get_object_or_404(Conference, id=conference_id)
+        conference = get_object_or_404(scope_outputs_for_user(Conference.objects.all(), request.user), id=conference_id)
         form = ConferenceForm(instance=conference)
         
         from django.template.loader import render_to_string
@@ -3296,7 +3437,7 @@ def get_conference_data(request, conference_id):
     try:
         from manager.models import Conference
         
-        conference = get_object_or_404(Conference, id=conference_id)
+        conference = get_object_or_404(scope_outputs_for_user(Conference.objects.all(), request.user), id=conference_id)
         
         # Serialize co_authors_users and assigned_reviewers IDs
         co_authors_ids = list(conference.co_authors_users.values_list('id', flat=True))

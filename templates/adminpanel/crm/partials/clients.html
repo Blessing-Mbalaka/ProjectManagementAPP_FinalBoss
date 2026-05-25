@@ -10,18 +10,36 @@
     <thead class="table-light">
       <tr>
         <th>Client</th>
+        <th>Company</th>
+        <th>Primary Contact</th>
         <th>Code</th>
         <th>Research Centre</th>
         <th>Relationship Owner</th>
-        <th>Visibility</th>
         <th>Revenue</th>
         <th>Pipeline</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
       {% for client in clients %}
       <tr>
         <td><strong>{{ client.name }}</strong></td>
+        <td>
+          {{ client.company_name|default:"Not captured" }}
+          {% if client.industry %}
+            <div class="small text-muted">{{ client.industry }}</div>
+          {% endif %}
+        </td>
+        <td>
+          {% if client.contact_person_name %}
+            {{ client.contact_person_name }}
+            {% if client.contact_person_role %}
+              <div class="small text-muted">{{ client.contact_person_role }}</div>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">Not captured</span>
+          {% endif %}
+        </td>
         <td>{{ client.code }}</td>
         <td>{{ client.sector }}</td>
         <td>
@@ -31,13 +49,83 @@
             <span class="text-muted">Unassigned</span>
           {% endif %}
         </td>
-        <td><span class="badge bg-secondary">{{ client.visibility }}</span></td>
         <td>R {{ client.total_received|floatformat:2 }}</td>
         <td>R {{ client.pipeline_value|floatformat:2 }}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#companyModal{{ client.id }}">
+            View company
+          </button>
+        </td>
       </tr>
       {% empty %}
-      <tr><td colspan="7" class="text-center text-muted">No clients found for this centre.</td></tr>
+      <tr><td colspan="9" class="text-center text-muted">No clients found for this centre.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+{% for client in clients %}
+<div class="modal fade" id="companyModal{{ client.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title">{{ client.company_name|default:client.name }}</h5>
+          <div class="text-muted small">{{ client.cost_centre_name }} · {{ client.code }}</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <h6>Company Details</h6>
+            <dl class="row mb-0 small">
+              <dt class="col-sm-5">Registered Name</dt>
+              <dd class="col-sm-7">{{ client.company_name|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">CIPC / Reg No.</dt>
+              <dd class="col-sm-7">{{ client.company_registration_number|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">VAT Number</dt>
+              <dd class="col-sm-7">{{ client.vat_number|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">Industry</dt>
+              <dd class="col-sm-7">{{ client.industry|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">Website</dt>
+              <dd class="col-sm-7">
+                {% if client.company_website %}
+                  <a href="{{ client.company_website }}" target="_blank" rel="noopener">{{ client.company_website }}</a>
+                {% else %}
+                  Not captured
+                {% endif %}
+              </dd>
+              <dt class="col-sm-5">Company Email</dt>
+              <dd class="col-sm-7">{{ client.company_email|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">Company Phone</dt>
+              <dd class="col-sm-7">{{ client.company_phone|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">Address</dt>
+              <dd class="col-sm-7">{{ client.company_address|linebreaksbr|default:"Not captured" }}</dd>
+            </dl>
+          </div>
+          <div class="col-md-6">
+            <h6>Contact & CRM</h6>
+            <dl class="row mb-0 small">
+              <dt class="col-sm-5">Contact Name</dt>
+              <dd class="col-sm-7">{{ client.contact_person_name|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">Contact Role</dt>
+              <dd class="col-sm-7">{{ client.contact_person_role|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">Contact Email</dt>
+              <dd class="col-sm-7">{{ client.contact_email|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">Contact Phone</dt>
+              <dd class="col-sm-7">{{ client.contact_phone|default:"Not captured" }}</dd>
+              <dt class="col-sm-5">Research Centre</dt>
+              <dd class="col-sm-7">{{ client.sector }}</dd>
+              <dt class="col-sm-5">Visibility</dt>
+              <dd class="col-sm-7">{{ client.visibility }}</dd>
+              <dt class="col-sm-5">Notes</dt>
+              <dd class="col-sm-7">{{ client.crm_notes|linebreaksbr|default:"Not captured" }}</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
