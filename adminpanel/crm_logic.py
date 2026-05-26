@@ -258,6 +258,13 @@ def send_dean_alert_email_once(request, alerts):
     if request.session.get(session_key):
         return
 
+    if not getattr(settings, 'EMAIL_USE_CONSOLE', False):
+        email_host_user = getattr(settings, 'EMAIL_HOST_USER', '')
+        email_host_password = getattr(settings, 'EMAIL_HOST_PASSWORD', '')
+        if not email_host_user or not email_host_password:
+            request.session[session_key] = True
+            return
+
     high_alerts = [alert for alert in alerts if alert.get('level') == 'High']
     subject = 'CRM risk alerts need review'
     lines = [
@@ -277,7 +284,8 @@ def send_dean_alert_email_once(request, alerts):
             fail_silently=True,
         )
         request.session[session_key] = True
-    except Exception:
+    except BaseException:
+        request.session[session_key] = True
         pass
 
 
