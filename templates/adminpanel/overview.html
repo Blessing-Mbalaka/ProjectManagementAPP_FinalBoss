@@ -1,145 +1,483 @@
+
 {% extends 'adminpanel/index.html' %}
 {% load static %}
 
 {% block title %}Overview{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 
-<div class="welcome-box">
-  <h3>Executive Overview</h3>
-  <p>Summary of projects, research outputs, finance, CRM, and team activity</p>
-  <div class="progress mt-2" style="width: 75%; height: 10px;">
-    <div class="progress-bar" style="width: 100%"></div>
-  </div>
-</div>
+<!-- <link rel="stylesheet" href="{% static 'css/style.css' %}"> -->
+<!-- <link rel="stylesheet" href="{% static 'css/dashboard.css' %}"> -->
+<!-- <link href="https://fonts.googleapis.com/css?family=Montserrat:400,500,600,700,800&display=swap" rel="stylesheet"> -->
+
+<style>
+:root{
+  --uj-orange:#F26522;
+  --uj-dark:#151515;
+  --uj-border:#eeeeee;
+  --uj-muted:#6f6f6f;
+}
+
+/* BODY BACKGROUND IMAGE FIX */
+body{
+  background:
+    linear-gradient(
+      rgba(252, 92, 24, 0.114),
+      rgba(239, 92, 13, 0.248),
+      rgba(235, 118, 46, 0.949)
+    ),
+    url("{% static 'img/2.png' %}")!important;
+  /* background-size:cover !important; */
+  /* background-position:center !important; */
+  background-repeat:no-repeat !important;
+  background-attachment:fixed !important;
+  ;
+}
+
+/* IMPORTANT: do not cover the body background */
+.mega-container{
+  background:rgba(255,255,255,0.78);
+  backdrop-filter:blur(6px);
+  margin-top:-24px;
+}
+
+.dashboard-page{
+  padding:24px 28px;
+}
+
+/* HEADER */
+.hero-box{
+  min-height:165px;
+  border-radius:26px;
+  padding:40px 44px;
+  margin-bottom:26px;
+  background:
+    linear-gradient(90deg, rgba(239, 239, 239, 0.892), rgb(255, 255, 255)),
+    url("{% static 'img/freepik__upload__83338.png' %}")!important;
+  background-size:cover;
+  background-position:center;
+  border:1px solid rgba(242,101,34,.18);
+  box-shadow:0 12px 35px rgba(0,0,0,.04);
+}
+
+.hero-box h1{
+  font-size:42px;
+  font-weight:800;
+  margin-bottom:10px;
+  color:#111;
+}
+
+.hero-box p{
+  font-size:16px;
+  color:var(--uj-muted);
+  margin-bottom:18px;
+}
+
+.hero-line{
+  width:70px;
+  height:3px;
+  background:var(--uj-orange);
+  border-radius:20px;
+}
+
+/* STATS */
+.stat-card{
+  min-height:125px;
+  border-radius:22px;
+  padding:22px;
+  background:rgba(255,250,247,.94);
+  border:1px solid #f3ded2;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.stat-card.featured{
+  background:linear-gradient(145deg,#ff6a2b,#ff3f00);
+  color:#fff;
+  border:none;
+  box-shadow:0 15px 35px rgba(242,101,34,.25);
+}
+
+.stat-left{
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+
+.stat-icon{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:#ffe7dc;
+  color:var(--uj-orange);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  flex-shrink:0;
+}
+
+.stat-card.featured .stat-icon{
+  background:rgba(255,255,255,.22);
+  color:#fff;
+}
+
+.stat-card h2{
+  font-size:34px;
+  font-weight:800;
+  color:var(--uj-orange);
+  margin:0;
+  line-height:1;
+}
+
+.stat-card.featured h2{
+  color:#fff;
+}
+
+.stat-card .label{
+  font-size:13px;
+  font-weight:700;
+  color:#555;
+  margin-top:7px;
+}
+
+.stat-card.featured .label{
+  color:#fff;
+}
+
+/* LOWER CARDS */
+.panel-card{
+  background:rgba(255,255,255,.96);
+  border:1px solid var(--uj-border);
+  border-radius:24px;
+  padding:24px;
+  height:100%;
+  box-shadow:0 12px 30px rgba(0,0,0,.035);
+}
+
+.panel-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:20px;
+}
+
+.panel-header h5{
+  font-size:18px;
+  font-weight:800;
+  margin:0;
+}
+
+.panel-header a{
+  color:var(--uj-orange);
+  font-size:13px;
+  font-weight:700;
+  text-decoration:none;
+}
+
+/* QUICK LINKS */
+.quick-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.quick-tile{
+  min-height:185px;
+  background:#f3f3f3;
+  border-radius:18px;
+  padding:22px;
+  text-decoration:none;
+  color:#111;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  border:1px solid #ececec;
+}
+
+.quick-tile.main{
+  background:#ff3f00;
+  color:#fff;
+}
+
+.quick-tile i{
+  font-size:30px;
+}
+
+.quick-tile h6{
+  font-weight:800;
+  margin-bottom:8px;
+}
+
+.quick-tile p{
+  margin:0;
+  font-size:13px;
+  color:#555;
+  line-height:1.5;
+}
+
+.quick-tile.main p{
+  color:#fff;
+}
+
+/* NOTIFICATIONS */
+.notification-tabs{
+  background:#f1f1f1;
+  border-radius:14px;
+  padding:5px;
+  display:flex;
+  gap:4px;
+  margin-bottom:16px;
+}
+
+.notification-tabs button{
+  border:0;
+  background:transparent;
+  flex:1;
+  padding:9px 8px;
+  border-radius:10px;
+  font-size:13px;
+  color:#666;
+}
+
+.notification-tabs button.active{
+  background:#fff;
+  color:#111;
+  font-weight:700;
+}
+
+.notice-item{
+  display:flex;
+  gap:14px;
+  padding:16px 0;
+  border-bottom:1px solid #eee;
+}
+
+.notice-item:last-child{
+  border-bottom:0;
+}
+
+.notice-icon{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:1px solid #eee;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#111;
+  flex-shrink:0;
+}
+
+.notice-dot{
+  width:7px;
+  height:7px;
+  background:var(--uj-orange);
+  border-radius:50%;
+  display:inline-block;
+  margin-right:7px;
+}
+
+.notice-title{
+  font-weight:700;
+  font-size:14px;
+  margin-bottom:5px;
+}
+
+.notice-text{
+  color:#666;
+  font-size:13px;
+  line-height:1.5;
+}
+
+.notice-time{
+  font-size:12px;
+  color:#777;
+  white-space:nowrap;
+}
+
+@media(max-width:1200px){
+  .quick-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:768px){
+  .dashboard-page{
+    padding:16px;
+  }
+
+  .hero-box{
+    padding:28px;
+  }
+
+  .hero-box h1{
+    font-size:32px;
+  }
+}
+</style>
 
 {% if messages %}
-  <div class="container-fluid mt-3">
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-    {% endfor %}
-  </div>
+<div class="container-fluid mt-3">
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+</div>
 {% endif %}
 
-<div class="container-fluid py-4">
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card h-100 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Active Users</div>
-          <div class="display-6 fw-bold">{{ dashboard_stats.users }}</div>
-          <a href="{% url 'manage_users' %}" class="stretched-link text-decoration-none">Manage Users</a>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card h-100 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Projects</div>
-          <div class="display-6 fw-bold">{{ dashboard_stats.projects }}</div>
-          <a href="{% url 'admin_kanban' %}" class="stretched-link text-decoration-none">Open PM Tools</a>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card h-100 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Cost Centres</div>
-          <div class="display-6 fw-bold">{{ dashboard_stats.cost_centres }}</div>
-          <a href="{% if user.role == 'dean' or user.role == 'financialadmin' %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="stretched-link text-decoration-none">Open Finance</a>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card h-100 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Research Outputs</div>
-          <div class="display-6 fw-bold">{{ dashboard_stats.research_outputs }}</div>
-          <a href="{% url 'admin_journal' %}" class="stretched-link text-decoration-none">Review Outputs</a>
-        </div>
-      </div>
-    </div>
+<div class="dashboard-page">
+
+  <div class="hero-box">
+    <h1>Executive Overview</h1>
+    <p>Summary of projects, research outputs, finance, CRM, and team activity.</p>
+    <div class="hero-line"></div>
   </div>
 
-  <div class="row g-3">
-    <div class="col-lg-4">
-      <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% url 'admin_book' %}">
-        <div class="card-body">
-          <h5 class="card-title">Books</h5>
-          <p class="text-muted mb-0">Book records, chapters, and review status.</p>
+  <div class="row g-4 mb-4">
+
+    <div class="col-xl-3 col-md-6">
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-icon"><i class="bi bi-people"></i></div>
+          <div>
+            <h2>{{ dashboard_stats.users }}</h2>
+            <div class="label">Active Users</div>
+          </div>
         </div>
-      </a>
+      </div>
     </div>
-    <div class="col-lg-4">
-      <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% url 'admin_journal' %}">
-        <div class="card-body">
-          <h5 class="card-title">Journals</h5>
-          <p class="text-muted mb-0">Paper submissions, authorship, and decisions.</p>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="stat-card featured">
+        <div class="stat-left">
+          <div class="stat-icon"><i class="bi bi-kanban"></i></div>
+          <div>
+            <h2>{{ dashboard_stats.projects }}</h2>
+            <div class="label">Projects</div>
+          </div>
         </div>
-      </a>
+      </div>
     </div>
-    <div class="col-lg-4">
-      <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% url 'admin_conferences' %}">
-        <div class="card-body">
-          <h5 class="card-title">Conferences</h5>
-          <p class="text-muted mb-0">Conference outputs and presentation records.</p>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+          <div>
+            <h2>{{ dashboard_stats.cost_centres }}</h2>
+            <div class="label">Cost Centres</div>
+          </div>
         </div>
-      </a>
+      </div>
     </div>
-    <div class="col-lg-4">
-      <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% url 'admin_kanban' %}">
-        <div class="card-body">
-          <h5 class="card-title">Kanban Board</h5>
-          <p class="text-muted mb-0">Project workflow and task progress.</p>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-icon"><i class="bi bi-journal-text"></i></div>
+          <div>
+            <h2>{{ dashboard_stats.research_outputs }}</h2>
+            <div class="label">Research Outputs</div>
+          </div>
         </div>
-      </a>
+      </div>
     </div>
-    <div class="col-lg-4">
-      <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% url 'communique' %}">
-        <div class="card-body">
-          <h5 class="card-title">Communique</h5>
-          <p class="text-muted mb-0">Announcements and shared templates.</p>
-        </div>
-      </a>
-    </div>
-    {% if user.role == 'dean' or user.role == 'centrehead' %}
-    <div class="col-lg-4">
-      <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% url 'crm_tab' 'clients' %}">
-        <div class="card-body">
-          <h5 class="card-title">CRM</h5>
-          <p class="text-muted mb-0">Clients, centres, engagements, alerts, and reports.</p>
-        </div>
-      </a>
-    </div>
-    {% endif %}
+
   </div>
 
-  <div class="card mt-4 shadow-sm">
-    <div class="card-header">
-      <h5 class="mb-0">Recent Notifications</h5>
+  <div class="row g-4">
+
+    <div class="col-lg-7">
+      <div class="panel-card">
+        <div class="panel-header">
+          <h5>Quick Links</h5>
+        </div>
+
+        <div class="quick-grid">
+
+          <a href="{% url 'admin_journal' %}" class="quick-tile main">
+            <div><i class="bi bi-journal-text"></i></div>
+            <div>
+              <h6>Research Outputs</h6>
+              <p>View publications, journals, books, chapters, and conferences.</p>
+            </div>
+          </a>
+
+          <a href="{% url 'admin_kanban' %}" class="quick-tile">
+            <div><i class="bi bi-kanban"></i></div>
+            <div>
+              <h6>Projects</h6>
+              <p>Track milestones, tasks, workflows, and project progress.</p>
+            </div>
+          </a>
+
+          <a href="{% if user.role == 'dean' or user.role == 'financialadmin' %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="quick-tile">
+            <div><i class="bi bi-cash-stack"></i></div>
+            <div>
+              <h6>Finance</h6>
+              <p>View budgets, cost centres, funding activity, and financial records.</p>
+            </div>
+          </a>
+
+          {% if user.role == 'dean' or user.role == 'centrehead' %}
+          <a href="{% url 'crm_tab' 'clients' %}" class="quick-tile">
+            <div><i class="bi bi-people"></i></div>
+            <div>
+              <h6>CRM</h6>
+              <p>Manage clients, centres, engagements, communication, and reports.</p>
+            </div>
+          </a>
+          {% endif %}
+
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      {% if recent_notifications %}
-        <ul class="list-group list-group-flush">
+
+    <div class="col-lg-5">
+      <div class="panel-card">
+        <div class="panel-header">
+          <h5>Notification Center</h5>
+          <a href="#">See all</a>
+        </div>
+
+        <div class="notification-tabs">
+          <button class="active">Today</button>
+          <button>This Week</button>
+          <button>This Month</button>
+        </div>
+
+        {% if recent_notifications %}
           {% for n in recent_notifications %}
-            <li class="list-group-item px-0">
-              <div class="d-flex justify-content-between">
-                <strong>{{ n.title }}</strong>
-                <span class="badge bg-secondary">{{ n.get_priority_display }}</span>
+          <div class="notice-item">
+            <div class="notice-icon"><i class="bi bi-bell"></i></div>
+            <div class="flex-grow-1">
+              <div class="d-flex justify-content-between gap-3">
+                <div class="notice-title"><span class="notice-dot"></span>{{ n.title }}</div>
+                <div class="notice-time">{{ n.created_at|date:"H:i" }}</div>
               </div>
-              <div class="small text-muted">{{ n.created_at|date:"Y-m-d H:i" }}</div>
-            </li>
+              <div class="notice-text">{{ n.get_priority_display }}</div>
+            </div>
+          </div>
           {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-muted mb-0">No notifications yet.</p>
-      {% endif %}
+        {% else %}
+          <div class="notice-item">
+            <div class="notice-icon"><i class="bi bi-check2-circle"></i></div>
+            <div>
+              <div class="notice-title"><span class="notice-dot"></span>No notifications yet</div>
+              <div class="notice-text">There are currently no new updates requiring attention.</div>
+            </div>
+          </div>
+        {% endif %}
+
+      </div>
     </div>
+
   </div>
+
 </div>
+
 {% endblock %}
