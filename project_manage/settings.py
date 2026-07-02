@@ -13,8 +13,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-_0c$9attqx23_v=(t13^$f8!z)yyn+kz+^)%a=)5r)sg_r8b0u'
 
-# Load .env file
-load_dotenv(os.path.join(BASE_DIR, 'project_manage', '.env'))
+# Load .env file and let it override any stale shell-level values on the server.
+load_dotenv(os.path.join(BASE_DIR, 'project_manage', '.env'), override=True)
 
 
 def env_flag(name, default=False):
