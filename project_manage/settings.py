@@ -16,8 +16,12 @@ SECRET_KEY = 'django-insecure-_0c$9attqx23_v=(t13^$f8!z)yyn+kz+^)%a=)5r)sg_r8b0u
 # Load .env file
 load_dotenv(os.path.join(BASE_DIR, 'project_manage', '.env'))
 
+
+def env_flag(name, default=False):
+    return os.getenv(name, str(default)).strip().lower() in {'1', 'true', 'yes', 'on'}
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DEBUG = env_flag('DEBUG', True)
 
 # Enhanced ALLOWED_HOSTS configuration for Render, Azure Container Apps, and local development
 ALLOWED_HOSTS = [
@@ -29,15 +33,15 @@ ALLOWED_HOSTS = [
 
 
 # Email config: use SMTP unless EMAIL_USE_CONSOLE is true
-EMAIL_USE_CONSOLE = os.getenv('EMAIL_USE_CONSOLE', 'False').lower() == 'true'
+EMAIL_USE_CONSOLE = env_flag('EMAIL_USE_CONSOLE', False)
 if EMAIL_USE_CONSOLE:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() == 'true'
+EMAIL_USE_TLS = env_flag('EMAIL_USE_TLS', True)
+EMAIL_USE_SSL = env_flag('EMAIL_USE_SSL', False)
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@yourdomain.com')
@@ -61,8 +65,18 @@ INSTALLED_APPS = [
 ]
 
 
-# Use dj_database_url with .env DB config
-if os.getenv('DATABASE_URL'):
+# Set USE_SQLITE=true in project_manage/.env to force the local SQLite database.
+USE_SQLITE = env_flag('USE_SQLITE', False)
+
+# Use dj_database_url with .env DB config unless SQLite is explicitly enabled.
+if USE_SQLITE:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+elif os.getenv('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.config(
             conn_max_age=600,
@@ -95,7 +109,7 @@ MIDDLEWARE = [
 ]
 
 # For development/testing, disable CSRF if needed (NOT recommended for production)
-if DEBUG and os.getenv('DISABLE_CSRF', 'False').lower() == 'true':
+if DEBUG and env_flag('DISABLE_CSRF', False):
     MIDDLEWARE = [m for m in MIDDLEWARE if m != 'django.middleware.csrf.CsrfViewMiddleware']
 
 ROOT_URLCONF = 'project_manage.urls'
