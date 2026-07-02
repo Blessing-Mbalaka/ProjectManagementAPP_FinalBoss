@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
+from django.contrib.auth.views import PasswordResetView
 from .forms import CustomUserCreationForm, CustomLoginForm
 from .models import CustomUser
 from projects.models import StudentProfile
@@ -63,3 +64,22 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+
+class DebugPasswordResetView(PasswordResetView):
+    template_name = 'users/password_reset.html'
+    email_template_name = 'users/password_reset_email.html'
+    subject_template_name = 'users/password_reset_subject.txt'
+
+    def form_valid(self, form):
+        email = form.cleaned_data.get('email', '').strip()
+        matching_users = list(form.get_users(email))
+        if not matching_users:
+            form.add_error('email', 'We could not find an active account with that email address.')
+            return self.form_invalid(form)
+
+        try:
+            return super().form_valid(form)
+        except Exception as exc:
+            form.add_error(None, f"We could not send the reset email. Reason: {exc}")
+            return self.form_invalid(form)
