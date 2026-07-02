@@ -23,38 +23,9 @@ DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
-    'testserver',
     '.onrender.com',
 ]
 
-
-# Allow custom ALLOWED_HOSTS from environment variable
-custom_hosts = os.getenv('ALLOWED_HOSTS', '')
-if custom_hosts:
-    # Split by comma and add to ALLOWED_HOSTS
-    ALLOWED_HOSTS.extend([host.strip() for host in custom_hosts.split(',') if host.strip()])
-
-# For development/testing, allow all hosts if DEBUG is True
-if DEBUG and os.getenv('ALLOW_ALL_HOSTS', 'False').lower() == 'true':
-    ALLOWED_HOSTS = ['*']
-
-# Remove empty strings from ALLOWED_HOSTS
-ALLOWED_HOSTS = [host for host in ALLOWED_HOSTS if host]
-
-# Ensure we have at least localhost for local development
-if not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-
-# CSRF Configuration - Enhanced for Render and Azure Container Apps
-CSRF_TRUSTED_ORIGINS = [
-    'http://*.onrender.com',
-]
-
-# allowed admin emails
-ALLOWED_ADMIN_EMAILS = [
-    'lotriet.work@gmail.com',
-    'hopelotriet@gmail.com'
-]
 
 
 # Email config: use SMTP unless EMAIL_USE_CONSOLE is true
@@ -69,15 +40,10 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() == 'true'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '5'))
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@yourdomain.com')
 
 
 
-# Allow custom CSRF_TRUSTED_ORIGINS from environment variable
-custom_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
-if custom_csrf_origins:
-    CSRF_TRUSTED_ORIGINS.extend([origin.strip() for origin in custom_csrf_origins.split(',') if origin.strip()])
 
 # Application definition
 INSTALLED_APPS = [
@@ -210,8 +176,6 @@ STORAGES = {
     },
 }
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-
 
 # SSL/HTTPS production security logic removed for local and production simplicity
 

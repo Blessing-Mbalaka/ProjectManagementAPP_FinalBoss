@@ -1,7 +1,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h5 class="mb-1">Engagements</h5>
-    <div class="text-muted small">Existing projects are treated as engagement records with lifecycle, lead, dates, and team allocation.</div>
+    <div class="text-muted small">Projects remain the primary engagement records, now enriched with project manager meeting minutes and discussion history.</div>
   </div>
 </div>
 
@@ -17,12 +17,18 @@
         <th>Team</th>
         <th>Progress</th>
         <th>Last Contact</th>
+        <th>CRM History</th>
       </tr>
     </thead>
     <tbody>
       {% for engagement in engagements %}
       <tr>
-        <td><strong>{{ engagement.name }}</strong></td>
+        <td>
+          <strong>{{ engagement.name }}</strong>
+          {% if engagement.latest_entry_type %}
+            <div class="small text-muted mt-1">Latest update: {{ engagement.latest_entry_type }}</div>
+          {% endif %}
+        </td>
         <td>{{ engagement.client }}</td>
         <td><span class="badge bg-info text-dark">{{ engagement.stage }}</span></td>
         <td>{{ engagement.lead.get_full_name|default:engagement.lead.username }}</td>
@@ -39,9 +45,31 @@
           <small>{{ engagement.progress }}%</small>
         </td>
         <td>{{ engagement.last_contact|date:"Y-m-d" }}</td>
+        <td style="min-width: 320px;">
+          {% if engagement.has_previous_approach %}
+            <div class="crm-badge medium mb-2">Previously approached by {{ engagement.previously_approached_by|join:", " }}</div>
+          {% endif %}
+          {% if engagement.latest_proposal_summary %}
+            <div class="small mb-2"><strong>Latest proposal:</strong> {{ engagement.latest_proposal_summary|truncatechars:120 }}</div>
+          {% endif %}
+          {% for history in engagement.history_preview %}
+            <div class="border rounded p-2 mb-2 bg-light-subtle">
+              <div class="small fw-semibold">{{ history.centre }} | {{ history.entry_type }} | {{ history.engagement_date }}</div>
+              <div class="small text-muted">{{ history.entered_by }}</div>
+              <div class="small mt-1">{{ history.notes|truncatechars:140 }}</div>
+            </div>
+          {% empty %}
+            <span class="text-muted small">No minutes or discussion history captured yet.</span>
+          {% endfor %}
+          {% for proposal in engagement.prior_proposals %}
+            {% if proposal.proposal_summary %}
+              <div class="small"><strong>{{ proposal.centre }} proposed:</strong> {{ proposal.proposal_summary|truncatechars:120 }}</div>
+            {% endif %}
+          {% endfor %}
+        </td>
       </tr>
       {% empty %}
-      <tr><td colspan="8" class="text-center text-muted">No engagements found.</td></tr>
+      <tr><td colspan="9" class="text-center text-muted">No engagements found.</td></tr>
       {% endfor %}
     </tbody>
   </table>

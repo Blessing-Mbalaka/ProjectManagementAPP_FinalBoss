@@ -12,7 +12,7 @@ from projects.models import Project
 from projects.scope import output_centre_q, project_centre_q
 from users.models import CustomUser
 
-from .models import CostCentre, Expenditure, ResearchCentre
+from .models import CostCentre, EngagementLog, Expenditure, ResearchCentre
 
 
 CRM_TABS = [
@@ -45,6 +45,14 @@ def safe_decimal(value, default=Decimal('0.00')):
         return value if isinstance(value, Decimal) else Decimal(str(value))
     except (InvalidOperation, TypeError, ValueError):
         return default
+
+
+def normalize_client_label(value):
+    return ' '.join((value or '').strip().lower().split())
+
+
+def client_label_from_cost_centre(cost_centre):
+    return cost_centre.client_name or cost_centre.company_name or cost_centre.name
 
 
 def get_user_research_centre_id(user):
@@ -172,26 +180,72 @@ def build_clients(cost_centres, users):
     return clients, total_revenue, total_spent
 
 
-def build_engagements(projects):
+def build_engagements(projects, engagement_logs):
     today = timezone.now().date()
+    logs_by_project = defaultdict(list)
+    logs_by_client = defaultdict(list)
+    for log in engagement_logs:
+        logs_by_project[log.project_id].append(log)
+        client_key = normalize_client_label(log.client_label)
+        if client_key:
+            logs_by_client[client_key].append(log)
+
     engagements = []
     for project in projects:
         tasks = list(project.tasks.all())
+        project_logs = sorted(logs_by_project.get(project.id, []), key=lambda item: (item.engagement_date, item.created_at), reverse=True)
+        latest_log = project_logs[0] if project_logs else None
         latest_task = max((task.created_at for task in tasks), default=project.created_at)
+        last_contact = latest_log.created_at if latest_log else latest_task
         stage = {'planning': 'Prospect', 'on-hold': 'On hold', 'completed': 'Completed'}.get(project.status, 'Active')
+        client_name = latest_log.client_label if latest_log else project_centre_name(project)
+        client_history = logs_by_client.get(normalize_client_label(client_name), [])
+        previously_approached_by = sorted({
+            log.research_centre.name
+            for log in client_history
+            if log.research_centre
+        })
+        prior_proposals = [
+            {
+                'centre': log.research_centre.name if log.research_centre else 'No centre',
+                'proposal_summary': log.proposal_summary,
+                'engagement_date': log.engagement_date,
+            }
+            for log in client_history
+            if log.proposal_summary
+        ][:3]
+        history_preview = [
+            {
+                'centre': log.research_centre.name if log.research_centre else 'No centre',
+                'entry_type': log.get_entry_type_display(),
+                'engagement_date': log.engagement_date,
+                'notes': log.notes,
+                'entered_by': log.entered_by.get_full_name() or log.entered_by.username,
+            }
+            for log in client_history[:3]
+        ]
         engagements.append({
             'id': project.id,
             'name': project.name,
-            'client': project_centre_name(project),
+            'client': client_name,
+            'centre': project_centre_name(project),
             'stage': stage,
             'status': project.status,
             'lead': project.assigned_user or project.created_by,
             'due_date': project.due_date,
-            'last_contact': latest_task,
+            'last_contact': last_contact,
             'progress': project_progress(project),
             'team_count': project.assignments.count(),
             'visibility': 'Institutional',
             'is_overdue': bool(project.due_date and project.due_date < today and project.status != 'completed'),
+            'engagement_entry_count': len(project_logs),
+            'history_count': len(client_history),
+            'history_preview': history_preview,
+            'prior_proposals': prior_proposals,
+            'previously_approached_by': previously_approached_by,
+            'has_previous_approach': len(previously_approached_by) > 1 or len(client_history) > 1,
+            'latest_proposal_summary': latest_log.proposal_summary if latest_log else '',
+            'latest_entry_type': latest_log.get_entry_type_display() if latest_log else '',
         })
     return engagements
 
@@ -331,17 +385,22 @@ def build_context(request, active_tab):
     cost_centres = list(scope['cost_centres'])
     users = list(scope['users'])
     projects = list(scope['projects'])
+    engagement_logs = list(
+        EngagementLog.objects.select_related('project', 'cost_centre', 'research_centre', 'entered_by')
+        .filter(project__in=projects)
+        .order_by('-engagement_date', '-created_at')
+    )
     papers = list(scope['papers'])
     conferences = list(scope['conferences'])
     books = list(scope['books'])
     clients, total_revenue, total_spent = build_clients(cost_centres, users)
-    engagements = build_engagements(projects)
+    engagements = build_engagements(projects, engagement_logs)
 
     centres = []
     for centre in scope['research_centres']:
         centre_users = [user for user in users if user.research_centre_id == centre.id]
         centre_clients = [client for client in clients if client['sector'] == centre.name]
-        centre_engagements = [engagement for engagement in engagements if engagement['client'] == centre.name]
+        centre_engagements = [engagement for engagement in engagements if engagement['centre'] == centre.name]
         revenue = sum((client['total_received'] for client in centre_clients), Decimal('0.00'))
         spent = sum((client['total_spent'] for client in centre_clients), Decimal('0.00'))
         centres.append({

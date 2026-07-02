@@ -1,4 +1,5 @@
 from django import forms
+from adminpanel.models import CostCentre, EngagementLog
 from .models import Book, Paper, Conference
 from projects.models import Project
 from users.models import CustomUser
@@ -92,3 +93,40 @@ class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = ['name', 'description', 'project_type', 'status']
+
+
+class EngagementLogForm(forms.ModelForm):
+    class Meta:
+        model = EngagementLog
+        fields = [
+            'project',
+            'cost_centre',
+            'entry_type',
+            'engagement_date',
+            'subject',
+            'notes',
+            'proposal_summary',
+        ]
+        widgets = {
+            'project': forms.Select(attrs={'class': 'form-select'}),
+            'cost_centre': forms.Select(attrs={'class': 'form-select'}),
+            'entry_type': forms.Select(attrs={'class': 'form-select'}),
+            'engagement_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'subject': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optional topic or meeting title'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'Add the meeting minutes, discussion summary, or client correspondence here.'}),
+            'proposal_summary': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'What did your centre propose to the client?'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        projects = Project.objects.all().select_related('research_centre').order_by('-created_at', 'name')
+        cost_centres = CostCentre.objects.select_related('research_centre').order_by('name')
+
+        if user and getattr(user, 'research_centre_id', None):
+            projects = projects.filter(research_centre_id=user.research_centre_id)
+            cost_centres = cost_centres.filter(research_centre_id=user.research_centre_id)
+
+        self.fields['project'].queryset = projects
+        self.fields['cost_centre'].queryset = cost_centres

@@ -6,7 +6,7 @@ from django.db import models
 from projects.models import Project, Task, Assignment,TeamMember
 from projects.forms import ProjectForm, AssignmentForm, TaskForm
 from .models import LearningContent, Template, Paper, Book, Chapter, PaperComment
-from .forms import BookForm, PaperForm
+from .forms import BookForm, PaperForm, EngagementLogForm
 from django.http import JsonResponse
 from django.contrib import messages
 from datetime import datetime
@@ -23,10 +23,18 @@ from django.core.files.base import ContentFile
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.shortcuts import render
-from adminpanel.models import Notification
+from adminpanel.models import CostCentre, EngagementLog, Notification
 from projects.scope import scope_books_for_user, scope_outputs_for_user, scope_projects_for_user
 
 User = get_user_model()
+
+
+def _client_label_for_cost_centre(cost_centre):
+    return cost_centre.client_name or cost_centre.company_name or cost_centre.name
+
+
+def _normalize_client_label(label):
+    return ' '.join((label or '').strip().lower().split())
 
 
 @login_required
@@ -61,6 +69,83 @@ def manager_dashboard(request):
         'my_notifications': my_notifications,
         'new_notifications_count': new_count,
     })
+
+
+@login_required
+def manager_engagements(request):
+    project_scope = scope_projects_for_user(
+        Project.objects.filter(
+            Q(created_by=request.user) | Q(assigned_user=request.user)
+        ).select_related('research_centre', 'assigned_user', 'created_by'),
+        request.user,
+    ).distinct()
+    cost_centres = CostCentre.objects.select_related('research_centre').order_by('name')
+
+    if getattr(request.user, 'research_centre_id', None):
+        cost_centres = cost_centres.filter(research_centre_id=request.user.research_centre_id)
+
+    if request.method == 'POST':
+        form = EngagementLogForm(request.POST, user=request.user)
+        if form.is_valid():
+            log = form.save(commit=False)
+            if log.project_id not in set(project_scope.values_list('id', flat=True)):
+                form.add_error('project', 'Please choose one of the projects already assigned to you for this research centre.')
+            else:
+                log.entered_by = request.user
+                log.research_centre = log.cost_centre.research_centre or getattr(request.user, 'research_centre', None)
+                log.save()
+                messages.success(request, 'Engagement history saved and pushed into the CRM view.')
+                return redirect(f"{reverse('manager_engagements')}?cost_centre={log.cost_centre_id}&project={log.project_id}")
+    else:
+        initial = {}
+        if request.GET.get('project'):
+            initial['project'] = request.GET.get('project')
+        if request.GET.get('cost_centre'):
+            initial['cost_centre'] = request.GET.get('cost_centre')
+        form = EngagementLogForm(initial=initial, user=request.user)
+
+    selected_cost_centre_id = request.POST.get('cost_centre') or request.GET.get('cost_centre')
+    selected_project_id = request.POST.get('project') or request.GET.get('project')
+
+    logs = EngagementLog.objects.select_related(
+        'project', 'cost_centre', 'research_centre', 'entered_by'
+    ).filter(project__in=project_scope)
+
+    if selected_cost_centre_id:
+        logs = logs.filter(cost_centre_id=selected_cost_centre_id)
+    if selected_project_id:
+        logs = logs.filter(project_id=selected_project_id)
+
+    selected_cost_centre = cost_centres.filter(id=selected_cost_centre_id).first() if selected_cost_centre_id else None
+    prior_client_logs = EngagementLog.objects.none()
+    previously_approached_by = []
+    if selected_cost_centre:
+        client_key = _normalize_client_label(_client_label_for_cost_centre(selected_cost_centre))
+        if client_key:
+            prior_client_logs = list(EngagementLog.objects.select_related(
+                'project', 'cost_centre', 'research_centre', 'entered_by'
+            ).order_by('-engagement_date', '-created_at'))
+            prior_client_logs = [
+                entry for entry in prior_client_logs
+                if _normalize_client_label(entry.client_label) == client_key
+            ]
+            previously_approached_by = sorted({
+                entry.research_centre.name
+                for entry in prior_client_logs
+                if entry.research_centre
+            })
+
+    context = {
+        'engagement_form': form,
+        'engagement_projects': project_scope.order_by('-created_at', 'name'),
+        'engagement_cost_centres': cost_centres,
+        'engagement_logs': logs.order_by('-engagement_date', '-created_at')[:20],
+        'selected_cost_centre': selected_cost_centre,
+        'selected_project_id': int(selected_project_id) if str(selected_project_id).isdigit() else None,
+        'prior_client_logs': prior_client_logs,
+        'previously_approached_by': previously_approached_by,
+    }
+    return render(request, 'manager/manager_engagements.html', context)
 
 
 

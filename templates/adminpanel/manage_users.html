@@ -20,7 +20,6 @@
   
   <!-- Dashboard Tiles -->
   <div class="row mb-4">
-    {% if not is_readonly_user_management %}
     <div class="col-md-2">
       <div class="card text-white bg-info shadow">
         <div class="card-body">
@@ -29,7 +28,6 @@
         </div>
       </div>
     </div>
-    {% endif %}
     {% for role, label in role_counts.items %}
     <div class="col-md-2">
       <div class="card text-white bg-secondary shadow">
@@ -70,10 +68,7 @@
   <!--  Messages -->
   {% if messages %}
   {% for message in messages %}
-  <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-    {{ message }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  </div>
+  <div class="alert alert-{{ message.tags }}">{{ message }}</div>
   {% endfor %}
   {% endif %}
 
@@ -122,7 +117,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="{% if is_readonly_user_management %}6{% else %}7{% endif %}" class="text-center">No users found.</td>
+        <td colspan="{% if is_readonly_user_management %}5{% else %}6{% endif %}" class="text-center">No users found.</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -248,8 +243,7 @@
   </div>
 </div>
 
-{% comment "User Activity Analytics Partial disabled by request" %}
+<!-- User Activity Analytics Partial -->
 {% include "adminpanel/partials/user_activity.html" %}
-{% endcomment %}
 
 {% endblock %}

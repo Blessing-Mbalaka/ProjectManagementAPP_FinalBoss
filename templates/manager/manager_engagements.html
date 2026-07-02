@@ -1,0 +1,135 @@
+{% extends 'manager/home.html' %}
+
+{% block title %}Engagement Notes{% endblock %}
+
+{% block content %}
+<style>
+  .engagement-shell { padding: 24px; }
+  .engagement-grid { display: grid; grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .engagement-card { background: rgba(255, 255, 255, 0.92); border: 1px solid #e6e8eb; border-radius: 18px; box-shadow: 0 16px 40px rgba(44, 62, 80, 0.08); }
+  .engagement-card .card-body { padding: 20px; }
+  .engagement-chip { display: inline-flex; align-items: center; gap: 8px; background: #fff5eb; color: #9a3412; border: 1px solid #fed7aa; border-radius: 999px; padding: 6px 12px; font-size: 0.88rem; font-weight: 600; }
+  .engagement-log { border: 1px solid #eceff3; border-radius: 14px; padding: 16px; background: #fff; margin-bottom: 14px; }
+  .engagement-log small { color: #6c757d; }
+  .engagement-log h6 { margin-bottom: 6px; }
+  .engagement-history { max-height: 72vh; overflow-y: auto; padding-right: 4px; }
+  .engagement-side-note { background: linear-gradient(135deg, #fff7ed, #ffffff); border: 1px solid #fed7aa; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+  @media (max-width: 992px) {
+    .engagement-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="engagement-shell">
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <div class="mb-4">
+    <h2 class="mb-1">Engagement Notes</h2>
+    <p class="text-muted mb-0">Capture meeting minutes and discussions here so the dean can see full engagement history inside CRM.</p>
+  </div>
+
+  <div class="engagement-grid">
+    <div class="engagement-card">
+      <div class="card-body">
+        <h5 class="mb-3">Add CRM Engagement Record</h5>
+        <form method="post">
+          {% csrf_token %}
+          {% for error in engagement_form.non_field_errors %}
+            <div class="alert alert-danger">{{ error }}</div>
+          {% endfor %}
+          {% for field in engagement_form %}
+            <div class="mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label fw-semibold">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}
+                <div class="form-text">{{ field.help_text }}</div>
+              {% endif %}
+              {% for error in field.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary w-100">Save Engagement Record</button>
+        </form>
+      </div>
+    </div>
+
+    <div>
+      {% if selected_cost_centre and prior_client_logs|length > 1 %}
+        <div class="engagement-side-note">
+          <div class="engagement-chip mb-2">
+            <i class="bi bi-clock-history"></i>
+            Previously approached{% if previously_approached_by %} by {{ previously_approached_by|join:", " }}{% endif %}
+          </div>
+          <div class="small text-muted">Previous correspondence and proposal summaries for this client are shown below so your team can avoid duplicating outreach.</div>
+        </div>
+      {% endif %}
+
+      <div class="engagement-card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 class="mb-1">Recent Entries</h5>
+              <div class="text-muted small">Latest engagement comments, discussions, and meeting minutes from your project scope.</div>
+            </div>
+          </div>
+          <div class="engagement-history">
+            {% for log in engagement_logs %}
+              <div class="engagement-log">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                  <div>
+                    <h6>{{ log.project.name }}</h6>
+                    <small>{{ log.cost_centre.client_name|default:log.cost_centre.company_name|default:log.cost_centre.name }}</small>
+                  </div>
+                  <span class="badge text-bg-light">{{ log.get_entry_type_display }}</span>
+                </div>
+                {% if log.subject %}
+                  <div class="fw-semibold mt-2">{{ log.subject }}</div>
+                {% endif %}
+                <p class="mb-2 mt-2">{{ log.notes|linebreaksbr }}</p>
+                {% if log.proposal_summary %}
+                  <div class="small"><strong>Proposal logged:</strong> {{ log.proposal_summary|linebreaksbr }}</div>
+                {% endif %}
+                <small>{{ log.engagement_date }} | {{ log.research_centre.name|default:"No centre" }} | {{ log.entered_by.get_full_name|default:log.entered_by.username }}</small>
+              </div>
+            {% empty %}
+              <p class="text-muted mb-0">No engagement records yet.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      {% if prior_client_logs %}
+        <div class="engagement-card">
+          <div class="card-body">
+            <h5 class="mb-3">Client History</h5>
+            <div class="text-muted small mb-3">Everything logged for this client across the selected scope.</div>
+            {% for log in prior_client_logs %}
+              <div class="engagement-log">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                  <div>
+                    <h6 class="mb-1">{{ log.research_centre.name|default:"No centre" }}</h6>
+                    <small>{{ log.project.name }} | {{ log.engagement_date }}</small>
+                  </div>
+                  <span class="badge text-bg-light">{{ log.get_entry_type_display }}</span>
+                </div>
+                {% if log.subject %}
+                  <div class="fw-semibold mt-2">{{ log.subject }}</div>
+                {% endif %}
+                <p class="mb-2 mt-2">{{ log.notes|linebreaksbr }}</p>
+                {% if log.proposal_summary %}
+                  <div class="small"><strong>What was proposed:</strong> {{ log.proposal_summary|linebreaksbr }}</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

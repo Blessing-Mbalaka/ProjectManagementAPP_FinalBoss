@@ -10,6 +10,7 @@ urlpatterns = [
     path('app_kanban/', views.app_kanban, name='app_kanban'),
     path('manager_journal/', views.manager_journal, name='manager_journal'),
     path('manager_ganttchart/', views.manager_ganttchart, name='manager_ganttchart'),
+    path('manager_engagements/', views.manager_engagements, name='manager_engagements'),
     path('manager_elearning/', views.elearning_page, name='manager_elearning'),
     path('manager_templates/', views.templates_page, name='manager_templates'),
     path('manager_kanban/', views.manager_kanban, name='manager_kanban'),

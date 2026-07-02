@@ -24,92 +24,11 @@
 
 <div class="container-fluid" style="padding-top: 50px; padding-left: 15px; padding-right: 15px; position: relative; z-index: 1;">
 
-    {% if not finance_section %}
-    <div class="row g-3 mb-4">
-        <div class="col-md-6 col-xl-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted small">Total Expenditure</div>
-                    <div class="h3 mb-0">R {{ finance_summary.total_expenditure|floatformat:2 }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted small">Average per Month</div>
-                    <div class="h3 mb-0">R {{ finance_summary.average_per_month|floatformat:2 }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted small">Highest Category</div>
-                    <div class="h3 mb-0">{{ finance_summary.highest_category }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted small">Records Count</div>
-                    <div class="h3 mb-0">{{ finance_summary.records_count }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-md-6 col-xl-3">
-            <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% if is_readonly %}{% url 'finance_readonly_section' 'cost-centres' %}{% else %}{% url 'finance_section' 'cost-centres' %}{% endif %}">
-                <div class="card-body">
-                    <div class="text-muted small">Finance Table</div>
-                    <h5 class="card-title mb-2">Cost Centres Overview</h5>
-                    <p class="mb-0">{{ cost_centres|length }} cost centre records</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% if is_readonly %}{% url 'finance_readonly_section' 'forecasts' %}{% else %}{% url 'finance_section' 'forecasts' %}{% endif %}">
-                <div class="card-body">
-                    <div class="text-muted small">Finance Table</div>
-                    <h5 class="card-title mb-2">Budget Forecasting</h5>
-                    <p class="mb-0">Forecasts, archive, and release tools</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% if is_readonly %}{% url 'finance_readonly_section' 'expenditures' %}{% else %}{% url 'finance_section' 'expenditures' %}{% endif %}">
-                <div class="card-body">
-                    <div class="text-muted small">Finance Table</div>
-                    <h5 class="card-title mb-2">Monthly Expenditure Tracker</h5>
-                    <p class="mb-0">{{ all_expenditures|length }} expenditure records</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <a class="card h-100 shadow-sm text-decoration-none text-dark" href="{% if is_readonly %}{% url 'finance_readonly_section' 'analytics' %}{% else %}{% url 'finance_section' 'analytics' %}{% endif %}">
-                <div class="card-body">
-                    <div class="text-muted small">Finance View</div>
-                    <h5 class="card-title mb-2">Analytics and Audit Trail</h5>
-                    <p class="mb-0">Charts, distribution, and immutable logs</p>
-                </div>
-            </a>
-        </div>
-    </div>
-    {% endif %}
-
     <!-- Cost Centres Overview -->
-    {% if finance_section == 'cost-centres' %}
-    <div class="mb-3"><a href="{% if is_readonly %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Finance Tiles</a></div>
     <div class="card shadow mb-4" style="z-index: 2; margin-top: 20px;">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"> Cost Centres Overview</h5>
             <div class="d-flex gap-2">
-                <a class="btn btn-sm btn-outline-success" href="{% url 'download_finance_summary_excel' %}">
-                    <i class="bi bi-download"></i> Download Excel
-                </a>
                 {% if can_add_cost_centre %}
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCostCentreModal">
                      Add Cost Centre
@@ -122,10 +41,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Cost Centre</th>
-                        <th>Client Name</th>
-                        <th>Company</th>
                         <th>Research Centre</th>
-                        <th class="d-none">Client Phase Due Dates</th>
 
                         <th>Total MOA Amount</th>
                         <th>Total MOA Outstanding</th>
@@ -144,25 +60,7 @@
                     {% for cc in cost_centres %}
                         <tr>
                             <td><strong>{{ cc.name }}</strong></td>
-                            <td>{{ cc.client_name|default:"Not captured" }}</td>
-                            <td class="d-none">
-                                <strong>{{ cc.company_name|default:"Not captured" }}</strong>
-                                {% if cc.company_registration_number %}
-                                    <div class="small text-muted">Reg: {{ cc.company_registration_number }}</div>
-                                {% endif %}
-                                {% if cc.vat_number %}
-                                    <div class="small text-muted">VAT: {{ cc.vat_number }}</div>
-                                {% endif %}
-                            </td>
                             <td>{{ cc.research_centre_name|default:"Unassigned" }}</td>
-                            <td>
-                                <div class="small">
-                                    <div>P1: {{ cc.phase_1_due_date|date:"Y-m-d"|default:"Not set" }}</div>
-                                    <div>P2: {{ cc.phase_2_due_date|date:"Y-m-d"|default:"Not set" }}</div>
-                                    <div>P3: {{ cc.phase_3_due_date|date:"Y-m-d"|default:"Not set" }}</div>
-                                    <div>P4: {{ cc.phase_4_due_date|date:"Y-m-d"|default:"Not set" }}</div>
-                                </div>
-                            </td>
                             <td><span class="text-info fw-bold">R {{ cc.moa_amount|floatformat:2 }}</span></td>
                             <td>
                                 {% if cc.moa_outstanding >= 0 %}
@@ -217,24 +115,18 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="12" class="text-center text-muted">No cost centres created yet.</td>
+                            <td colspan="8" class="text-center text-muted">No cost centres created yet.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-    {% endif %}
 
     <!-- Budget Forecasting Section (Partial) -->
-    {% if finance_section == 'forecasts' %}
-    <div class="mb-3"><a href="{% if is_readonly %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Finance Tiles</a></div>
     {% include 'adminpanel/budget_forecasting.html' %}
-    {% endif %}
 
     <!-- Monthly Expenditure Tracker -->
-    {% if finance_section == 'expenditures' %}
-    <div class="mb-3"><a href="{% if is_readonly %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Finance Tiles</a></div>
     <div class="card shadow mb-5" style="z-index: 2; margin-top: 30px;">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"> Monthly Expenditure Tracker</h5>
@@ -252,12 +144,6 @@
                     {% endfor %}
                 </select>
                 {% if can_edit_finance %}
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'download_expense_import_template' %}">
-                    <i class="bi bi-file-earmark-excel"></i> Template
-                </a>
-                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#uploadExpensesModal">
-                    <i class="bi bi-upload"></i> Upload Excel
-                </button>
                 <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addExpenditureModal">
                      Add Expenditure
                 </button>
@@ -269,7 +155,6 @@
                 <thead class="table-light">
                     <tr>
                         <th>Month</th>
-                        <th>Expense ID</th>
                         <th>Cost Centre</th>
                         <th>Name & Surname</th>
                         <th data-category-col="Salary">Salary</th>
@@ -280,8 +165,6 @@
                         <th data-category-col="Travel">Travel</th>
                         <th>Total Expenses</th>
                         <th>Opening Balance</th>
-                        <th>Oracle Balance</th>
-                        <th>Oracle Check</th>
                         {% if can_edit_finance %}
                         <th>Actions</th>
                         {% endif %}
@@ -289,9 +172,8 @@
                 </thead>
                 <tbody id="expenditureTableBody">
                     {% for record in all_expenditures %}
-                        <tr data-cost-centre="{{ record.cost_centre_id }}" data-category="{{ record.category }}" data-amount="{{ record.amount }}" data-oracle="{{ record.oracle_balance|default_if_none:'' }}">
+                        <tr data-cost-centre="{{ record.cost_centre_id }}" data-category="{{ record.category }}">
                             <td>{{ record.month }}</td>
-                            <td>{{ record.expense_id|default:"" }}</td>
                             <td>{{ record.cost_centre.name }}</td>
                             <td>{{ record.name }}</td>
                             <td data-category-cell="Salary">{% if record.category == 'Salary' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
@@ -302,24 +184,6 @@
                             <td data-category-cell="Travel">{% if record.category == 'Travel' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
                             <td><strong>R {{ record.amount|floatformat:2 }}</strong></td>
                             <td>R {{ record.opening_balance|floatformat:2 }}</td>
-                            <td>
-                                {% if record.oracle_balance != None %}
-                                    R {{ record.oracle_balance|floatformat:2 }}
-                                {% else %}
-                                    <span class="text-muted">Not captured</span>
-                                {% endif %}
-                            </td>
-                            <td class="oracle-status-cell">
-                                {% if record.oracle_balance != None %}
-                                    {% if record.oracle_balance == record.amount %}
-                                        <span class="badge bg-success">Matched</span>
-                                    {% else %}
-                                        <span class="badge bg-warning text-dark">Review</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="badge bg-secondary">Pending</span>
-                                {% endif %}
-                            </td>
                             {% if can_edit_finance %}
                             <td class="d-flex gap-2">
                                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editExpenditureModal{{ record.id }}">
@@ -333,17 +197,14 @@
                             {% endif %}
                         </tr>
                     {% empty %}
-                        <tr><td colspan="{% if can_edit_finance %}15{% else %}14{% endif %}" class="text-center text-muted">No expenditures recorded yet.</td></tr>
+                        <tr><td colspan="12" class="text-center text-muted">No expenditures recorded yet.</td></tr>
                     {% endfor %}
                 </tbody>
 
             </table>
         </div>
     </div>
-    {% endif %}
 
-    {% if finance_section == 'analytics' %}
-    <div class="mb-3"><a href="{% if is_readonly %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Finance Tiles</a></div>
     <div class="card mt-4 shadow" style="z-index: 2;">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"> Cost Centre Spending Overview</h5>
@@ -426,7 +287,6 @@
         </table>
     </div>
 </div>
-{% endif %}
 
 
 
@@ -454,72 +314,6 @@
                         <input type="text" id="costCentreName" name="name" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label for="clientName" class="form-label">Client Name</label>
-                        <input type="text" id="clientName" name="client_name" class="form-control" placeholder="Client or stakeholder name">
-                    </div>
-                    <div class="border rounded p-3 mb-3">
-                        <div class="fw-semibold mb-2">Company Details</div>
-                        <div class="row g-2">
-                            <div class="col-md-12">
-                                <label class="form-label">Registered Company Name</label>
-                                <input type="text" name="company_name" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">CIPC / Registration Number</label>
-                                <input type="text" name="company_registration_number" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">VAT Number</label>
-                                <input type="text" name="vat_number" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Industry</label>
-                                <input type="text" name="industry" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Website</label>
-                                <input type="url" name="company_website" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Company Email</label>
-                                <input type="email" name="company_email" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Company Phone</label>
-                                <input type="text" name="company_phone" class="form-control">
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label">Company Address</label>
-                                <textarea name="company_address" class="form-control" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="border rounded p-3 mb-3">
-                        <div class="fw-semibold mb-2">Primary Contact</div>
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label">Contact Name</label>
-                                <input type="text" name="contact_person_name" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Contact Role</label>
-                                <input type="text" name="contact_person_role" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Contact Email</label>
-                                <input type="email" name="contact_email" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Contact Phone</label>
-                                <input type="text" name="contact_phone" class="form-control">
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label">CRM Notes</label>
-                                <textarea name="crm_notes" class="form-control" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
                         <label for="researchCentre" class="form-label">Research Centre</label>
                         <select id="researchCentre" name="research_centre" class="form-select">
                             <option value="">Unassigned</option>
@@ -538,27 +332,6 @@
                         <input type="number" id="moaAmount" name="moa_amount" class="form-control" placeholder="0.00" step="0.01">
                         <small class="form-text text-muted">Memorandum of Understanding - Total expected/budgeted amount for this cost centre.</small>
                     </div>
-                    <div class="border rounded p-3">
-                        <div class="fw-semibold mb-2">Client Phase Due Dates</div>
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label">Phase 1 Due Date</label>
-                                <input type="date" name="phase_1_due_date" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Phase 2 Due Date</label>
-                                <input type="date" name="phase_2_due_date" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Phase 3 Due Date</label>
-                                <input type="date" name="phase_3_due_date" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Phase 4 Due Date</label>
-                                <input type="date" name="phase_4_due_date" class="form-control">
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Save</button>
@@ -566,35 +339,6 @@
             </form>
         </div>
     </div>
-</div>
-
-<!-- Upload Expenses Modal -->
-<div class="modal fade" id="uploadExpensesModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="POST" action="{% url 'upload_expense_excel' %}" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="modal-header">
-          <h5 class="modal-title">Upload Expenses from Excel</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Excel File</label>
-            <input type="file" name="expense_file" class="form-control" accept=".xlsx" required>
-            <small class="form-text text-muted">Use the template. Each row must have a unique expense_id and an exact cost centre name or code.</small>
-          </div>
-          <div class="alert alert-info mb-0">
-            Duplicate expense_id values are skipped. Rows with cost centre name mismatch are reported and not imported.
-          </div>
-        </div>
-        <div class="modal-footer">
-          <a href="{% url 'download_expense_import_template' %}" class="btn btn-outline-primary">Download Template</a>
-          <button type="submit" class="btn btn-success">Upload Expenses</button>
-        </div>
-      </form>
-    </div>
-  </div>
 </div>
 
 <!-- Add Expenditure Modal -->
@@ -608,11 +352,6 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Expense ID</label>
-            <input type="text" name="expense_id" class="form-control" placeholder="Optional for manual entries">
-            <small class="form-text text-muted">Use this when you want to prevent duplicate imported or manually tracked expenses.</small>
-          </div>
           <div class="mb-3">
             <label class="form-label">Cost Centre</label>
             <select name="cost_centre_id" class="form-select expenditure-cost-centre" required>
@@ -647,14 +386,6 @@
           <div class="mb-3">
             <label class="form-label">Amount (R)</label>
             <input type="number" step="0.01" name="amount" class="form-control expenditure-amount" placeholder="0.00" required min="0">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Oracle Balance (R)</label>
-            <input type="number" step="0.01" name="oracle_balance" class="form-control oracle-balance-input" placeholder="Leave blank if not available" min="0">
-            <small class="form-text text-muted">Enter the amount reflected in Oracle/UJ records for comparison.</small>
-            <div class="oracle-warning alert alert-warning mt-2 py-2" style="display: none;">
-              Oracle balance differs from the recorded expense amount.
-            </div>
           </div>
           
           <!-- Calculated Fields Display -->
@@ -714,72 +445,6 @@
             <input type="text" name="name" class="form-control" value="{{ cc.name }}" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">Client Name</label>
-            <input type="text" name="client_name" class="form-control" value="{{ cc.client_name }}" placeholder="Client or stakeholder name">
-          </div>
-          <div class="border rounded p-3 mb-3">
-            <div class="fw-semibold mb-2">Company Details</div>
-            <div class="row g-2">
-              <div class="col-md-12">
-                <label class="form-label">Registered Company Name</label>
-                <input type="text" name="company_name" class="form-control" value="{{ cc.company_name }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">CIPC / Registration Number</label>
-                <input type="text" name="company_registration_number" class="form-control" value="{{ cc.company_registration_number }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">VAT Number</label>
-                <input type="text" name="vat_number" class="form-control" value="{{ cc.vat_number }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Industry</label>
-                <input type="text" name="industry" class="form-control" value="{{ cc.industry }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Website</label>
-                <input type="url" name="company_website" class="form-control" value="{{ cc.company_website }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Company Email</label>
-                <input type="email" name="company_email" class="form-control" value="{{ cc.company_email }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Company Phone</label>
-                <input type="text" name="company_phone" class="form-control" value="{{ cc.company_phone }}">
-              </div>
-              <div class="col-md-12">
-                <label class="form-label">Company Address</label>
-                <textarea name="company_address" class="form-control" rows="2">{{ cc.company_address }}</textarea>
-              </div>
-            </div>
-          </div>
-          <div class="border rounded p-3 mb-3">
-            <div class="fw-semibold mb-2">Primary Contact</div>
-            <div class="row g-2">
-              <div class="col-md-6">
-                <label class="form-label">Contact Name</label>
-                <input type="text" name="contact_person_name" class="form-control" value="{{ cc.contact_person_name }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Contact Role</label>
-                <input type="text" name="contact_person_role" class="form-control" value="{{ cc.contact_person_role }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Contact Email</label>
-                <input type="email" name="contact_email" class="form-control" value="{{ cc.contact_email }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Contact Phone</label>
-                <input type="text" name="contact_phone" class="form-control" value="{{ cc.contact_phone }}">
-              </div>
-              <div class="col-md-12">
-                <label class="form-label">CRM Notes</label>
-                <textarea name="crm_notes" class="form-control" rows="2">{{ cc.crm_notes }}</textarea>
-              </div>
-            </div>
-          </div>
-          <div class="mb-3">
             <label class="form-label">Research Centre</label>
             <select name="research_centre" class="form-select">
               <option value="">Unassigned</option>
@@ -792,27 +457,6 @@
             <label class="form-label">MOA Amount (Optional)</label>
             <input type="number" name="moa_amount" class="form-control" placeholder="0.00" step="0.01" value="{% if cc.moa_amount %}{{ cc.moa_amount }}{% endif %}">
             <small class="form-text text-muted">Memorandum of Understanding - Total expected/budgeted amount.</small>
-          </div>
-          <div class="border rounded p-3">
-            <div class="fw-semibold mb-2">Client Phase Due Dates</div>
-            <div class="row g-2">
-              <div class="col-md-6">
-                <label class="form-label">Phase 1 Due Date</label>
-                <input type="date" name="phase_1_due_date" class="form-control" value="{{ cc.phase_1_due_date|date:'Y-m-d' }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Phase 2 Due Date</label>
-                <input type="date" name="phase_2_due_date" class="form-control" value="{{ cc.phase_2_due_date|date:'Y-m-d' }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Phase 3 Due Date</label>
-                <input type="date" name="phase_3_due_date" class="form-control" value="{{ cc.phase_3_due_date|date:'Y-m-d' }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Phase 4 Due Date</label>
-                <input type="date" name="phase_4_due_date" class="form-control" value="{{ cc.phase_4_due_date|date:'Y-m-d' }}">
-              </div>
-            </div>
           </div>
           <div class="alert alert-info">
             <small><strong>Note:</strong> Total Received is calculated from all payments. Use the "Add Payment" button to add funds.</small>
@@ -922,10 +566,6 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label>Expense ID</label>
-            <input type="text" name="expense_id" class="form-control" value="{{ record.expense_id|default:'' }}" placeholder="Optional duplicate control ID">
-          </div>
-          <div class="mb-3">
             <label>Date</label>
             <input type="date" name="month" class="form-control" value="{{ record.month }}" required>
           </div>
@@ -944,13 +584,6 @@
           <div class="mb-3">
             <label>Amount</label>
             <input type="number" step="0.01" name="amount" class="form-control" value="{{ record.amount }}" required>
-          </div>
-          <div class="mb-3">
-            <label>Oracle Balance</label>
-            <input type="number" step="0.01" name="oracle_balance" class="form-control oracle-balance-input" value="{% if record.oracle_balance != None %}{{ record.oracle_balance }}{% endif %}" placeholder="Leave blank if not available">
-            <div class="oracle-warning alert alert-warning mt-2 py-2" style="display: none;">
-              Oracle balance differs from the recorded expense amount.
-            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -981,47 +614,7 @@
     const addCostCentreForm = document.getElementById("addCostCentreForm");
     const expenditureTable = document.querySelector("#expenditureTable tbody");
 
-    function toNumber(value) {
-        const parsed = parseFloat(value);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-
-    function updateOracleWarnings() {
-        document.querySelectorAll('#expenditureTableBody tr[data-amount]').forEach(row => {
-            const amount = toNumber(row.dataset.amount);
-            const oracle = toNumber(row.dataset.oracle);
-            if (amount === null || oracle === null) return;
-            const mismatch = Math.abs(amount - oracle) > 0.009;
-            row.classList.toggle('table-warning', mismatch);
-            const statusCell = row.querySelector('.oracle-status-cell');
-            if (statusCell) {
-                statusCell.innerHTML = mismatch
-                    ? '<span class="badge bg-warning text-dark">Review</span>'
-                    : '<span class="badge bg-success">Matched</span>';
-            }
-        });
-
-        document.querySelectorAll('.oracle-balance-input').forEach(input => {
-            const form = input.closest('form');
-            if (!form) return;
-            const amountInput = form.querySelector('input[name="amount"]');
-            const warning = form.querySelector('.oracle-warning');
-            if (!amountInput || !warning) return;
-            const amount = toNumber(amountInput.value);
-            const oracle = toNumber(input.value);
-            warning.style.display = amount !== null && oracle !== null && Math.abs(amount - oracle) > 0.009 ? 'block' : 'none';
-        });
-    }
-
-    document.addEventListener('input', function (event) {
-        if (event.target.matches('.oracle-balance-input, input[name="amount"]')) {
-            updateOracleWarnings();
-        }
-    });
-
-    updateOracleWarnings();
-
-    // ✅ Combined filter function for both Cost Centre and Category
+    //  Combined filter function for both Cost Centre and Category
     function applyFilters() {
         const selectedCostCentre = costCentreDropdown ? costCentreDropdown.value : "";
         const selectedCategory = categoryFilterDropdown ? categoryFilterDropdown.value : "";
@@ -1109,7 +702,7 @@
     function populateExpenditureTable(expenditures) {
         expenditureTable.innerHTML = "";
         if (expenditures.length === 0) {
-            expenditureTable.innerHTML = `<tr><td colspan="{% if can_edit_finance %}15{% else %}14{% endif %}" class="text-center">No expenditures recorded.</td></tr>`;
+            expenditureTable.innerHTML = `<tr><td colspan="13" class="text-center">No expenditures recorded.</td></tr>`;
             return;
         }
 
@@ -1126,24 +719,10 @@
             };
 
             categories[record.category] = `R ${parseFloat(record.amount).toLocaleString()}`;
-            const oracleValue = record.oracle_balance === null || record.oracle_balance === '' || typeof record.oracle_balance === 'undefined'
-                ? null
-                : parseFloat(record.oracle_balance);
-            const amountValue = parseFloat(record.amount);
-            const oracleMismatch = oracleValue !== null && Math.abs(amountValue - oracleValue) > 0.009;
-            const oracleDisplay = oracleValue === null ? '<span class="text-muted">Not captured</span>' : `R ${oracleValue.toLocaleString()}`;
-            const oracleStatus = oracleValue === null
-                ? '<span class="badge bg-secondary">Pending</span>'
-                : oracleMismatch
-                    ? '<span class="badge bg-warning text-dark">Review</span>'
-                    : '<span class="badge bg-success">Matched</span>';
-            const actionsCell = window.canEditFinance ? '<td></td>' : '';
 
             expenditureTable.innerHTML += `
-                <tr data-cost-centre="${record.cost_centre_id || ''}" data-category="${record.category}" data-amount="${record.amount}" data-oracle="${oracleValue === null ? '' : oracleValue}">
+                <tr>
                     <td>${record.month}</td>
-                    <td>${record.expense_id || ''}</td>
-                    <td>${record.cost_centre_name || ''}</td>
                     <td>${record.name}</td>
                     <td>${categories['Salary']}</td>
                     <td>${categories['Bursaries']}</td>
@@ -1153,9 +732,9 @@
                     <td>${categories['Travel']}</td>
                     <td>R ${parseFloat(record.amount).toLocaleString()}</td>
                     <td>R ${parseFloat(record.opening_balance).toLocaleString()}</td>
-                    <td>${oracleDisplay}</td>
-                    <td class="oracle-status-cell">${oracleStatus}</td>
-                    ${actionsCell}
+                    <td>R ${parseFloat(record.closing_balance).toLocaleString()}</td>
+                    <td>R ${parseFloat(record.oracle_balance).toLocaleString()}</td>
+                    <td>R ${parseFloat(record.closing_balance).toLocaleString()}</td>
                 </tr>
             `;
         });
@@ -1174,9 +753,7 @@
         {% endfor %}
     ];
 
-    const costCentreChartElement = document.getElementById('costCentreBarChart');
-    if (costCentreChartElement) {
-    const ctx = costCentreChartElement.getContext('2d');
+    const ctx = document.getElementById('costCentreBarChart').getContext('2d');
 
 const barChart = new Chart(ctx, {
     type: 'bar',
@@ -1204,7 +781,6 @@ const barChart = new Chart(ctx, {
         }
     }
 });
-}
 
 const categoryLabels = [
         {% for c in category_totals %}
@@ -1218,9 +794,7 @@ const categoryLabels = [
         {% endfor %}
     ];
 
-    const categoryChartElement = document.getElementById('categoryPieChart');
-    if (categoryChartElement) {
-    const pieCtx = categoryChartElement.getContext('2d');
+    const pieCtx = document.getElementById('categoryPieChart').getContext('2d');
 
 const pieChart = new Chart(pieCtx, {
     type: 'pie',
@@ -1248,7 +822,6 @@ const pieChart = new Chart(pieCtx, {
         }
     }
 });
-}
 
     const monthlyLabels = [
         {% for m in monthly_totals %}
@@ -1374,52 +947,6 @@ const pieChart = new Chart(pieCtx, {
   </div>
 </div>
 
-<!-- Edit Budget Forecast Modal -->
-<div class="modal fade" id="editForecastModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="editForecastForm">
-        {% csrf_token %}
-        <input type="hidden" name="forecast_id">
-        <div class="modal-header">
-          <h5 class="modal-title">Edit Budget Forecast</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Date Range</label>
-            <div class="input-group">
-              <input type="date" name="date_from" class="form-control" required>
-              <span class="input-group-text">to</span>
-              <input type="date" name="date_to" class="form-control" required>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Name & Surname</label>
-            <input type="text" name="name" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Category</label>
-            <select name="category" class="form-select" required>
-              {% for key, label in category_choices %}
-              <option value="{{ key }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Amount (R)</label>
-            <input type="number" step="0.01" name="amount" class="form-control" required min="0">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Changes</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
 <!-- Archive Forecasts Modal -->
 <div class="modal fade" id="archiveForecastsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -1466,8 +993,8 @@ const pieChart = new Chart(pieCtx, {
   </div>
 </div>
 
-{% if finance_section == 'analytics' %}
+
+
 {% include 'adminpanel/partials/expenditure_analytics.html' %}
-{% endif %}
 
 {% endblock %}

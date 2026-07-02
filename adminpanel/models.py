@@ -102,6 +102,62 @@ class CostCentre(models.Model):
         return self.payments.count()
 
 
+class EngagementLog(models.Model):
+    ENTRY_TYPE_CHOICES = [
+        ('meeting_minutes', 'Meeting Minutes'),
+        ('discussion', 'Discussion'),
+        ('comment', 'Comment'),
+    ]
+
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.CASCADE,
+        related_name='engagement_logs'
+    )
+    cost_centre = models.ForeignKey(
+        CostCentre,
+        on_delete=models.CASCADE,
+        related_name='engagement_logs'
+    )
+    research_centre = models.ForeignKey(
+        ResearchCentre,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='engagement_logs'
+    )
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='engagement_logs'
+    )
+    entry_type = models.CharField(max_length=30, choices=ENTRY_TYPE_CHOICES, default='discussion')
+    subject = models.CharField(max_length=255, blank=True)
+    engagement_date = models.DateField(default=timezone.localdate)
+    notes = models.TextField(help_text="Meeting minutes, engagement notes, or discussion summary.")
+    proposal_summary = models.TextField(
+        blank=True,
+        help_text="Capture what your centre proposed so future teams can see the previous approach."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-engagement_date', '-created_at']
+        indexes = [
+            models.Index(fields=['engagement_date']),
+            models.Index(fields=['project']),
+            models.Index(fields=['cost_centre']),
+        ]
+
+    def __str__(self):
+        return f"{self.project.name} - {self.get_entry_type_display()} ({self.engagement_date})"
+
+    @property
+    def client_label(self):
+        return self.cost_centre.client_name or self.cost_centre.company_name or self.cost_centre.name
+
+
 class CostCentrePayment(models.Model):
     """Track incremental payments received for a cost centre"""
     cost_centre = models.ForeignKey(CostCentre, on_delete=models.CASCADE, related_name='payments')
