@@ -1,7 +1,6 @@
 
 from pathlib import Path
 import os
-import dj_database_url
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -65,38 +64,20 @@ INSTALLED_APPS = [
 ]
 
 
-# Set USE_SQLITE=true in project_manage/.env to force the local SQLite database.
-USE_SQLITE = env_flag('USE_SQLITE', False)
+# Hardcoded SQLite database for now.
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
-# Use dj_database_url with .env DB config unless SQLite is explicitly enabled.
-if USE_SQLITE:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-elif os.getenv('DATABASE_URL'):
-    DATABASES = {
-        'default': dj_database_url.config(
-            conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=not DEBUG,
-        )
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME', ''),
-            'USER': os.getenv('DB_USER_NAME', ''),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', ''),
-            'PORT': os.getenv('DB_PORT', '5432'),
-        }
-    }
-
-#postgresql://pm_bof5_user:33FswS9wMfoopjW2ySxKkUP9vJAxrMar@dpg-d877cetckfvc739vedgg-a.oregon-postgres.render.com/pm_bof5
+# Previous PostgreSQL config kept here for reference only:
+# DATABASE_URL=postgresql://...
+# DB_NAME=...
+# DB_PASSWORD=...
+# DB_PORT=5432
+# DB_USER_NAME=...
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
