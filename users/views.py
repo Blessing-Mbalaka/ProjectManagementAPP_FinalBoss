@@ -77,10 +77,17 @@ class DebugPasswordResetView(PasswordResetView):
     def form_valid(self, form):
         email = form.cleaned_data.get('email', '').strip()
         matching_users = list(form.get_users(email))
+        self.from_email = getattr(settings, 'EMAIL_HOST_USER', '') or getattr(settings, 'DEFAULT_FROM_EMAIL', None)
         logger.info("Password reset requested for %s. Matching active users: %s", email, len(matching_users))
+        logger.info("Password reset sender resolved to %s", self.from_email)
         if not matching_users:
             logger.warning("Password reset blocked. No active user found for email %s", email)
             form.add_error('email', 'We could not find an active account with that email address.')
+            return self.form_invalid(form)
+
+        if not self.from_email:
+            logger.error("Password reset blocked. No SMTP sender address is configured.")
+            form.add_error(None, 'Password reset email is not configured correctly on the server.')
             return self.form_invalid(form)
 
         try:
