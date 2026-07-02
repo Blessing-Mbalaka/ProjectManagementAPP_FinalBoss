@@ -1,11 +1,14 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.views import PasswordResetView
+import logging
 from .forms import CustomUserCreationForm, CustomLoginForm
 from .models import CustomUser
 from projects.models import StudentProfile
 from django.conf import settings
 from django.http import HttpResponseForbidden
+
+logger = logging.getLogger(__name__)
 
 
 def register_view(request):
@@ -74,12 +77,17 @@ class DebugPasswordResetView(PasswordResetView):
     def form_valid(self, form):
         email = form.cleaned_data.get('email', '').strip()
         matching_users = list(form.get_users(email))
+        logger.info("Password reset requested for %s. Matching active users: %s", email, len(matching_users))
         if not matching_users:
+            logger.warning("Password reset blocked. No active user found for email %s", email)
             form.add_error('email', 'We could not find an active account with that email address.')
             return self.form_invalid(form)
 
         try:
-            return super().form_valid(form)
+            response = super().form_valid(form)
+            logger.info("Password reset email sent successfully for %s", email)
+            return response
         except Exception as exc:
+            logger.exception("Password reset email failed for %s", email)
             form.add_error(None, f"We could not send the reset email. Reason: {exc}")
             return self.form_invalid(form)
