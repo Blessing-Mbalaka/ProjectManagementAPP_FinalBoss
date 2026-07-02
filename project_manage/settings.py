@@ -26,7 +26,8 @@ DEBUG = env_flag('DEBUG', True)
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
-    '.onrender.com',
+    '.onrender.com'
+    'http://162.35.167.180:67/',
 ]
 
 
