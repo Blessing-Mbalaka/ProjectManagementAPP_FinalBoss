@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.views import PasswordResetView
 import logging
-from .forms import CustomUserCreationForm, CustomLoginForm
+from .forms import CustomUserCreationForm, CustomLoginForm, StrictPasswordResetForm
 from .models import CustomUser
 from projects.models import StudentProfile
 from django.conf import settings
@@ -73,6 +73,7 @@ class DebugPasswordResetView(PasswordResetView):
     template_name = 'users/password_reset.html'
     email_template_name = 'users/password_reset_email.html'
     subject_template_name = 'users/password_reset_subject.txt'
+    form_class = StrictPasswordResetForm
 
     def form_valid(self, form):
         email = form.cleaned_data.get('email', '').strip()
