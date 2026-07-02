@@ -304,7 +304,12 @@ def client_risk_explainer():
 
 
 def send_dean_alert_email_once(request, alerts):
-    if request.user.role != 'dean' or not alerts or not getattr(request.user, 'email', None):
+    if (
+        request.user.role != 'dean'
+        or not alerts
+        or not getattr(request.user, 'email', None)
+        or not getattr(settings, 'ENABLE_CRM_ALERT_EMAILS', False)
+    ):
         return
 
     today_key = timezone.now().strftime('%Y%m%d')
@@ -338,7 +343,7 @@ def send_dean_alert_email_once(request, alerts):
             fail_silently=True,
         )
         request.session[session_key] = True
-    except BaseException:
+    except Exception:
         request.session[session_key] = True
         pass
 

@@ -43,7 +43,9 @@ EMAIL_USE_TLS = env_flag('EMAIL_USE_TLS', True)
 EMAIL_USE_SSL = env_flag('EMAIL_USE_SSL', False)
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@yourdomain.com')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@yourdomain.com')
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '5'))
+ENABLE_CRM_ALERT_EMAILS = env_flag('ENABLE_CRM_ALERT_EMAILS', False)
 
 
 
