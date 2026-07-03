@@ -32,12 +32,12 @@ ALLOWED_HOSTS = [
 ]
 
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'stemappza@gmail.com'
-EMAIL_HOST_PASSWORD = 'ddtz gltz vscj loab'  # Your app password
+EMAIL_HOST_PASSWORD = 'ddtz gltz vscj loab'  # placeholder, please put your app password
 DEFAULT_FROM_EMAIL = 'STEM LMS <stemappza@gmail.com>'
 
 
