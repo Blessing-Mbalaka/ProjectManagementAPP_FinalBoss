@@ -173,7 +173,7 @@
                 </li>
                 {% endif %}
                 {% if user.role == 'financialadmin' %}
-                <li><a href="{% url 'finance_readonly' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
+                <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
                 {% elif user.role == 'dean' %}
                 {% else %}
                 <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>

@@ -56,7 +56,7 @@ def login_view(request):
         elif user.role == 'manager':
             return redirect('manager_dashboard') # Project Manager
         elif user.role == 'financialadmin':
-            return redirect('finance_readonly') # Financial Admin
+            return redirect('finance') # Financial Admin
         elif user.role == 'student':
             return redirect('student_dashboard')  # Student
         else:

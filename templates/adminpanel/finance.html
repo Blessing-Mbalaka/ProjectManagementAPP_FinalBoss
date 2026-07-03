@@ -124,7 +124,9 @@
     </div>
 
     <!-- Budget Forecasting Section (Partial) -->
+    {% if can_view_forecasts %}
     {% include 'adminpanel/budget_forecasting.html' %}
+    {% endif %}
 
     <!-- Monthly Expenditure Tracker -->
     <div class="card shadow mb-5" style="z-index: 2; margin-top: 30px;">
@@ -872,6 +874,7 @@ const pieChart = new Chart(pieCtx, {
 
 </script>
 
+{% if can_view_forecasts %}
 <!-- Add Budget Forecast Modal -->
 <div class="modal fade" id="addForecastModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
@@ -992,6 +995,7 @@ const pieChart = new Chart(pieCtx, {
     </div>
   </div>
 </div>
+{% endif %}
 
 
 

@@ -415,7 +415,7 @@ body{
             </div>
           </a>
 
-          <a href="{% if user.role == 'dean' or user.role == 'financialadmin' %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="quick-tile">
+          <a href="{% if user.role == 'dean' %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="quick-tile">
             <div><i class="bi bi-cash-stack"></i></div>
             <div>
               <h6>Finance</h6>

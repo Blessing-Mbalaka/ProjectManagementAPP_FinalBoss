@@ -228,8 +228,11 @@ def xlsx_response(filename, sheets):
     return response
 
 
-READONLY_FINANCE_ROLES = ['dean', 'financialadmin']
-FINANCE_EDITOR_ROLES = ['admin', 'centrehead']
+READONLY_FINANCE_ROLES = ['dean']
+FINANCE_EDITOR_ROLES = ['admin', 'centrehead', 'financialadmin']
+FORECAST_VIEW_ROLES = ['admin', 'dean', 'centrehead']
+FORECAST_EDITOR_ROLES = ['admin', 'centrehead']
+FINANCE_COST_CENTRE_ROLES = ['admin', 'financialadmin']
 ADMIN_VIEW_ROLES = ['admin', 'dean', 'centrehead']
 COMMUNIQUE_ROLES = ['staff', 'manager', 'admin', 'dean', 'centrehead', 'financialadmin', 'student', 'supervisor']
 CRM_ROLES = ['dean', 'centrehead']
@@ -249,6 +252,18 @@ def can_view_admin_kanban(user):
 
 def can_edit_finance(user):
     return user.is_authenticated and user.role in FINANCE_EDITOR_ROLES
+
+
+def can_view_forecasts(user):
+    return user.is_authenticated and user.role in FORECAST_VIEW_ROLES
+
+
+def can_manage_forecasts(user):
+    return user.is_authenticated and user.role in FORECAST_EDITOR_ROLES
+
+
+def can_manage_cost_centres(user):
+    return user.is_authenticated and user.role in FINANCE_COST_CENTRE_ROLES
 
 
 def can_view_crm(user):
@@ -986,9 +1001,11 @@ def finance(request, section=None):
             'payments_by_cc': payments_by_cc,
             'audit_logs': audit_logs,
             'is_readonly': False,
-            'can_add_cost_centre': request.user.role == 'admin',
+            'can_add_cost_centre': can_manage_cost_centres(request.user),
             'can_edit_finance': True,
-            'research_centres': ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)) if request.user.role == 'admin' and get_user_research_centre_id(request.user) else ResearchCentre.objects.all(),
+            'can_view_forecasts': can_view_forecasts(request.user),
+            'can_manage_forecasts': can_manage_forecasts(request.user),
+            'research_centres': ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)) if request.user.role in ['admin', 'financialadmin'] and get_user_research_centre_id(request.user) else ResearchCentre.objects.all(),
             'finance_section': section,
             'finance_summary': finance_summary,
     })
@@ -1153,6 +1170,8 @@ def finance_readonly(request, section=None):
         'is_readonly': True,
         'can_add_cost_centre': False,
         'can_edit_finance': False,
+        'can_view_forecasts': can_view_forecasts(request.user),
+        'can_manage_forecasts': can_manage_forecasts(request.user),
         'research_centres': ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)) if request.user.role in ['admin', 'financialadmin'] and get_user_research_centre_id(request.user) else ResearchCentre.objects.all(),
         'finance_section': section,
         'finance_summary': finance_summary,
@@ -1367,8 +1386,8 @@ def upload_expense_excel(request):
 @login_required
 def add_cost_centre(request):
     """Add a new cost centre with optional initial payment and MOA amount"""
-    if request.user.role != 'admin':
-        messages.error(request, "Only admins can add cost centres.")
+    if not can_manage_cost_centres(request.user):
+        messages.error(request, "You do not have permission to add cost centres.")
         return redirect(get_finance_redirect(request.user))
 
     if request.method == 'POST':
@@ -1376,7 +1395,7 @@ def add_cost_centre(request):
         name = request.POST.get('name')
         client_name = request.POST.get('client_name', '').strip()
         research_centre_id = request.POST.get('research_centre')
-        if request.user.role == 'admin' and get_user_research_centre_id(request.user):
+        if request.user.role in ['admin', 'financialadmin'] and get_user_research_centre_id(request.user):
             research_centre_id = str(get_user_research_centre_id(request.user))
         received = request.POST.get('received', '').strip()
         moa_amount = request.POST.get('moa_amount', '').strip()
@@ -1620,8 +1639,8 @@ def get_expenditures(request, cost_centre_id):
 @login_required
 def delete_cost_centre(request, pk):
     """Delete a cost centre using raw SQL"""
-    if request.user.role != 'admin':
-        messages.error(request, "Only admins can delete cost centres.")
+    if not can_manage_cost_centres(request.user):
+        messages.error(request, "You do not have permission to delete cost centres.")
         return redirect(get_finance_redirect(request.user))
 
     try:
@@ -1669,8 +1688,8 @@ def delete_cost_centre(request, pk):
 @login_required
 def edit_cost_centre(request, pk):
     """Edit a cost centre - allows name and MOA amount editing"""
-    if request.user.role != 'admin':
-        messages.error(request, "Only admins can edit cost centres.")
+    if not can_manage_cost_centres(request.user):
+        messages.error(request, "You do not have permission to edit cost centres.")
         return redirect(get_finance_redirect(request.user))
 
     try:
@@ -1682,7 +1701,7 @@ def edit_cost_centre(request, pk):
             name = request.POST.get('name', cost_centre.name)
             client_name = request.POST.get('client_name', '').strip()
             research_centre_id = request.POST.get('research_centre')
-            if request.user.role == 'admin' and get_user_research_centre_id(request.user):
+            if request.user.role in ['admin', 'financialadmin'] and get_user_research_centre_id(request.user):
                 research_centre_id = str(get_user_research_centre_id(request.user))
             moa_amount = request.POST.get('moa_amount', '').strip()
             company_details = collect_company_details(request.POST)
@@ -2001,7 +2020,8 @@ def delete_expenditure(request, pk):
 @login_required
 def add_budget_forecast(request):
     """Add a new budget forecast"""
-    if not ensure_finance_editor(request):
+    if not can_manage_forecasts(request.user):
+        messages.error(request, "You do not have permission to manage budget forecasts.")
         return redirect(get_finance_redirect(request.user))
 
     if request.method == 'POST':
@@ -2124,6 +2144,8 @@ def add_budget_forecast(request):
 def get_budget_forecasts(request, cost_centre_id):
     """Get budget forecasts for a cost centre as JSON"""
     try:
+        if not can_view_forecasts(request.user):
+            return JsonResponse({'error': 'You do not have permission to view budget forecasts'}, status=403)
         cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
         scoped_ids = get_accessible_cost_centre_ids(request.user)
         if scoped_ids is not None and cost_centre.id not in scoped_ids:
@@ -2171,8 +2193,8 @@ def get_budget_forecasts(request, cost_centre_id):
 @login_required
 @require_http_methods(["POST"])
 def edit_budget_forecast(request, pk):
-    if not ensure_finance_editor(request):
-        return JsonResponse({'error': 'You do not have permission to change financial data'}, status=403)
+    if not can_manage_forecasts(request.user):
+        return JsonResponse({'error': 'You do not have permission to manage budget forecasts'}, status=403)
 
     try:
         BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
@@ -2207,7 +2229,8 @@ def edit_budget_forecast(request, pk):
 @require_http_methods(["POST"])
 def delete_budget_forecast(request, pk):
     """Delete a budget forecast"""
-    if not ensure_finance_editor(request):
+    if not can_manage_forecasts(request.user):
+        messages.error(request, "You do not have permission to manage budget forecasts.")
         return redirect(get_finance_redirect(request.user))
 
     try:
@@ -2227,8 +2250,8 @@ def delete_budget_forecast(request, pk):
 @require_http_methods(["POST"])
 def release_budget_forecasts(request, cost_centre_id):
     """Release budget forecasts to Monthly Expenditure Tracker - supports both all and selected"""
-    if not ensure_finance_editor(request):
-        return JsonResponse({'error': 'You do not have permission to change financial data'}, status=403)
+    if not can_manage_forecasts(request.user):
+        return JsonResponse({'error': 'You do not have permission to manage budget forecasts'}, status=403)
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=400)
