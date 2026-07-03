@@ -31,23 +31,32 @@ ALLOWED_HOSTS = [
     '162.35.167.180',
 ]
 
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'stemappza@gmail.com'
+EMAIL_HOST_PASSWORD = 'ddtz gltz vscj loab'  # Your app password
+DEFAULT_FROM_EMAIL = 'STEM LMS <stemappza@gmail.com>'
+
 
 
 # Email config: use SMTP unless EMAIL_USE_CONSOLE is true
-EMAIL_USE_CONSOLE = env_flag('EMAIL_USE_CONSOLE', False)
-if EMAIL_USE_CONSOLE:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = env_flag('EMAIL_USE_TLS', True)
-EMAIL_USE_SSL = env_flag('EMAIL_USE_SSL', False)
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '5'))
-ENABLE_CRM_ALERT_EMAILS = env_flag('ENABLE_CRM_ALERT_EMAILS', False)
+# EMAIL_USE_CONSOLE = env_flag('EMAIL_USE_CONSOLE', False)
+# if EMAIL_USE_CONSOLE:
+#     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# else:
+#     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+# EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+# EMAIL_USE_TLS = env_flag('EMAIL_USE_TLS', True)
+# EMAIL_USE_SSL = env_flag('EMAIL_USE_SSL', False)
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+# DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+# EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '5'))
+# ENABLE_CRM_ALERT_EMAILS = env_flag('ENABLE_CRM_ALERT_EMAILS', False)
 
 
 
