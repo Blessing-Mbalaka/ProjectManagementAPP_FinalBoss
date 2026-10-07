@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project assignment</title>
+</head>
+<body style="margin:0;background:#f3f6fb;font-family:Arial,sans-serif;color:#172033;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f6fb;padding:32px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(23,32,51,.10);">
+        <tr><td style="background:#0b5ed7;padding:26px 32px;color:#fff;">
+          <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">UJ Project Management</div>
+          <h1 style="margin:8px 0 0;font-size:25px;">You have a new project assignment</h1>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin-top:0;font-size:17px;">Hello {{ recipient.get_full_name|default:recipient.username }},</p>
+          <p style="line-height:1.6;"><strong>{{ assigner_name }}</strong> assigned you to:</p>
+          <div style="border-left:4px solid #0b5ed7;background:#f7f9fd;padding:18px 20px;margin:22px 0;">
+            <div style="font-size:20px;font-weight:700;">{{ project.name }}</div>
+            {% if responsibility %}<p style="margin:10px 0 0;line-height:1.5;"><strong>Your responsibility:</strong> {{ responsibility }}</p>{% endif %}
+          </div>
+          <p style="line-height:1.6;">Open your Kanban board to review the assignment and track its status.</p>
+          <p style="margin:28px 0;">
+            <a href="{{ kanban_url }}" style="display:inline-block;background:#0b5ed7;color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:8px;">Open Kanban</a>
+          </p>
+          <p style="margin-bottom:0;color:#697386;font-size:13px;">If the button does not work, copy this link:<br><a href="{{ kanban_url }}" style="color:#0b5ed7;">{{ kanban_url }}</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

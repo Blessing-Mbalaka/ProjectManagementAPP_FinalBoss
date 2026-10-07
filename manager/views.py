@@ -25,6 +25,7 @@ from django.utils import timezone
 from django.shortcuts import render
 from adminpanel.models import CostCentre, EngagementLog, Notification
 from projects.scope import scope_books_for_user, scope_outputs_for_user, scope_projects_for_user
+from projects.assignment_notifications import notify_project_assignment
 
 User = get_user_model()
 
@@ -344,7 +345,15 @@ def assign_team_member(request, project_id):
             assignment = form.save(commit=False)
             assignment.project = project
             assignment.save()
+            email_sent = notify_project_assignment(
+                request=request,
+                project=project,
+                recipient=assignment.team_member.user,
+                responsibility=assignment.responsibility,
+            )
             messages.success(request, f"{assignment.team_member} assigned!")
+            if not email_sent:
+                messages.warning(request, "The assignment was saved, but its email could not be delivered.")
             return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
         else:
             messages.error(request, 'Assignment failed. Please check the form.')

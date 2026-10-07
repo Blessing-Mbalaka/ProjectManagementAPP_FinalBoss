@@ -31,7 +31,6 @@ from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
 from manager.models import Paper
 from django.contrib import messages
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.db import models, connection
@@ -40,6 +39,8 @@ from django.views.decorators.http import require_http_methods
 from django.apps import apps
 from projects.models import StudentProfile
 from projects.scope import scope_books_for_user, scope_outputs_for_user
+from projects.assignment_notifications import notify_project_assignment
+from users.email_service import send_html_email_safely
 import csv
 from datetime import datetime, timedelta
 import io
@@ -667,17 +668,20 @@ def create_user(request):
             UJ Project Management Admin Team
             """.strip()
 
-            try:
-                send_mail(
-                    subject,
-                    message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [user.email],
-                    fail_silently=False,
-                )
+            email_sent = send_html_email_safely(
+                subject=subject,
+                recipient=user.email,
+                text_body=message,
+                html_template='emails/user_registered.html',
+                context={
+                    'user': user,
+                    'password': password,
+                    'login_url': login_url,
+                },
+            )
+            if email_sent:
                 messages.success(request, f"User {user.username} created and notified via email.")
-            except Exception:
-                logger.exception("User %s was created, but the registration email failed.", user.username)
+            else:
                 messages.warning(request, f"User {user.username} was created, but the notification email could not be sent.")
         else:
             for field_name, field_errors in form.errors.items():
@@ -784,8 +788,16 @@ def assign_project(request):
         if description:
             project.description = description
         project.save()
+
+        email_sent = notify_project_assignment(
+            request=request,
+            project=project,
+            recipient=assigned_user,
+        )
         
         messages.success(request, f"Project '{project.name}' assigned to {assigned_user.get_full_name() or assigned_user.username}!")
+        if not email_sent:
+            messages.warning(request, "The project was assigned, but its email could not be delivered.")
         return redirect('overview')
     
     # GET request - provide list of projects and users
@@ -3048,6 +3060,13 @@ def assign_project_manager(request, project_id):
         manager = get_object_or_404(get_user_model(), id=user_id, role='manager')
         project.assigned_user = manager
         project.save()
+        email_sent = notify_project_assignment(
+            request=request,
+            project=project,
+            recipient=manager,
+        )
+        if not email_sent:
+            messages.warning(request, "The project was assigned, but its email could not be delivered.")
         return redirect('overview')  # or admin_dashboard
     managers = get_user_model().objects.filter(role='manager')
     return render(request, 'adminpanel/assign_project.html', {'project': project, 'managers': managers})

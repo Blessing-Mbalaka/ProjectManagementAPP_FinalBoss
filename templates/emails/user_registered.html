@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Account created</title></head>
+<body style="margin:0;background:#f3f6fb;font-family:Arial,sans-serif;color:#172033;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(23,32,51,.10);">
+        <tr><td style="background:#0b5ed7;padding:26px 32px;color:#fff;"><h1 style="margin:0;font-size:25px;">Welcome to UJ Project Management</h1></td></tr>
+        <tr><td style="padding:32px;">
+          <p style="font-size:17px;">Hello {{ user.get_full_name|default:user.username }},</p>
+          <p style="line-height:1.6;">Your account has been created successfully.</p>
+          <div style="background:#f7f9fd;border-left:4px solid #0b5ed7;padding:16px 20px;margin:22px 0;">
+            <div><strong>Username:</strong> {{ user.username }}</div>
+            <div style="margin-top:8px;"><strong>Temporary password:</strong> {{ password }}</div>
+          </div>
+          <p><a href="{{ login_url }}" style="display:inline-block;background:#0b5ed7;color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:8px;">Sign in</a></p>
+          <p style="color:#697386;font-size:13px;">Please change your password after your first login.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
