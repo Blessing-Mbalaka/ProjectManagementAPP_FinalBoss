@@ -1,0 +1,4 @@
+project_name,description,project_type,status,due_date,project_manager_email,research_centre
+EXAMPLE - CDT - Digital Skills Portal,Build and deploy a portal for digital-skills programme participants,software,planning,2027-03-31,noluthandog@uj.ac.za,Centre for digital Transformation
+EXAMPLE - CDT - Research Methods Handbook,Coordinate authoring and publication of the research methods handbook,book,in-progress,2027-06-30,logisticm@uj.ac.za,Centre for digital Transformation
+EXAMPLE - CDT - AI Adoption Study,Prepare the institutional AI adoption research paper,paper,on-hold,2027-09-30,hlobisilem@uj.ac.za,Centre for digital Transformation

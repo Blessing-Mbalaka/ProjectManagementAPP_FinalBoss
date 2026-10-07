@@ -1,0 +1,8 @@
+field,required,acceptable_value_or_format,notes
+project_name,Yes,Unique text up to 255 characters,"Must be globally unique; use 'CDT - Project Name' and remove all EXAMPLE rows before submitting"
+description,No,Plain text up to 255 characters,Do not include confidential credentials or passwords
+project_type,Yes,software | book | paper,Use the lowercase code exactly as shown
+status,Yes,planning | in-progress | on-hold | completed,Use the lowercase code exactly as shown
+due_date,No,YYYY-MM-DD,Example: 2027-03-31
+project_manager_email,Yes,Email of an existing PM App Project Manager,Use the same email used for the PM account
+research_centre,Yes,Centre for digital Transformation,Use this exact spelling for the current team
