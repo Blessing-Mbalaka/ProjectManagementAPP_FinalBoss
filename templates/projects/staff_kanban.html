@@ -69,12 +69,6 @@
     </div>
 </div>
 
-<div class="mb-3 text-end">
-    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
-</div>
-
-{% include 'projects/partials/task_modal.html' with form_url='staff_create_task' task_types=task_types projects=projects %}
-
 <div class="row">
     {% for column, tasks in grouped_tasks.items %}
         <div class="col-md-3">
@@ -102,11 +96,7 @@
                                     {% if task.progress %}<span class="badge bg-success">📊 {{ task.progress }}%</span>{% endif %}
                                 </div>
                                 <div class="task-buttons">
-                                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editTaskModal{{ task.id }}">Edit</button>
-                                    <form method="POST" action="{% url 'delete_task' task.id %}" class="d-inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                    </form>
+                                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editTaskModal{{ task.id }}">Update</button>
                                 </div>
                             </div>
                         </li>

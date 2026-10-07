@@ -23,7 +23,7 @@ urlpatterns = [
     path('project/<int:project_id>/delete/', views.delete_project, name='delete_project'),
     path('assignment/<int:assignment_id>/remove/', views.remove_assignment, name='remove_assignment'),
     path('staff/create-task/', views.staff_create_task, name='staff_create_task'),
-    path('staff/edit-task/<int:task_id>/', views.edit_task, name='edit_task'),
+    path('staff/edit-task/<int:task_id>/', views.edit_task, name='staff_edit_task'),
     path('update-task-status/<int:task_id>/', views.update_task_status, name='update_task_status'),
     path('assignments/', views.assignments, name='assignments'),
     

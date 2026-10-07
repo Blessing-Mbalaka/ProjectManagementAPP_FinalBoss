@@ -81,6 +81,7 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_tasks', null=True, blank=True)
     progress = models.IntegerField(default=0, help_text="Progress in percentage (0-100)")
+    comments = models.TextField(blank=True)
     
     def __str__(self):
         return self.title

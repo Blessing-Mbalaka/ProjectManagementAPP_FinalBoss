@@ -200,22 +200,28 @@ def manager_kanban(request):
     statuses = list(status_labels.keys())
     priorities = ['Low', 'Medium', 'High']
 
-    #Fetch all tasks created by the manager or from projects tehy created/assigned
+    # Include tasks created by, directly assigned to, or belonging to projects
+    # managed/assigned to this user through either assignment relationship.
     scoped_projects = scope_projects_for_user(Project.objects.all(), request.user)
     tasks = Task.objects.filter(
-        Q(created_by=request.user) | Q(project__created_by=request.user) | Q(project__assigned_user=request.user),
+        Q(created_by=request.user) |
+        Q(assigned_to=request.user) |
+        Q(project__created_by=request.user) |
+        Q(project__assigned_user=request.user) |
+        Q(project__assignments__team_member__user=request.user),
         project__in=scoped_projects,
-    )
+    ).distinct()
     
     #Group tasks by their status
     tasks_by_status = defaultdict(list)
     for task in tasks:
         tasks_by_status[task.status].append(task)
 
-    # Include all projects the manager is involved in (created or assigned)
+    # Match the staff Kanban assignment behavior while retaining manager-owned projects.
     projects = scoped_projects.filter(
         Q(created_by=request.user) |
-        Q(assigned_user=request.user)
+        Q(assigned_user=request.user) |
+        Q(assignments__team_member__user=request.user)
     ).distinct()
 
 

@@ -11,7 +11,7 @@ from django.urls import reverse
 from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from django.http import JsonResponse
+from django.http import HttpResponseForbidden, JsonResponse
 import json
 from django.contrib.auth import get_user_model
 from manager.models import LearningContent, Template
@@ -118,82 +118,26 @@ def staff_kanban(request):
 
 @login_required
 def staff_create_task(request):
-    if request.method == 'POST':
-        title = request.POST['title']
-        status = request.POST['status']
-        task_type = request.POST.get('task_type')
-        priority = request.POST.get('priority')
-        due_date_str = request.POST.get('due_date')
-        project_id = request.POST.get('project_id')
-        # project_name = request.POST.get('project_name', '').strip()
-
-        # Convert due_date to a valid date or None
-        due_date = None
-        if due_date_str:
-            try:
-                due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                due_date = None  # fallback if date is badly formatted
-
-        # project = None
-        # if project_name:
-        #     project, _ = Project.objects.get_or_create(name=project_name, defaults={'created_by': request.user})
-
-        project = None
-        if project_id:
-            # Only allow projects the staff is actually assigned to
-            project = scope_projects_for_user(Project.objects.filter(
-                Q(assigned_user=request.user) |
-                Q(assignments__team_member__user=request.user),
-                id=project_id
-            ), request.user).distinct().first()
-
-        # Create the task
-        Task.objects.create(
-            title=title,
-            status=status,
-            task_type=task_type,
-            priority=priority,
-            due_date=due_date,
-            assigned_to=request.user,
-            created_by=request.user,
-            project=project
-        )
-    return redirect('staff_kanban')
+    return HttpResponseForbidden('Staff members cannot create Kanban tasks.')
 
 
 @login_required
 def edit_task(request, task_id):
-    task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
+    task = get_object_or_404(
+        Task.objects.filter(
+            Q(assigned_to=request.user) |
+            Q(project__assignments__team_member__user=request.user)
+        ).distinct(),
+        id=task_id,
+    )
 
     if request.method == 'POST':
-        project_name = request.POST.get('project_name', '').strip()
-        task.title = request.POST.get('title', '').strip()
-        task.status = request.POST.get('status')
-        task.task_type = request.POST.get('task_type')
-        task.priority = request.POST.get('priority')
-        due_date_str = request.POST.get('due_date')
-
-        # Convert due_date to valid date
-        due_date = None
-        if due_date_str:
-            try:
-                due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                due_date = None
-
-        if project_name:
-            project, _ = Project.objects.get_or_create(
-                name=project_name,
-                defaults={
-                    'created_by': request.user,
-                    'research_centre': getattr(request.user, 'research_centre', None),
-                }
-            )
-            task.project = project
-
-        task.due_date = due_date
-        task.save()
+        valid_statuses = {value for value, _label in Task.STATUS_CHOICES}
+        new_status = request.POST.get('status')
+        if new_status in valid_statuses:
+            task.status = new_status
+        task.comments = request.POST.get('comments', '').strip()
+        task.save(update_fields=['status', 'comments', 'progress'])
 
         return redirect('staff_kanban')
 
@@ -212,15 +156,19 @@ def update_task_status(request, task_id):
         
         # Check if user is directly assigned or is a team member on the project
         is_directly_assigned = task.assigned_to == request.user
-        is_team_member = task.project.assignments.filter(
+        is_team_member = bool(task.project_id) and task.project.assignments.filter(
             team_member__user=request.user
         ).exists()
         
         if not (is_directly_assigned or is_team_member):
             return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
         
+        valid_statuses = {value for value, _label in Task.STATUS_CHOICES}
+        if new_status not in valid_statuses:
+            return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
+
         task.status = new_status
-        task.save()
+        task.save(update_fields=['status', 'progress'])
 
         return JsonResponse({'success': True})
     except Exception as e:
@@ -228,10 +176,7 @@ def update_task_status(request, task_id):
     
 @login_required
 def delete_task(request, task_id):
-    task = get_object_or_404(Task, id=task_id, assigned_to=request.user)
-    if request.method == "POST":
-        task.delete()
-    return redirect('staff_kanban')  # Adjust redirect URL as needed
+    return HttpResponseForbidden('Staff members cannot delete Kanban tasks.')
 
 
 @login_required

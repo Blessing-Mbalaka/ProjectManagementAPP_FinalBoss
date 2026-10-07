@@ -13,8 +13,43 @@
       <div class="card-body" style="min-height: 200px;">
         {% for task in items %}
           <div class="mb-2 p-2 bg-white border rounded shadow-sm">
-            <strong>{{ task.title }}</strong><br>
-            <small class="text-muted">{{ task.description|truncatechars:50 }}</small>
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <strong>{{ task.title }}</strong>
+              {% if task.due_date and task.due_date < today and task.status != 'done' %}
+                <span class="badge bg-danger">Overdue</span>
+              {% elif task.project.due_date and task.project.due_date < today and task.project.status != 'completed' %}
+                <span class="badge bg-danger">Project overdue</span>
+              {% endif %}
+            </div>
+            {% if task.project %}<small class="text-muted">{{ task.project.name }}</small>{% endif %}
+            <div class="mt-2">
+              <button
+                class="btn btn-sm btn-outline-secondary"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#taskDetails{{ task.id }}"
+                aria-expanded="false"
+                aria-controls="taskDetails{{ task.id }}"
+              >More</button>
+            </div>
+            <div class="collapse mt-2" id="taskDetails{{ task.id }}">
+              <dl class="row small mb-0">
+                <dt class="col-5">Project</dt>
+                <dd class="col-7">{{ task.project.name|default:'No project' }}</dd>
+                <dt class="col-5">Description</dt>
+                <dd class="col-7">{{ task.project.description|default:'No description' }}</dd>
+                <dt class="col-5">Type</dt>
+                <dd class="col-7">{{ task.get_task_type_display|default:'Not set' }}</dd>
+                <dt class="col-5">Priority</dt>
+                <dd class="col-7">{{ task.priority|default:'Not set' }}</dd>
+                <dt class="col-5">Due date</dt>
+                <dd class="col-7">{{ task.due_date|default:'Not set' }}</dd>
+                <dt class="col-5">Progress</dt>
+                <dd class="col-7">{{ task.progress }}%</dd>
+                <dt class="col-5">Comments</dt>
+                <dd class="col-7">{{ task.comments|default:'No comments'|linebreaksbr }}</dd>
+              </dl>
+            </div>
           </div>
         {% empty %}
           <p class="text-muted">No tasks</p>

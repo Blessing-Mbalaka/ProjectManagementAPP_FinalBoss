@@ -3020,7 +3020,10 @@ def admin_user_kanban(request, user_id):
     if request.user.role == 'centrehead' and user.research_centre_id != request.user.research_centre_id:
         return HttpResponseBadRequest("You can only view task boards for users in your research centre.")
 
-    tasks = Task.objects.filter(assigned_to=user)
+    tasks = Task.objects.filter(
+        Q(assigned_to=user) |
+        Q(project__assignments__team_member__user=user)
+    ).select_related('project').distinct()
 
     # Group by status
     task_data = {
@@ -3032,7 +3035,8 @@ def admin_user_kanban(request, user_id):
 
     return render(request, 'adminpanel/partials/user_kanban.html', {
         'user': user,
-        'task_data': task_data
+        'task_data': task_data,
+        'today': timezone.localdate(),
     })
 
 @login_required

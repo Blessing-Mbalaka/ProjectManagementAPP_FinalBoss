@@ -2,6 +2,7 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from projects.models import Project, Task, TeamMember, Assignment
+from adminpanel.models import ResearchCentre
 from datetime import datetime, date
 
 User = get_user_model()
@@ -12,6 +13,7 @@ class StaffKanbanProjectFilteringTests(TestCase):
 
     def setUp(self):
         """Create test users, projects, and assignments"""
+        self.centre = ResearchCentre.objects.create(name='Staff Kanban Centre')
         # Create users
         self.admin_user = User.objects.create_user(
             username='admin_user',
@@ -20,11 +22,13 @@ class StaffKanbanProjectFilteringTests(TestCase):
         )
         self.staff_user1 = User.objects.create_user(
             username='staff1',
-            password='testpass123'
+            password='testpass123',
+            research_centre=self.centre,
         )
         self.staff_user2 = User.objects.create_user(
             username='staff2',
-            password='testpass123'
+            password='testpass123',
+            research_centre=self.centre,
         )
 
         # Create TeamMember records
@@ -215,94 +219,18 @@ class StaffCreateTaskTests(TestCase):
 
         self.client = Client()
 
-    def test_create_task_in_assigned_project(self):
-        """Staff can create tasks in assigned projects"""
+    def test_staff_create_task_endpoint_is_forbidden(self):
+        """Staff can only update existing Kanban task status and comments."""
         self.client.login(username='staff1', password='testpass123')
-        
+
         response = self.client.post(reverse('staff_create_task'), {
             'title': 'New Task',
             'status': 'todo',
-            'task_type': 'Frontend',
-            'priority': 'High',
-            'due_date': '2026-02-15',
-            'project_id': self.assigned_project.id
+            'project_id': self.assigned_project.id,
         })
 
-        # Should redirect back to kanban
-        self.assertEqual(response.status_code, 302)
-        
-        # Task should be created
-        task = Task.objects.filter(title='New Task').first()
-        self.assertIsNotNone(task)
-        self.assertEqual(task.project, self.assigned_project)
-        self.assertEqual(task.assigned_to, self.staff_user)
-
-    def test_cannot_create_task_in_unassigned_project(self):
-        """Staff cannot create tasks in projects not assigned to them"""
-        self.client.login(username='staff1', password='testpass123')
-        
-        response = self.client.post(reverse('staff_create_task'), {
-            'title': 'Unauthorized Task',
-            'status': 'todo',
-            'task_type': 'Frontend',
-            'priority': 'High',
-            'due_date': '2026-02-15',
-            'project_id': self.other_project.id
-        })
-
-        # Task should still be created (system doesn't reject), but project should be None
-        task = Task.objects.filter(title='Unauthorized Task').first()
-        self.assertIsNotNone(task)
-        # Project will be None because the filter returns None
-        self.assertIsNone(task.project)
-
-    def test_create_task_without_project(self):
-        """Staff can create tasks without a project"""
-        self.client.login(username='staff1', password='testpass123')
-        
-        response = self.client.post(reverse('staff_create_task'), {
-            'title': 'Standalone Task',
-            'status': 'todo',
-            'task_type': 'Other',
-            'priority': 'Low',
-            'due_date': '',
-            'project_id': ''
-        })
-
-        task = Task.objects.filter(title='Standalone Task').first()
-        self.assertIsNotNone(task)
-        self.assertIsNone(task.project)
-        self.assertEqual(task.assigned_to, self.staff_user)
-
-    def test_create_task_via_assignment_relationship(self):
-        """Staff can create tasks in projects assigned via Assignment table"""
-        # Assign project via Assignment table
-        assignment_project = Project.objects.create(
-            name='Assignment Project',
-            project_type='software',
-            status='in-progress',
-            created_by=self.admin_user
-        )
-        Assignment.objects.create(
-            project=assignment_project,
-            team_member=self.team_member,
-            responsibility='Developer'
-        )
-
-        self.client.login(username='staff1', password='testpass123')
-        
-        response = self.client.post(reverse('staff_create_task'), {
-            'title': 'Task via Assignment',
-            'status': 'in_progress',
-            'task_type': 'Backend',
-            'priority': 'Medium',
-            'due_date': '2026-03-01',
-            'project_id': assignment_project.id
-        })
-
-        task = Task.objects.filter(title='Task via Assignment').first()
-        self.assertIsNotNone(task)
-        self.assertEqual(task.project, assignment_project)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Task.objects.filter(title='New Task').exists())
 
 
 class StaffKanbanTaskGroupingTests(TestCase):

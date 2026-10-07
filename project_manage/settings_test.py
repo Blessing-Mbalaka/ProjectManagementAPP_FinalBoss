@@ -66,5 +66,14 @@ MEDIA_ROOT = '/tmp/test_media/'
 STATIC_URL = '/static/'
 STATIC_ROOT = '/tmp/test_static/'
 
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
+
 # Reduce logging noise
 logging_config = LOGGING
