@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Welcome to the PM App</title></head>
+<body style="margin:0;background:#f3f6fb;font-family:Arial,sans-serif;color:#172033;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px;background:#f3f6fb;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(23,32,51,.10);">
+        <tr><td style="background:#0b5ed7;padding:28px 32px;color:#ffffff;">
+          <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">UJ Project Management</div>
+          <h1 style="margin:8px 0 0;font-size:27px;">Welcome to the PM App</h1>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin-top:0;font-size:17px;">Hello {{ user.first_name|default:user.username }},</p>
+          <p style="line-height:1.6;">Your account is ready. Use the details below for your first sign-in.</p>
+          <div style="background:#f7f9fd;border-left:4px solid #0b5ed7;padding:18px 20px;margin:22px 0;line-height:1.7;">
+            <div><strong>Username:</strong> {{ user.username }}</div>
+            <div><strong>Temporary password:</strong> {{ temporary_password }}</div>
+            <div><strong>Role:</strong> {{ role_name }}</div>
+          </div>
+          <p style="margin:28px 0;"><a href="{{ login_url }}" style="display:inline-block;background:#0b5ed7;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:8px;">Open PM App</a></p>
+          <p style="color:#697386;font-size:13px;line-height:1.5;">For security, please change your temporary password after your first login. If you were not expecting this account, contact your administrator.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
