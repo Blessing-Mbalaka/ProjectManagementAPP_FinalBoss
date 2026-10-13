@@ -25,7 +25,7 @@ from .forms import SupervisorFeedbackForm, NotificationForm, ProjectForm
 from projects.forms import ChatForm
 from django.http import JsonResponse, HttpResponseBadRequest
 from decimal import Decimal, InvalidOperation
-from django.db.models import Sum, Count, Q
+from django.db.models import Prefetch, Sum, Count, Q
 from collections import Counter, defaultdict
 from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
@@ -2404,9 +2404,73 @@ def admin_kanban(request):
     from projects.work_scope import inspectable_users_for
 
     board_users = inspectable_users_for(request.user).order_by('first_name', 'last_name', 'username')
+    selected_user_id = None
+    requested_user_id = request.GET.get('user', '')
+    if requested_user_id.isdigit():
+        candidate_id = int(requested_user_id)
+        if board_users.filter(pk=candidate_id).exists():
+            selected_user_id = candidate_id
+
     return render(request, 'adminpanel/admin_kanban.html', {
         'is_kanban_readonly': request.user.role in ['admin', 'dean', 'centrehead'],
         'board_users': board_users,
+        'selected_user_id': selected_user_id,
+    })
+
+
+@login_required
+@user_passes_test(can_view_admin_kanban)
+def pm_overview(request):
+    from projects.work_scope import inspectable_users_for
+
+    people = list(
+        inspectable_users_for(request.user).order_by(
+            'first_name', 'last_name', 'username'
+        )
+    )
+    user_ids = [person.id for person in people]
+    task_queryset = Task.objects.select_related('parent_task').order_by(
+        'parent_task_id', 'created_at', 'id'
+    )
+    projects = Project.objects.filter(
+        Q(assigned_user_id__in=user_ids)
+        | Q(assignments__team_member__user_id__in=user_ids)
+    ).select_related(
+        'assigned_user', 'research_centre'
+    ).prefetch_related(
+        Prefetch('tasks', queryset=task_queryset),
+        'assignments__team_member',
+    ).distinct().order_by('name')
+
+    projects_by_user = defaultdict(list)
+    for project in projects:
+        assignee_ids = {
+            assignment.team_member.user_id
+            for assignment in project.assignments.all()
+        }
+        if project.assigned_user_id:
+            assignee_ids.add(project.assigned_user_id)
+
+        tasks = list(project.tasks.all())
+        completed_tasks = sum(task.status == 'done' for task in tasks)
+        project_summary = {
+            'project': project,
+            'tasks': tasks,
+            'progress': int((completed_tasks / len(tasks)) * 100) if tasks else 0,
+        }
+        for user_id in assignee_ids:
+            if user_id in user_ids:
+                projects_by_user[user_id].append(project_summary)
+
+    people_overview = [
+        {
+            'user': person,
+            'projects': projects_by_user[person.id],
+        }
+        for person in people
+    ]
+    return render(request, 'adminpanel/pm_overview.html', {
+        'people_overview': people_overview,
     })
 
 

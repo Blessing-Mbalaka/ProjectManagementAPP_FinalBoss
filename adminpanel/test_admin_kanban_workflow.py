@@ -88,6 +88,16 @@ class AdminKanbanWorkflowTests(TestCase):
         self.assertContains(detail, "Overdue")
         self.assertContains(detail, self.project.description)
 
+    def test_readonly_board_preselects_requested_inspectable_user(self):
+        response = self.client.get(reverse("admin_kanban"), {"user": self.staff.id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_user_id"], self.staff.id)
+        self.assertContains(
+            response,
+            f'<option value="{self.staff.id}" selected>',
+        )
+
     def test_refreshed_staff_board_contains_another_clients_committed_update(self):
         updater = Client()
         updater.force_login(self.admin)

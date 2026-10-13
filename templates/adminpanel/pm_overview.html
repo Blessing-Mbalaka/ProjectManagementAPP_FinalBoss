@@ -1,0 +1,171 @@
+{% extends 'adminpanel/index.html' %}
+
+{% block title %}Project Management Overview{% endblock %}
+
+{% block content %}
+<style>
+  .pm-overview-page {
+    padding: 24px 28px;
+  }
+
+  .pm-overview-header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .pm-overview-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .pm-overview-table {
+    margin-bottom: 0;
+    min-width: 980px;
+  }
+
+  .pm-overview-table th {
+    background: #f7f7f7;
+    color: #4b4b4b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+
+  .pm-overview-table td {
+    vertical-align: middle;
+  }
+
+  .person-name,
+  .project-name {
+    color: #222;
+    font-weight: 700;
+  }
+
+  .task-list {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .task-list li {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    list-style: none;
+  }
+
+  .task-list .subtask {
+    padding-left: 18px;
+  }
+
+  .task-status {
+    min-width: 82px;
+  }
+
+  .project-progress {
+    min-width: 130px;
+  }
+
+  @media (max-width: 768px) {
+    .pm-overview-page {
+      padding: 16px;
+    }
+  }
+</style>
+
+<div class="pm-overview-page">
+  <div class="pm-overview-header">
+    <div>
+      <h1>Project Management Overview</h1>
+      <p class="text-muted mb-0">People, assigned projects, tasks, and Kanban access.</p>
+    </div>
+  </div>
+
+  <div class="table-responsive border rounded">
+    <table class="table table-hover pm-overview-table">
+      <thead>
+        <tr>
+          <th scope="col">Person</th>
+          <th scope="col">Role</th>
+          <th scope="col">Project</th>
+          <th scope="col">Tasks and subtasks</th>
+          <th scope="col">Progress</th>
+          <th scope="col" class="text-end">Kanban</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for person_entry in people_overview %}
+          {% if person_entry.projects %}
+            {% for project_entry in person_entry.projects %}
+              <tr>
+                <td>
+                  <div class="person-name">{{ person_entry.user.get_full_name|default:person_entry.user.username }}</div>
+                  <small class="text-muted">{{ person_entry.user.username }}</small>
+                </td>
+                <td>{{ person_entry.user.get_role_display }}</td>
+                <td>
+                  <div class="project-name">{{ project_entry.project.name }}</div>
+                  <small class="text-muted">{{ project_entry.project.get_status_display }}</small>
+                </td>
+                <td>
+                  {% if project_entry.tasks %}
+                    <ul class="task-list">
+                      {% for task in project_entry.tasks %}
+                        <li{% if task.parent_task_id %} class="subtask"{% endif %}>
+                          {% if task.parent_task_id %}<i class="bi bi-arrow-return-right text-muted"></i>{% endif %}
+                          <span class="flex-grow-1">{{ task.title }}</span>
+                          <span class="badge text-bg-light task-status">{{ task.get_status_display }}</span>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <span class="text-muted">No tasks yet</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="project-progress">
+                    <div class="d-flex justify-content-between mb-1">
+                      <small>{{ project_entry.progress }}%</small>
+                    </div>
+                    <div class="progress" style="height: 7px;">
+                      <div class="progress-bar bg-success" role="progressbar" style="width: {{ project_entry.progress }}%" aria-valuenow="{{ project_entry.progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_kanban' %}?user={{ person_entry.user.id }}">
+                    <i class="bi bi-kanban me-1"></i>View Kanban
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td>
+                <div class="person-name">{{ person_entry.user.get_full_name|default:person_entry.user.username }}</div>
+                <small class="text-muted">{{ person_entry.user.username }}</small>
+              </td>
+              <td>{{ person_entry.user.get_role_display }}</td>
+              <td colspan="3"><span class="text-muted">No projects assigned</span></td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_kanban' %}?user={{ person_entry.user.id }}">
+                  <i class="bi bi-kanban me-1"></i>View Kanban
+                </a>
+              </td>
+            </tr>
+          {% endif %}
+        {% empty %}
+          <tr>
+            <td colspan="6" class="py-5 text-center text-muted">No people are available in your scope.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

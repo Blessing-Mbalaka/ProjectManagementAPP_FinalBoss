@@ -115,11 +115,17 @@
     </div>
 </div>
 
-<div class="mb-3 text-end">
-    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
-</div>
-
-{% include 'manager/partials/task_modal.html' with form_url='manager_create_task' task_types=task_types project_id=projects.0.id %}
+{% if projects %}
+    <div class="mb-3 text-end">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
+    </div>
+    {% include 'manager/partials/task_modal.html' with form_url='manager_create_task' task_types=task_types project_id=projects.0.id %}
+{% else %}
+    <div class="alert alert-info mb-4" role="status">
+        <i class="bi bi-info-circle me-2"></i>
+        No projects have been assigned to you yet. Your Kanban will be ready when a project is assigned.
+    </div>
+{% endif %}
 
 <div class="row">
     {% for column in status_labels.keys %}

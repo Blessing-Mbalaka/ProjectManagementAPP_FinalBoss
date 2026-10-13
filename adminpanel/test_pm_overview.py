@@ -1,0 +1,122 @@
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from adminpanel.models import ResearchCentre
+from projects.models import Project, Task
+
+
+User = get_user_model()
+
+
+class ProjectManagementOverviewTests(TestCase):
+    def setUp(self):
+        self.centre = ResearchCentre.objects.create(name="Overview Centre")
+        self.other_centre = ResearchCentre.objects.create(name="Other Centre")
+        self.admin = User.objects.create_user(
+            username="overview-admin",
+            password="pass",
+            role="admin",
+        )
+        self.centre_head = User.objects.create_user(
+            username="overview-head",
+            password="pass",
+            role="centrehead",
+            research_centre=self.centre,
+        )
+        self.staff = User.objects.create_user(
+            username="overview-staff",
+            first_name="Amina",
+            last_name="Ndlovu",
+            password="pass",
+            role="staff",
+            research_centre=self.centre,
+        )
+        self.idle_staff = User.objects.create_user(
+            username="idle-staff",
+            first_name="Bongani",
+            last_name="Dube",
+            password="pass",
+            role="staff",
+            research_centre=self.centre,
+        )
+        self.outside_staff = User.objects.create_user(
+            username="outside-staff",
+            first_name="Carmen",
+            last_name="Pillay",
+            password="pass",
+            role="staff",
+            research_centre=self.other_centre,
+        )
+        self.project = Project.objects.create(
+            name="Research Portal",
+            assigned_user=self.staff,
+            created_by=self.admin,
+            research_centre=self.centre,
+        )
+        self.parent_task = Task.objects.create(
+            title="Prepare release",
+            project=self.project,
+            assigned_to=self.staff,
+            created_by=self.admin,
+            status="in_progress",
+        )
+        self.subtask = Task.objects.create(
+            title="Run acceptance tests",
+            project=self.project,
+            parent_task=self.parent_task,
+            assigned_to=self.staff,
+            created_by=self.admin,
+            status="todo",
+        )
+
+    def test_admin_sees_people_projects_tasks_and_kanban_links(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get("/adminpanel/pm-overview/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Project Management Overview")
+        self.assertContains(response, "Amina Ndlovu")
+        self.assertContains(response, self.project.name)
+        self.assertContains(response, self.parent_task.title)
+        self.assertContains(response, self.subtask.title)
+        full_kanban_url = f'{reverse("admin_kanban")}?user={self.staff.id}'
+        fragment_url = reverse("admin_user_kanban", args=[self.staff.id])
+        self.assertContains(response, full_kanban_url)
+        self.assertNotContains(response, f'href="{fragment_url}"')
+        self.assertContains(response, "Bongani Dube")
+        self.assertContains(response, "No projects assigned")
+
+    def test_centre_head_sees_only_people_in_their_centre(self):
+        self.client.force_login(self.centre_head)
+
+        response = self.client.get("/adminpanel/pm-overview/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.staff.get_full_name())
+        self.assertNotContains(response, self.outside_staff.get_full_name())
+
+    def test_staff_cannot_open_project_management_overview(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get("/adminpanel/pm-overview/")
+
+        self.assertEqual(response.status_code, 302)
+
+
+class ManagerKanbanEmptyStateTests(TestCase):
+    def test_manager_without_projects_sees_empty_state_instead_of_server_error(self):
+        manager = User.objects.create_user(
+            username="empty-manager",
+            password="pass",
+            role="manager",
+        )
+        client = Client(raise_request_exception=False)
+        client.force_login(manager)
+
+        response = client.get(reverse("manager_kanban"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No projects have been assigned to you yet")
+        self.assertNotContains(response, 'data-bs-target="#addTaskModal"')

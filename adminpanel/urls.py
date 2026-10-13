@@ -38,6 +38,7 @@ urlpatterns = [
     path('finance/', views.finance, name='finance'),
     path('finance-readonly/', views.finance_readonly, name='finance_readonly'),
     path('admin_kanban/', views.admin_kanban, name='admin_kanban'),
+    path('pm-overview/', views.pm_overview, name='pm_overview'),
     path('my-projects/', views.admin_my_projects, name='admin_my_projects'),
     path('my-projects/task/<int:task_id>/update/', views.admin_my_task_update, name='admin_my_task_update'),
     path('supervisor/', views.supervisor_dashboard, name='supervisor_dashboard'),

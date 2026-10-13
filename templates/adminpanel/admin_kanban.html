@@ -515,7 +515,7 @@
                         <select id="readonlyKanbanUserSelect" class="form-select" style="max-width: 320px;">
                             <option value="">Select user</option>
                             {% for staff_user in board_users %}
-                            <option value="{{ staff_user.id }}">{{ staff_user.get_full_name|default:staff_user.username }} - {{ staff_user.get_role_display }}</option>
+                            <option value="{{ staff_user.id }}"{% if staff_user.id == selected_user_id %} selected{% endif %}>{{ staff_user.get_full_name|default:staff_user.username }} - {{ staff_user.get_role_display }}</option>
                             {% endfor %}
                         </select>
                         <button type="button" class="btn btn-outline-secondary" id="refreshReadonlyKanban" disabled>Refresh</button>
@@ -737,6 +737,7 @@
                 };
                 readonlyKanbanUserSelect.addEventListener('change', loadReadonlyBoard);
                 if (refreshReadonlyKanban) refreshReadonlyKanban.addEventListener('click', loadReadonlyBoard);
+                if (readonlyKanbanUserSelect.value) loadReadonlyBoard();
                 window.setInterval(function() {
                     if (!document.hidden && readonlyKanbanUserSelect.value) loadReadonlyBoard();
                 }, 30000);
