@@ -36,111 +36,6 @@ document.addEventListener('click', function (event) {
     }
 });
 
-// Task Management
-const addTaskBtn = document.getElementById('add-task-btn');
-if (addTaskBtn) {
-    addTaskBtn.addEventListener('click', function () {
-        const taskInput = document.querySelector('.task-input');
-        if (taskInput) {
-            const taskText = taskInput.value.trim();
-
-            if (taskText) {
-                const taskId = 'task-' + Date.now();
-                const taskItem = document.createElement('div');
-                taskItem.className = 'task-item';
-                taskItem.id = taskId;
-                taskItem.innerHTML = `
-                    <span>${taskText}</span>
-                    <div class="task-actions">
-                        <i class="bi-check-circle text-success" title="Mark as done" onclick="completeTask('${taskId}')"></i>
-                        <i class="bi-trash text-danger" title="Delete" onclick="removeTask('${taskId}')"></i>
-                    </div>
-                `;
-                const tasksList = document.getElementById('tasks-list');
-                if (tasksList) {
-                    tasksList.appendChild(taskItem);
-                }
-                taskInput.value = '';
-                saveTasks();
-            }
-        }
-    });
-}
-
-// Allow pressing Enter to add task
-const taskInputField = document.querySelector('.task-input');
-if (taskInputField) {
-    taskInputField.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            const btn = document.getElementById('add-task-btn');
-            if (btn) btn.click();
-        }
-    });
-}
-
-// Complete task with animation
-function completeTask(taskId) {
-    const taskItem = document.getElementById(taskId);
-    taskItem.style.textDecoration = 'line-through';
-    taskItem.style.opacity = '0.6';
-
-    // Create confetti effect
-    createConfetti();
-
-    // Remove task after animation
-    setTimeout(() => {
-        taskItem.remove();
-        saveTasks();
-    }, 1000);
-}
-
-// Remove task
-function removeTask(taskId) {
-    document.getElementById(taskId).remove();
-    saveTasks();
-}
-
-// Save tasks to localStorage
-function saveTasks() {
-    const tasks = [];
-    document.querySelectorAll('#tasks-list .task-item').forEach(task => {
-        tasks.push({
-            text: task.querySelector('span').textContent,
-            completed: task.style.textDecoration === 'line-through'
-        });
-    });
-    localStorage.setItem('dashboard-tasks', JSON.stringify(tasks));
-}
-
-// Load tasks from localStorage
-function loadTasks() {
-    const savedTasks = JSON.parse(localStorage.getItem('dashboard-tasks')) || [];
-    const tasksList = document.getElementById('tasks-list');
-    if (!tasksList) return;
-    tasksList.innerHTML = '';
-
-    savedTasks.forEach(task => {
-        const taskId = 'task-' + Date.now();
-        const taskItem = document.createElement('div');
-        taskItem.className = 'task-item';
-        taskItem.id = taskId;
-        taskItem.innerHTML = `
-            <span>${task.text}</span>
-            <div class="task-actions">
-                <i class="bi-check-circle text-success" title="Mark as done" onclick="completeTask('${taskId}')"></i>
-                <i class="bi-trash text-danger" title="Delete" onclick="removeTask('${taskId}')"></i>
-            </div>
-        `;
-
-        if (task.completed) {
-            taskItem.style.textDecoration = 'line-through';
-            taskItem.style.opacity = '0.6';
-        }
-
-        tasksList.appendChild(taskItem);
-    });
-}
-
 // File Upload Management
 const fileUploadEl = document.getElementById('file-upload');
 if (fileUploadEl) {
@@ -281,7 +176,6 @@ function createConfetti() {
 
 // Initialize on load
 window.addEventListener('load', function () {
-    loadTasks();
     loadUploads();
 
     // Initialize sidebar state based on screen size

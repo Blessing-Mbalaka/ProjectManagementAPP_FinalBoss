@@ -5,9 +5,32 @@ from django.contrib.auth import get_user_model
 
 # forms.py
 class DailyTaskForm(forms.ModelForm):
+    def __init__(self, *args, user=None, work_date=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.work_date = work_date
+        if user is None:
+            self.fields['task'].queryset = Task.objects.none()
+            return
+
+        from projects.work_scope import workable_tasks_for
+
+        existing_ids = DailyTask.objects.filter(
+            user=user,
+            work_date=work_date,
+            task__isnull=False,
+        ).values_list('task_id', flat=True)
+        self.fields['task'].queryset = workable_tasks_for(user).exclude(id__in=existing_ids).order_by(
+            'project__name', 'title'
+        )
+
     class Meta:
         model = DailyTask
-        fields = ['title']
+        fields = ['task', 'work_date']
+        widgets = {
+            'task': forms.Select(attrs={'class': 'form-select'}),
+            'work_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
 
 
 class StudentProfileForm(forms.ModelForm):

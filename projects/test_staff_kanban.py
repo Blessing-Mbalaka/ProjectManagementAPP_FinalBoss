@@ -298,8 +298,8 @@ class StaffKanbanTaskGroupingTests(TestCase):
         self.assertEqual(grouped_tasks['review'].count(), 1)
         self.assertEqual(grouped_tasks['done'].count(), 1)
 
-    def test_only_assigned_tasks_shown(self):
-        """Only tasks assigned to current staff should be shown"""
+    def test_project_assignee_sees_the_full_assigned_project_task_pool(self):
+        """Project assignees work from the project's complete task pool."""
         other_staff = User.objects.create_user(
             username='staff2',
             password='testpass123'
@@ -323,5 +323,4 @@ class StaffKanbanTaskGroupingTests(TestCase):
             grouped_tasks['done']
         )
         
-        # Staff1 should see only 4 tasks (not the 5th from staff2)
-        self.assertEqual(all_tasks.count(), 4)
+        self.assertEqual(all_tasks.count(), 5)

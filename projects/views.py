@@ -16,17 +16,23 @@ import json
 from django.contrib.auth import get_user_model
 from manager.models import LearningContent, Template
 from django.db.models import Q
+from django.db import IntegrityError
+from django.utils.dateparse import parse_date
 from django.utils import timezone
 from adminpanel.models import Notification
 from adminpanel.media_service import MediaService
 from .scope import scope_projects_for_user
 from .work_scope import assigned_projects_for, workable_tasks_for
+from .daily_work import complete_daily_work, reopen_daily_work
 
 
 @login_required
 def dashboard(request):
-    form = DailyTaskForm()
-    tasks = DailyTask.objects.filter(user=request.user).order_by('-created_at')
+    selected_date = parse_date(request.GET.get('date', '')) or timezone.localdate()
+    form = DailyTaskForm(user=request.user, work_date=selected_date, initial={'work_date': selected_date})
+    tasks = DailyTask.objects.filter(user=request.user, work_date=selected_date).select_related(
+        'task', 'task__project'
+    ).order_by('is_done', '-created_at')
     upload_form = FileUploadForm()
 
     now = timezone.now()
@@ -47,18 +53,25 @@ def dashboard(request):
     my_notifications = base_qs.order_by('-is_pinned', '-created_at')[:10]
 
     if request.method == 'POST':
-        form = DailyTaskForm(request.POST)
+        selected_date = parse_date(request.POST.get('work_date', '')) or timezone.localdate()
+        form = DailyTaskForm(request.POST, user=request.user, work_date=selected_date)
         if form.is_valid():
             task = form.save(commit=False)
             task.user = request.user
-            task.save()
-            return redirect('dashboard')
+            task.title = task.task.title
+            try:
+                task.save()
+            except IntegrityError:
+                form.add_error('task', 'This task is already on your daily list for this date.')
+            else:
+                return redirect(f"{reverse('dashboard')}?date={selected_date.isoformat()}")
 
     return render(request, 'projects/dashboard.html', {
         'form': form,
         'daily_tasks': tasks,
         'upload_form': upload_form,
         'my_notifications': my_notifications,  # <-- ensure this is passed
+        'selected_date': selected_date,
     })
 
 
@@ -76,17 +89,27 @@ def assignments(request):
 
 
 @login_required
-def mark_task_done(request, task_id):
-    task = get_object_or_404(DailyTask, id=task_id, user=request.user)
-    task.is_done = True
-    task.save()
-    return redirect('dashboard')
+@require_POST
+def complete_daily_task(request, task_id):
+    item = get_object_or_404(DailyTask, id=task_id, user=request.user)
+    complete_daily_work(item, request.user)
+    return redirect(f"{reverse('dashboard')}?date={item.work_date.isoformat()}")
 
 @login_required
-def delete_task(request, task_id):
-    task = get_object_or_404(DailyTask, id=task_id, user=request.user)
-    task.delete()
-    return redirect('dashboard')
+@require_POST
+def reopen_daily_task(request, task_id):
+    item = get_object_or_404(DailyTask, id=task_id, user=request.user)
+    reopen_daily_work(item, request.user)
+    return redirect(f"{reverse('dashboard')}?date={item.work_date.isoformat()}")
+
+
+@login_required
+@require_POST
+def delete_daily_task(request, task_id):
+    item = get_object_or_404(DailyTask, id=task_id, user=request.user)
+    work_date = item.work_date
+    item.delete()
+    return redirect(f"{reverse('dashboard')}?date={work_date.isoformat()}")
 
 TASK_TYPES = ['UX/UI', 'Architecture', 'Frontend', 'Backend', 'Testing', 'Deployment', 'Paper', 'Book', 'Other']
 
@@ -154,7 +177,7 @@ def update_task_status(request, task_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
     
 @login_required
-def delete_task(request, task_id):
+def delete_kanban_task(request, task_id):
     return HttpResponseForbidden('Staff members cannot delete Kanban tasks.')
 
 

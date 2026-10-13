@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from adminpanel.models import SupervisorProfile
 
 class Project(models.Model):
@@ -97,9 +98,27 @@ class Task(models.Model):
     
 class DailyTask(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.SET_NULL,
+        related_name='daily_work_items',
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=255)
     is_done = models.BooleanField(default=False)
+    work_date = models.DateField(default=timezone.localdate, db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'task', 'work_date'],
+                condition=models.Q(task__isnull=False),
+                name='unique_daily_linked_task_per_user_date',
+            )
+        ]
 
     def __str__(self):
         return self.title

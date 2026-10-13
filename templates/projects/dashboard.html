@@ -637,33 +637,41 @@
 
 <div class="dashboard-box">
     <div class="content-box">
-        <h5>Today's Tasks</h5>
-        <div class="task-input-container">
-            <input type="text" class="task-input" placeholder="New task...">
-            <button class="btn btn-primary btn-sm" id="add-task-btn">Add</button>
-        </div>
-        <div id="tasks-list">
-            <div class="task-item">
-                <span>Complete project proposal</span>
-                <div class="task-actions">
-                    <i class="bi-check-circle text-success" title="Mark as done"></i>
-                    <i class="bi-trash text-danger" title="Delete"></i>
+        <h5>Daily Project Tasks</h5>
+        <form method="get" class="mb-3">
+            <label class="form-label small" for="daily-work-date">Work date</label>
+            <div class="input-group input-group-sm">
+                <input class="form-control" id="daily-work-date" type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+                <button class="btn btn-outline-secondary" type="submit">View</button>
+            </div>
+        </form>
+        <form method="post" class="mb-3">
+            {% csrf_token %}
+            <input type="hidden" name="work_date" value="{{ selected_date|date:'Y-m-d' }}">
+            <label class="form-label small" for="{{ form.task.id_for_label }}">Assigned task</label>
+            {{ form.task }}
+            {% for error in form.task.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            <button class="btn btn-primary btn-sm mt-2" type="submit">Add to day</button>
+        </form>
+        <div>
+            {% for item in daily_tasks %}
+            <div class="task-item {% if item.is_done %}opacity-50{% endif %}">
+                <span {% if item.is_done %}style="text-decoration: line-through;"{% endif %}>
+                    {{ item.title }}
+                    <small class="d-block text-muted">{{ item.task.project.name|default:'Legacy task' }}</small>
+                </span>
+                <div class="task-actions d-flex gap-1">
+                    {% if item.is_done %}
+                    <form method="post" action="{% url 'daily_task_reopen' item.id %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" type="submit">Reopen</button></form>
+                    {% else %}
+                    <form method="post" action="{% url 'daily_task_complete' item.id %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success" type="submit">Complete</button></form>
+                    {% endif %}
+                    <form method="post" action="{% url 'daily_task_delete' item.id %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Remove</button></form>
                 </div>
             </div>
-            <div class="task-item">
-                <span>Review team submissions</span>
-                <div class="task-actions">
-                    <i class="bi-check-circle text-success" title="Mark as done"></i>
-                    <i class="bi-trash text-danger" title="Delete"></i>
-                </div>
-            </div>
-            <div class="task-item">
-                <span>Client meeting at 2pm</span>
-                <div class="task-actions">
-                    <i class="bi-check-circle text-success" title="Mark as done"></i>
-                    <i class="bi-trash text-danger" title="Delete"></i>
-                </div>
-            </div>
+            {% empty %}
+            <p class="text-muted">No assigned project tasks selected for this date.</p>
+            {% endfor %}
         </div>
     </div>
     <div class="content-box">
