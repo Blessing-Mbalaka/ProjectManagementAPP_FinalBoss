@@ -111,6 +111,9 @@
                 <td>
                   <div class="project-name">{{ project_entry.project.name }}</div>
                   <small class="text-muted">{{ project_entry.project.get_status_display }}</small>
+                  {% if project_entry.created_unassigned %}
+                    <span class="badge text-bg-warning ms-1">Created, not assigned</span>
+                  {% endif %}
                 </td>
                 <td>
                   {% if project_entry.tasks %}

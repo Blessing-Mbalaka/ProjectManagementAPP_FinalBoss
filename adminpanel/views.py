@@ -2435,8 +2435,9 @@ def pm_overview(request):
     projects = Project.objects.filter(
         Q(assigned_user_id__in=user_ids)
         | Q(assignments__team_member__user_id__in=user_ids)
+        | Q(created_by_id__in=user_ids, assigned_user__isnull=True)
     ).select_related(
-        'assigned_user', 'research_centre'
+        'assigned_user', 'created_by', 'research_centre'
     ).prefetch_related(
         Prefetch('tasks', queryset=task_queryset),
         'assignments__team_member',
@@ -2450,6 +2451,8 @@ def pm_overview(request):
         }
         if project.assigned_user_id:
             assignee_ids.add(project.assigned_user_id)
+        elif project.created_by_id:
+            assignee_ids.add(project.created_by_id)
 
         tasks = list(project.tasks.all())
         completed_tasks = sum(task.status == 'done' for task in tasks)
@@ -2460,7 +2463,13 @@ def pm_overview(request):
         }
         for user_id in assignee_ids:
             if user_id in user_ids:
-                projects_by_user[user_id].append(project_summary)
+                projects_by_user[user_id].append({
+                    **project_summary,
+                    'created_unassigned': (
+                        project.assigned_user_id is None
+                        and project.created_by_id == user_id
+                    ),
+                })
 
     people_overview = [
         {

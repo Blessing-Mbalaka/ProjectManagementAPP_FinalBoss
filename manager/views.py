@@ -306,6 +306,8 @@ def create_project(request):
         if form.is_valid():
             project = form.save(commit=False)
             project.created_by = request.user
+            if request.user.role == 'manager':
+                project.assigned_user = request.user
             project.research_centre = getattr(request.user, 'research_centre', None)
             project.save()
             messages.success(request, 'Project created successfully!')

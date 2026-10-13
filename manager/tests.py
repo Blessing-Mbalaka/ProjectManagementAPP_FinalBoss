@@ -2,11 +2,36 @@
 Simplified test suite for manager app models
 Tests focus on model instantiation and basic CRUD operations
 """
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.contrib.auth import get_user_model
+from django.urls import reverse
+from projects.models import Project
 from .models import Paper, Conference, Template, ChangeLog, PaperStatusHistory, PaperComment
 
 User = get_user_model()
+
+
+class ManagerProjectCreationTests(TestCase):
+    def test_manager_created_project_is_assigned_to_its_creator(self):
+        manager = User.objects.create_user(
+            username='project-manager',
+            password='pass',
+            role='manager',
+        )
+        client = Client()
+        client.force_login(manager)
+
+        response = client.post(reverse('create_project'), {
+            'name': 'Manager-owned project',
+            'description': 'Created through the manager workflow',
+            'project_type': 'software',
+            'status': 'planning',
+        })
+
+        self.assertRedirects(response, reverse('assign_projects'))
+        project = Project.objects.get(name='Manager-owned project')
+        self.assertEqual(project.created_by, manager)
+        self.assertEqual(project.assigned_user, manager)
 
 
 class PaperModelTests(TestCase):

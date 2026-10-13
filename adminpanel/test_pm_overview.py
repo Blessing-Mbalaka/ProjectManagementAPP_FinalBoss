@@ -97,6 +97,28 @@ class ProjectManagementOverviewTests(TestCase):
         self.assertContains(response, self.staff.get_full_name())
         self.assertNotContains(response, self.outside_staff.get_full_name())
 
+    def test_creator_only_project_is_shown_as_not_assigned(self):
+        manager = User.objects.create_user(
+            username="creator-manager",
+            first_name="Created",
+            last_name="Manager",
+            password="pass",
+            role="manager",
+            research_centre=self.centre,
+        )
+        project = Project.objects.create(
+            name="Legacy creator project",
+            created_by=manager,
+            research_centre=self.centre,
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("pm_overview"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, project.name)
+        self.assertContains(response, "Created, not assigned")
+
     def test_staff_cannot_open_project_management_overview(self):
         self.client.force_login(self.staff)
 
