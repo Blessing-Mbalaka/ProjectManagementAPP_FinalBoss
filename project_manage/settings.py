@@ -3,15 +3,13 @@ from pathlib import Path
 import os
 import dj_database_url
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-_0c$9attqx23_v=(t13^$f8!z)yyn+kz+^)%a=)5r)sg_r8b0u'
 
 # Load local development values without overriding environment variables supplied
 # by the hosting platform.
@@ -24,6 +22,11 @@ def env_flag(name, default=False):
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_flag('DEBUG', True)
 
+DEVELOPMENT_SECRET_KEY = 'django-insecure-_0c$9attqx23_v=(t13^$f8!z)yyn+kz+^)%a=)5r)sg_r8b0u'
+SECRET_KEY = os.getenv('SECRET_KEY', DEVELOPMENT_SECRET_KEY if DEBUG else '')
+if not SECRET_KEY:
+    raise ImproperlyConfigured('SECRET_KEY must be set when DEBUG=False.')
+
 # Enhanced ALLOWED_HOSTS configuration for Render, Azure Container Apps, and local development
 ALLOWED_HOSTS = [
     '127.0.0.1',
@@ -31,6 +34,34 @@ ALLOWED_HOSTS = [
     '.onrender.com',
     '162.35.167.180',
 ]
+
+# Render terminates TLS at its proxy; trust it so Django sees requests as HTTPS
+# and Origin/Referer checks for CSRF match the public https host.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.onrender.com',
+    *[o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()],
+]
+
+# Production transport and cookie hardening. All values remain environment
+# configurable for reverse proxies and controlled rollout.
+SECURE_SSL_REDIRECT = env_flag('SECURE_SSL_REDIRECT', not DEBUG)
+SESSION_COOKIE_SECURE = env_flag('SESSION_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_SECURE = env_flag('CSRF_COOKIE_SECURE', not DEBUG)
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '3600' if not DEBUG else '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_flag('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+SECURE_HSTS_PRELOAD = env_flag('SECURE_HSTS_PRELOAD', False)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+
+# Keep the existing two-week session lifetime explicit. Sessions are stored in
+# the database, use HTTP-only cookies, and do not expire merely on browser close.
+SESSION_COOKIE_AGE = int(os.getenv('SESSION_COOKIE_AGE', '1209600'))
+SESSION_EXPIRE_AT_BROWSER_CLOSE = env_flag('SESSION_EXPIRE_AT_BROWSER_CLOSE', False)
+SESSION_SAVE_EVERY_REQUEST = env_flag('SESSION_SAVE_EVERY_REQUEST', False)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Email config: use SMTP unless EMAIL_USE_CONSOLE is true.
 EMAIL_USE_CONSOLE = env_flag('EMAIL_USE_CONSOLE', False)
@@ -169,8 +200,6 @@ STORAGES = {
     },
 }
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# SSL/HTTPS production security logic removed for local and production simplicity
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server error</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; background: #f6f5f2; color: #2c3e50; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
+    main { width: min(620px, 100%); padding: 48px 36px; border-top: 6px solid #f26522; border-radius: 14px; background: #fff; box-shadow: 0 12px 30px rgba(0, 0, 0, .12); text-align: center; }
+    .status { margin: 0; color: #f26522; font-size: 4rem; line-height: 1; }
+    h1 { margin: 16px 0 8px; }
+    .message { margin: 0 0 28px; color: #667085; }
+    a { display: inline-block; padding: 11px 22px; border-radius: 7px; background: #f26522; color: #fff; font-weight: 600; text-decoration: none; }
+    a:focus-visible { outline: 3px solid #2c3e50; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="status">500</p>
+    <h1>Server error</h1>
+    <p class="message">Something went wrong on our side. Please try again shortly.</p>
+    <a href="/">Return to the application</a>
+  </main>
+</body>
+</html>

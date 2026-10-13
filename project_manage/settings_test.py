@@ -2,11 +2,19 @@
 Test settings for Django test suite
 Extends production settings with test-specific configuration
 """
+import os
 from pathlib import Path
+
+os.environ.setdefault('SECRET_KEY', 'test-only-secret-key-not-for-production-12345678901234567890')
 
 from .settings import *  # noqa
 
 TEST_RUNNER = 'project_manage.test_runner.ApplicationDiscoverRunner'
+DEBUG = True
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SECURE_HSTS_SECONDS = 0
 
 # Use a file-backed SQLite database that is isolated from production.
 TEST_DB_PATH = Path(BASE_DIR) / 'test_artifacts' / 'test.db'
