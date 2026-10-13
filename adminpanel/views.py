@@ -2397,7 +2397,9 @@ def update_expenditure(request, pk):
 
 @login_required
 def admin_kanban(request):
-    board_users = CustomUser.objects.filter(is_active=True).exclude(role__in=['admin', 'dean']).order_by('first_name', 'last_name', 'username')
+    from projects.work_scope import inspectable_users_for
+
+    board_users = inspectable_users_for(request.user).order_by('first_name', 'last_name', 'username')
     return render(request, 'adminpanel/admin_kanban.html', {
         'is_kanban_readonly': request.user.role in ['admin', 'dean', 'centrehead'],
         'board_users': board_users,
@@ -3028,14 +3030,11 @@ def admin_required(view_func):
 
 @admin_required
 def admin_user_kanban(request, user_id):
-    user = get_object_or_404(get_user_model(), id=user_id)
-    if request.user.role == 'centrehead' and user.research_centre_id != request.user.research_centre_id:
-        return HttpResponseBadRequest("You can only view task boards for users in your research centre.")
+    from projects.work_scope import inspectable_users_for, workable_tasks_for
 
-    tasks = Task.objects.filter(
-        Q(assigned_to=user) |
-        Q(project__assignments__team_member__user=user)
-    ).select_related('project').distinct()
+    user = get_object_or_404(inspectable_users_for(request.user), id=user_id)
+
+    tasks = workable_tasks_for(user).select_related('project').distinct()
 
     # Group by status
     task_data = {

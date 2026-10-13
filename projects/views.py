@@ -20,6 +20,7 @@ from django.utils import timezone
 from adminpanel.models import Notification
 from adminpanel.media_service import MediaService
 from .scope import scope_projects_for_user
+from .work_scope import assigned_projects_for, workable_tasks_for
 
 
 @login_required
@@ -92,10 +93,7 @@ TASK_TYPES = ['UX/UI', 'Architecture', 'Frontend', 'Backend', 'Testing', 'Deploy
 
 @login_required
 def staff_kanban(request):
-    tasks = Task.objects.filter(
-        Q(assigned_to=request.user) |
-        Q(project__assignments__team_member__user=request.user)
-    ).distinct().order_by('-created_at')
+    tasks = workable_tasks_for(request.user).order_by('-created_at')
 
     grouped_tasks = {
         'todo': tasks.filter(status='todo'),
@@ -104,10 +102,7 @@ def staff_kanban(request):
         'done': tasks.filter(status='done'),
     }
 
-    projects = scope_projects_for_user(Project.objects.filter(
-        Q(assigned_user=request.user) |
-        Q(assignments__team_member__user=request.user)
-    ), request.user).distinct()
+    projects = assigned_projects_for(request.user)
     
     return render(request, 'projects/staff_kanban.html', {
         'grouped_tasks': grouped_tasks,
@@ -123,13 +118,7 @@ def staff_create_task(request):
 
 @login_required
 def edit_task(request, task_id):
-    task = get_object_or_404(
-        Task.objects.filter(
-            Q(assigned_to=request.user) |
-            Q(project__assignments__team_member__user=request.user)
-        ).distinct(),
-        id=task_id,
-    )
+    task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
 
     if request.method == 'POST':
         valid_statuses = {value for value, _label in Task.STATUS_CHOICES}
@@ -151,17 +140,7 @@ def update_task_status(request, task_id):
         data = json.loads(request.body)
         new_status = data.get('status')
 
-        # Allow update if directly assigned OR assigned via team member
-        task = get_object_or_404(Task, id=task_id)
-        
-        # Check if user is directly assigned or is a team member on the project
-        is_directly_assigned = task.assigned_to == request.user
-        is_team_member = bool(task.project_id) and task.project.assignments.filter(
-            team_member__user=request.user
-        ).exists()
-        
-        if not (is_directly_assigned or is_team_member):
-            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
         
         valid_statuses = {value for value, _label in Task.STATUS_CHOICES}
         if new_status not in valid_statuses:

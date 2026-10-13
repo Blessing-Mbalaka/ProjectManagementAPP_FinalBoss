@@ -25,6 +25,7 @@ from django.utils import timezone
 from django.shortcuts import render
 from adminpanel.models import CostCentre, EngagementLog, Notification
 from projects.scope import scope_books_for_user, scope_outputs_for_user, scope_projects_for_user
+from projects.work_scope import assigned_projects_for, workable_tasks_for
 from projects.assignment_notifications import notify_project_assignment
 
 User = get_user_model()
@@ -204,13 +205,12 @@ def manager_kanban(request):
     # Include tasks created by, directly assigned to, or belonging to projects
     # managed/assigned to this user through either assignment relationship.
     scoped_projects = scope_projects_for_user(Project.objects.all(), request.user)
+    managed_projects = scoped_projects.filter(created_by=request.user)
+    workable_task_ids = workable_tasks_for(request.user).filter(
+        Q(project__in=scoped_projects) | Q(project__isnull=True)
+    ).values('id')
     tasks = Task.objects.filter(
-        Q(created_by=request.user) |
-        Q(assigned_to=request.user) |
-        Q(project__created_by=request.user) |
-        Q(project__assigned_user=request.user) |
-        Q(project__assignments__team_member__user=request.user),
-        project__in=scoped_projects,
+        Q(id__in=workable_task_ids) | Q(project__in=managed_projects)
     ).distinct()
     
     #Group tasks by their status
@@ -219,10 +219,9 @@ def manager_kanban(request):
         tasks_by_status[task.status].append(task)
 
     # Match the staff Kanban assignment behavior while retaining manager-owned projects.
+    assigned_project_ids = assigned_projects_for(request.user, scoped_projects).values('id')
     projects = scoped_projects.filter(
-        Q(created_by=request.user) |
-        Q(assigned_user=request.user) |
-        Q(assignments__team_member__user=request.user)
+        Q(id__in=assigned_project_ids) | Q(id__in=managed_projects.values('id'))
     ).distinct()
 
 
