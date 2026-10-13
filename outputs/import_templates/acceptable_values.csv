@@ -1,0 +1,12 @@
+field,acceptable_values_or_format
+kind,book | paper | conference
+project_type,software | book | paper | conference
+project_status,planning | in-progress | on-hold | completed
+book_status,writing | submission | review | production | published
+paper_status,draft | circulation | ready-submission | returned-feedback | submitted | under-review | accepted | accepted-minor | accepted-major | published | rejected
+conference_status,draft | in-progress | submitted | accepted | presenting | presented | rejected
+internal_external,internal | external
+paper_type,journal | conference
+date,YYYY-MM-DD
+multiple_usernames,Separate exact existing usernames with semicolons
+role_in_app,Admin | Finance Admin | Project Manager | Staff | Centre Head

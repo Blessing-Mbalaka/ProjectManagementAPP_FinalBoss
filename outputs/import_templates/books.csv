@@ -1,0 +1,2 @@
+kind,import_key,title,description,status,due_date,internal_external,paper_type,version,abstract,conference_name,conference_date,location,publisher,total_chapters,completed_chapters,lead_author,lead_author_username,co_author_usernames,reviewer_usernames,project_manager_username,research_centre,team_usernames,target_journal,submission_date,decision_date
+book,book-001,Example Book,Replace this example before import,writing,2027-06-30,,,,,,,,Example Publisher,10,0,Lead Author,lead_author_username,,,manager_username,Research Centre Name,lead_author_username;staff_username,,,

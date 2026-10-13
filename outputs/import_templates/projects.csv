@@ -1,0 +1,2 @@
+import_key,project_name,description,project_type,status,due_date,project_manager_username,research_centre,team_usernames
+project-001,Example Delivery Project,Replace this example before import,software,planning,2027-03-31,manager_username,Research Centre Name,staff_username;second_staff_username
