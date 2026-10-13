@@ -8,6 +8,7 @@ class Project(models.Model):
         ('software', 'Software Project'),
         ('book', 'Book Project'),
         ('paper', 'Paper'),
+        ('conference', 'Conference'),
     )
    
     STATUS_CHOICES = (
@@ -18,10 +19,17 @@ class Project(models.Model):
     )
    
     name = models.CharField(max_length=255)
+    import_key = models.CharField(max_length=255, unique=True, null=True, blank=True)
     description = models.TextField(max_length=255, blank=True, null=True)
     project_type = models.CharField(max_length=20, choices=PROJECT_TYPES, default='software')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planning')
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_projects')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='created_projects',
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateField(blank=True, null=True)
     research_centre = models.ForeignKey(

@@ -99,6 +99,13 @@ class Paper(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='papers', null=True, blank=True)
     reviewers = models.ManyToManyField(User, related_name='reviewed_papers', blank=True)
+    project = models.OneToOneField(
+        'projects.Project',
+        on_delete=models.SET_NULL,
+        related_name='paper_publication',
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return self.title
@@ -168,6 +175,13 @@ class Book(models.Model):
     completed_chapters = models.PositiveIntegerField(default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    project = models.OneToOneField(
+        'projects.Project',
+        on_delete=models.SET_NULL,
+        related_name='book_publication',
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return self.title
@@ -261,6 +275,13 @@ class Conference(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='conferences', null=True, blank=True)
     reviewers = models.ManyToManyField(User, related_name='reviewed_conferences', blank=True)
+    project = models.OneToOneField(
+        'projects.Project',
+        on_delete=models.SET_NULL,
+        related_name='conference_publication',
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return self.title

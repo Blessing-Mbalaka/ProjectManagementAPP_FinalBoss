@@ -2898,6 +2898,7 @@ def admin_conferences(request):
 @login_required
 def add_conference(request):
     from manager.models import Conference
+    from manager.publication_projects import sync_publication_project
     
     if request.method == 'POST':
         conference = Conference(
@@ -2918,6 +2919,7 @@ def add_conference(request):
             conference.paper = request.FILES['conferenceFile']
         
         conference.save()
+        sync_publication_project(conference, actor=request.user)
         messages.success(request, 'Conference added successfully!')
         return redirect('admin_conferences')
     

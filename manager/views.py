@@ -27,6 +27,7 @@ from adminpanel.models import CostCentre, EngagementLog, Notification
 from projects.scope import scope_books_for_user, scope_outputs_for_user, scope_projects_for_user
 from projects.work_scope import assigned_projects_for, workable_tasks_for
 from projects.assignment_notifications import notify_project_assignment
+from manager.publication_projects import sync_publication_project
 
 User = get_user_model()
 
@@ -714,6 +715,7 @@ def add_paper(request):
             manuscript=request.FILES.get('paperFile'),
             created_by=request.user,
         )
+        sync_publication_project(paper, actor=request.user)
         
         # Create SystemMedia record for manuscript if provided
         if paper.manuscript:
@@ -835,7 +837,10 @@ def edit_paper_ajax(request, paper_id):
 @login_required
 def manager_book(request):
     books = scope_books_for_user(Book.objects.all(), request.user).order_by('-created_at')
-    return render(request, 'manager/manager_book.html', {'books': books})
+    return render(request, 'manager/manager_book.html', {
+        'books': books,
+        'unlinked_publication_count': books.filter(project__isnull=True).count(),
+    })
 
 
 @csrf_exempt
@@ -855,6 +860,7 @@ def add_book(request):
                 status=data.get('status'),
                 created_by=request.user if request.user.is_authenticated else None,
             )
+            sync_publication_project(book, actor=request.user)
             return JsonResponse({'success': True, 'book_id': book.id})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
@@ -874,6 +880,7 @@ def edit_book(request, book_id):
             form = BookForm(data, instance=book)
             if form.is_valid():
                 updated_book = form.save()
+                sync_publication_project(updated_book, actor=request.user)
                 updated_book.refresh_from_db()
                 print(f"DEBUG: Book {book_id} saved successfully")
                 print(f"DEBUG: New status in DB: {updated_book.status}")

@@ -2,6 +2,9 @@
 {% load static %}
 {% block title %}Books Manager{% endblock %}
 {% block content %}
+{% if unlinked_publication_count %}
+<div class="alert alert-warning">Project setup pending for {{ unlinked_publication_count }} publication record{{ unlinked_publication_count|pluralize }}.</div>
+{% endif %}
 <link rel="stylesheet" href="{% static 'css/books.css' %}">
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
