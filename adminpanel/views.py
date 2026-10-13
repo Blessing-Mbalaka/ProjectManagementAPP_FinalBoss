@@ -35,7 +35,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.db import models, connection
 from django.core.exceptions import ValidationError
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.apps import apps
 from projects.models import StudentProfile
 from projects.scope import scope_books_for_user, scope_outputs_for_user
@@ -2406,6 +2406,45 @@ def admin_kanban(request):
     })
 
 
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+def admin_my_projects(request):
+    from projects.work_scope import assigned_projects_for, workable_tasks_for
+
+    projects = assigned_projects_for(request.user).select_related(
+        'assigned_user', 'created_by', 'research_centre'
+    )
+    tasks = workable_tasks_for(request.user).filter(project__in=projects).select_related('project')
+    columns = [
+        ('todo', 'To Do', tasks.filter(status='todo')),
+        ('in_progress', 'In Progress', tasks.filter(status='in_progress')),
+        ('review', 'Review', tasks.filter(status='review')),
+        ('done', 'Done', tasks.filter(status='done')),
+    ]
+    return render(request, 'adminpanel/my_projects.html', {
+        'projects': projects,
+        'columns': columns,
+        'today': timezone.localdate(),
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.role == 'admin')
+@require_POST
+def admin_my_task_update(request, task_id):
+    from projects.work_scope import workable_tasks_for
+
+    task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
+    valid_statuses = {value for value, _label in Task.STATUS_CHOICES}
+    status = request.POST.get('status')
+    if status not in valid_statuses:
+        return HttpResponseBadRequest('Invalid task status.')
+    task.status = status
+    task.comments = request.POST.get('comments', '').strip()
+    task.save(update_fields=['status', 'comments', 'progress'])
+    return redirect('admin_my_projects')
+
+
 def get_crm_selected_centre(request):
     if request.user.role == 'centrehead':
         return ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)).first()
@@ -3034,7 +3073,11 @@ def admin_user_kanban(request, user_id):
 
     user = get_object_or_404(inspectable_users_for(request.user), id=user_id)
 
-    tasks = workable_tasks_for(user).select_related('project').distinct()
+    tasks = workable_tasks_for(user).select_related(
+        'project', 'project__assigned_user', 'project__created_by', 'project__research_centre'
+    ).prefetch_related(
+        'project__assignments__team_member__user'
+    ).distinct()
 
     # Group by status
     task_data = {
@@ -3048,6 +3091,8 @@ def admin_user_kanban(request, user_id):
         'user': user,
         'task_data': task_data,
         'today': timezone.localdate(),
+        'alert_date': timezone.localdate() + timedelta(days=7),
+        'last_updated': timezone.now(),
     })
 
 @login_required

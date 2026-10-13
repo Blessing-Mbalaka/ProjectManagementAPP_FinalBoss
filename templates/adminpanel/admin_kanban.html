@@ -511,12 +511,15 @@
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="mb-0">Staff Kanban Viewer</h5>
+                        <div class="d-flex gap-2">
                         <select id="readonlyKanbanUserSelect" class="form-select" style="max-width: 320px;">
-                            <option value="">Select staff member</option>
+                            <option value="">Select user</option>
                             {% for staff_user in board_users %}
                             <option value="{{ staff_user.id }}">{{ staff_user.get_full_name|default:staff_user.username }} - {{ staff_user.get_role_display }}</option>
                             {% endfor %}
                         </select>
+                        <button type="button" class="btn btn-outline-secondary" id="refreshReadonlyKanban" disabled>Refresh</button>
+                        </div>
                     </div>
                     <div class="card-body" id="readonlyKanbanBoardArea">
                         <p class="text-muted mb-0">Choose a staff member to view their task board.</p>
@@ -706,25 +709,37 @@
             const completeColumn = document.getElementById('complete');
             const readonlyKanbanUserSelect = document.getElementById('readonlyKanbanUserSelect');
             const readonlyKanbanBoardArea = document.getElementById('readonlyKanbanBoardArea');
+            const refreshReadonlyKanban = document.getElementById('refreshReadonlyKanban');
 
             if (readonlyKanbanUserSelect && readonlyKanbanBoardArea) {
-                readonlyKanbanUserSelect.addEventListener('change', function() {
-                    if (!this.value) {
+                const loadReadonlyBoard = function() {
+                    const userId = readonlyKanbanUserSelect.value;
+                    if (!userId) {
                         readonlyKanbanBoardArea.innerHTML = '<p class="text-muted mb-0">Choose a staff member to view their task board.</p>';
+                        if (refreshReadonlyKanban) refreshReadonlyKanban.disabled = true;
                         return;
                     }
 
+                    if (refreshReadonlyKanban) refreshReadonlyKanban.disabled = false;
                     readonlyKanbanBoardArea.innerHTML = '<p class="text-muted mb-0">Loading task board...</p>';
-                    const url = "{% url 'admin_user_kanban' 0 %}".replace('/0/', `/${this.value}/`);
+                    const url = "{% url 'admin_user_kanban' 0 %}".replace('/0/', `/${userId}/`);
                     fetch(url)
-                        .then(response => response.text())
+                        .then(response => {
+                            if (!response.ok) throw new Error(`Board request failed: ${response.status}`);
+                            return response.text();
+                        })
                         .then(html => {
                             readonlyKanbanBoardArea.innerHTML = html;
                         })
                         .catch(() => {
                             readonlyKanbanBoardArea.innerHTML = '<div class="alert alert-danger mb-0">Unable to load this task board.</div>';
                         });
-                });
+                };
+                readonlyKanbanUserSelect.addEventListener('change', loadReadonlyBoard);
+                if (refreshReadonlyKanban) refreshReadonlyKanban.addEventListener('click', loadReadonlyBoard);
+                window.setInterval(function() {
+                    if (!document.hidden && readonlyKanbanUserSelect.value) loadReadonlyBoard();
+                }, 30000);
             }
             
             // Edit modal elements

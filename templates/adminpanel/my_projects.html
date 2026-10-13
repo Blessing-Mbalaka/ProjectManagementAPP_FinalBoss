@@ -1,0 +1,42 @@
+{% extends 'adminpanel/index.html' %}
+
+{% block title %}My Projects{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div><h2 class="mb-1">My Projects</h2><p class="text-muted mb-0">Projects and tasks assigned to you.</p></div>
+    <a class="btn btn-outline-secondary" href="{% url 'admin_kanban' %}">Staff Kanban Viewer</a>
+  </div>
+  {% if projects %}
+  <div class="card mb-4">
+    <div class="card-header"><strong>Assigned projects</strong></div>
+    <div class="table-responsive"><table class="table table-striped mb-0">
+      <thead><tr><th>Project</th><th>Status</th><th>Research centre</th><th>Due date</th></tr></thead>
+      <tbody>{% for project in projects %}<tr><td>{{ project.name }}</td><td>{{ project.get_status_display }}</td><td>{{ project.research_centre.name|default:'Not set' }}</td><td>{{ project.due_date|default:'Not set' }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% else %}<div class="alert alert-info">No projects are assigned to you.</div>{% endif %}
+  <div class="row g-3">
+    {% for status, label, tasks in columns %}
+    <div class="col-xl-3 col-md-6"><div class="card h-100">
+      <div class="card-header"><strong>{{ label }}</strong></div>
+      <div class="card-body">
+        {% for task in tasks %}
+        <form method="post" action="{% url 'admin_my_task_update' task.id %}" class="border rounded p-3 mb-3">
+          {% csrf_token %}<strong>{{ task.title }}</strong>
+          <div class="small text-muted mb-2">{{ task.project.name|default:'Project unavailable' }}</div>
+          {% if task.due_date and task.due_date < today and task.status != 'done' %}<div class="alert alert-danger py-1 px-2 small">Overdue</div>{% endif %}
+          <label class="form-label small" for="status-{{ task.id }}">Status</label>
+          <select class="form-select form-select-sm mb-2" id="status-{{ task.id }}" name="status">{% for value, status_label in task.STATUS_CHOICES %}<option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ status_label }}</option>{% endfor %}</select>
+          <label class="form-label small" for="comments-{{ task.id }}">Comments</label>
+          <textarea class="form-control form-control-sm mb-2" id="comments-{{ task.id }}" name="comments" rows="3">{{ task.comments }}</textarea>
+          <button class="btn btn-primary btn-sm" type="submit">Save update</button>
+        </form>
+        {% empty %}<p class="text-muted mb-0">No tasks</p>{% endfor %}
+      </div>
+    </div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

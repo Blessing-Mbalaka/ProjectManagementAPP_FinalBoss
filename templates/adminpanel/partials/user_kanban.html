@@ -1,61 +1,51 @@
-<!-- adminpanel/partials/user_kanban.html -->
-{% load kanban_filters %}
-
-
-<h5 class="mt-5">{{ user.get_full_name }}'s Taskboard</h5>
-<div class="row">
-  {% for column, items in task_data.items %}
-  <div class="col-md-3">
-    <div class="card mb-3">
-      <div class="card-header bg-light">
-        <strong class="text-capitalize">{{ column|replace_underscore }}</strong>
-      </div>
+<div data-last-updated="{{ last_updated|date:'c' }}">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div><h5 class="mb-0">{{ user.get_full_name|default:user.username }} Taskboard</h5><small class="text-muted">Updated {{ last_updated|date:'Y-m-d H:i:s' }}</small></div>
+  </div>
+  <div class="row g-3">
+    {% for status, items in task_data.items %}
+    <div class="col-xl-3 col-md-6"><div class="card h-100">
+      <div class="card-header bg-light"><strong class="text-capitalize">{{ status|cut:'_' }}</strong></div>
       <div class="card-body" style="min-height: 200px;">
         {% for task in items %}
-          <div class="mb-2 p-2 bg-white border rounded shadow-sm">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <strong>{{ task.title }}</strong>
-              {% if task.due_date and task.due_date < today and task.status != 'done' %}
-                <span class="badge bg-danger">Overdue</span>
-              {% elif task.project.due_date and task.project.due_date < today and task.project.status != 'completed' %}
-                <span class="badge bg-danger">Project overdue</span>
-              {% endif %}
-            </div>
-            {% if task.project %}<small class="text-muted">{{ task.project.name }}</small>{% endif %}
-            <div class="mt-2">
-              <button
-                class="btn btn-sm btn-outline-secondary"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#taskDetails{{ task.id }}"
-                aria-expanded="false"
-                aria-controls="taskDetails{{ task.id }}"
-              >More</button>
-            </div>
-            <div class="collapse mt-2" id="taskDetails{{ task.id }}">
-              <dl class="row small mb-0">
-                <dt class="col-5">Project</dt>
-                <dd class="col-7">{{ task.project.name|default:'No project' }}</dd>
-                <dt class="col-5">Description</dt>
-                <dd class="col-7">{{ task.project.description|default:'No description' }}</dd>
-                <dt class="col-5">Type</dt>
-                <dd class="col-7">{{ task.get_task_type_display|default:'Not set' }}</dd>
-                <dt class="col-5">Priority</dt>
-                <dd class="col-7">{{ task.priority|default:'Not set' }}</dd>
-                <dt class="col-5">Due date</dt>
-                <dd class="col-7">{{ task.due_date|default:'Not set' }}</dd>
-                <dt class="col-5">Progress</dt>
-                <dd class="col-7">{{ task.progress }}%</dd>
-                <dt class="col-5">Comments</dt>
-                <dd class="col-7">{{ task.comments|default:'No comments'|linebreaksbr }}</dd>
-              </dl>
-            </div>
+        <button class="btn btn-light border text-start w-100 mb-2 p-2" type="button" data-bs-toggle="modal" data-bs-target="#projectDetails{{ task.id }}">
+          <span class="d-flex justify-content-between gap-2"><strong>{{ task.title }}</strong>
+            {% if task.due_date and task.due_date < today and task.status != 'done' %}<span class="badge bg-danger">Overdue</span>
+            {% elif task.due_date == today and task.status != 'done' %}<span class="badge bg-warning text-dark">Due today</span>
+            {% elif task.due_date and task.due_date <= alert_date and task.status != 'done' %}<span class="badge bg-warning text-dark">Due within 7 days</span>{% endif %}
+          </span>
+          <small class="text-muted">{{ task.project.name|default:'Project unavailable' }}</small>
+          <span class="d-block small mt-1">More</span>
+        </button>
+        <div class="modal fade" id="projectDetails{{ task.id }}" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Project details</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+          <div class="modal-body">
+            {% if task.due_date and task.due_date < today and task.status != 'done' %}<div class="alert alert-danger">This task is overdue.</div>
+            {% elif task.due_date == today and task.status != 'done' %}<div class="alert alert-warning">This task is due today.</div>
+            {% elif task.due_date and task.due_date <= alert_date and task.status != 'done' %}<div class="alert alert-warning">This task is due within seven days.</div>{% endif %}
+            <div class="table-responsive"><table class="table table-bordered table-sm mb-0"><tbody>
+              <tr><th>Project name</th><td>{{ task.project.name|default:'Project unavailable' }}</td></tr>
+              <tr><th>Description</th><td>{{ task.project.description|default:'Not set'|linebreaksbr }}</td></tr>
+              <tr><th>Project type</th><td>{{ task.project.get_project_type_display|default:'Not set' }}</td></tr>
+              <tr><th>Project status</th><td>{{ task.project.get_status_display|default:'Not set' }}</td></tr>
+              <tr><th>Research centre</th><td>{{ task.project.research_centre.name|default:'Not set' }}</td></tr>
+              <tr><th>Project manager</th><td>{% if task.project.assigned_user %}{{ task.project.assigned_user.get_full_name|default:task.project.assigned_user.username }}{% elif task.project.created_by %}{{ task.project.created_by.get_full_name|default:task.project.created_by.username }}{% else %}Not set{% endif %}</td></tr>
+              <tr><th>Team members</th><td>{% for assignment in task.project.assignments.all %}{{ assignment.team_member.user.get_full_name|default:assignment.team_member.user.username }}{% if assignment.responsibility %} ({{ assignment.responsibility }}){% endif %}{% if not forloop.last %}; {% endif %}{% empty %}Not set{% endfor %}</td></tr>
+              <tr><th>Task title</th><td>{{ task.title }}</td></tr>
+              <tr><th>Task type</th><td>{{ task.get_task_type_display|default:'Not set' }}</td></tr>
+              <tr><th>Task status</th><td>{{ task.get_status_display }}</td></tr>
+              <tr><th>Priority</th><td>{{ task.priority|default:'Not set' }}</td></tr>
+              <tr><th>Progress</th><td>{{ task.progress }}%</td></tr>
+              <tr><th>Comments</th><td>{{ task.comments|default:'Not set'|linebreaksbr }}</td></tr>
+              <tr><th>Created date</th><td>{{ task.created_at|date:'Y-m-d H:i' }}</td></tr>
+              <tr><th>Task due date</th><td>{{ task.due_date|default:'Not set' }}</td></tr>
+              <tr><th>Project due date</th><td>{{ task.project.due_date|default:'Not set' }}</td></tr>
+            </tbody></table></div>
           </div>
-        {% empty %}
-          <p class="text-muted">No tasks</p>
-        {% endfor %}
+        </div></div></div>
+        {% empty %}<p class="text-muted">No tasks</p>{% endfor %}
       </div>
-    </div>
+    </div></div>
+    {% endfor %}
   </div>
-  {% endfor %}
 </div>
