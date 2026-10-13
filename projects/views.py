@@ -21,6 +21,7 @@ from django.utils.dateparse import parse_date
 from django.utils import timezone
 from adminpanel.models import Notification
 from adminpanel.media_service import MediaService
+from adminpanel.notification_service import unread_count_for, visible_notifications_for
 from .scope import scope_projects_for_user
 from .work_scope import assigned_projects_for, workable_tasks_for
 from .daily_work import complete_daily_work, reopen_daily_work
@@ -35,22 +36,7 @@ def dashboard(request):
     ).order_by('is_done', '-created_at')
     upload_form = FileUploadForm()
 
-    now = timezone.now()
-    base_qs = (Notification.objects
-        .filter(
-            Q(scheduled_at__isnull=True) | Q(scheduled_at__lte=now),
-            Q(expires_at__isnull=True)   | Q(expires_at__gt=now),
-        )
-        .filter(
-            Q(audience='all') |
-            Q(audience='role', audience_role=getattr(request.user, 'role', None)) |
-            Q(audience='specific', recipients=request.user)
-        )
-        .select_related('created_by')
-        .prefetch_related('recipients')
-        .distinct()
-    )
-    my_notifications = base_qs.order_by('-is_pinned', '-created_at')[:10]
+    my_notifications = visible_notifications_for(request.user)[:10]
 
     if request.method == 'POST':
         selected_date = parse_date(request.POST.get('work_date', '')) or timezone.localdate()
@@ -230,8 +216,8 @@ def student_dashboard(request):
     submission_form = SubmissionForm()
 
     # Notifications
-    notifications = Notification.objects.filter(recipients=request.user).order_by('-created_at')
-    unread_count = 0
+    notifications = visible_notifications_for(request.user)
+    unread_count = unread_count_for(request.user)
 
     #Meeting form
     meetings = Meeting.objects.filter(student=request.user).order_by('-date')

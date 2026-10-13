@@ -40,6 +40,7 @@ from django.apps import apps
 from projects.models import StudentProfile
 from projects.scope import scope_books_for_user, scope_outputs_for_user
 from projects.assignment_notifications import notify_project_assignment
+from .notification_service import visible_notifications_for
 from users.email_service import send_html_email_safely
 import csv
 from datetime import datetime, timedelta
@@ -567,11 +568,13 @@ def overview(request):
     }
 
         # --- Notifications for the page ---
-    now = timezone.now()
-    recent_notifications = Notification.objects.filter(
-        models.Q(scheduled_at__isnull=True) | models.Q(scheduled_at__lte=now),
-        models.Q(expires_at__isnull=True)   | models.Q(expires_at__gt=now),
-    ).order_by('-is_pinned', '-created_at')[:8]
+    notifications_period = request.GET.get('notifications_period')
+    if notifications_period not in {'today', 'week', 'month'}:
+        notifications_period = 'today'
+    recent_notifications = visible_notifications_for(
+        request.user,
+        period=notifications_period,
+    )[:8]
 
     dashboard_stats = {
         'users': users.count(),
@@ -585,6 +588,7 @@ def overview(request):
         'users': users,
         'insights_json': json.dumps(insights),
         'recent_notifications': recent_notifications,
+        'notifications_period': notifications_period,
         'can_manage_overview': request.user.role == 'admin',
         'dashboard_stats': dashboard_stats,
     })

@@ -1,147 +1,104 @@
-<!-- Notification Bell and Dropdown -->
 <div class="notification-widget ms-3">
-    <button 
-        class="btn btn-link position-relative" 
-        id="notificationBell"
-        data-bs-toggle="dropdown" 
-        aria-expanded="false"
-        title="Notifications"
-        style="font-size: 1.3rem; color: #333; text-decoration: none;"
-    >
-        <i class="bi bi-bell"></i>
-        <span 
-            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-            id="notificationBadge"
-            style="display: none;"
-        >
-            <span id="notificationCount">0</span>
-        </span>
-    </button>
-
-    <!-- Notification Dropdown Menu -->
-    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationBell" id="notificationDropdown">
-        <li><h6 class="dropdown-header">Notifications</h6></li>
-        <li><hr class="dropdown-divider"></li>
-        <li id="notificationsList" style="max-height: 400px; overflow-y: auto;">
-            <a class="dropdown-item text-muted text-center py-3" href="#">
-                <small>No notifications</small>
-            </a>
-        </li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item text-center" href="#" id="viewAllNotifications"><small>View All</small></a></li>
-    </ul>
+  <button class="btn btn-link position-relative" id="notificationBell" data-bs-toggle="dropdown"
+          aria-expanded="false" title="Notifications">
+    <i class="bi bi-bell"></i>
+    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+          id="notificationBadge" hidden><span id="notificationCount">0</span></span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationBell" id="notificationDropdown">
+    <li><h6 class="dropdown-header">Notifications</h6></li>
+    <li><hr class="dropdown-divider"></li>
+    <li id="notificationsList" class="notifications-list"></li>
+  </ul>
 </div>
 
 <style>
-    .notification-widget {
-        display: inline-block;
-    }
-    
-    .notification-item {
-        padding: 10px;
-        border-bottom: 1px solid #f0f0f0;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    
-    .notification-item:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .notification-item.priority-urgent {
-        border-left: 3px solid #dc3545;
-    }
-    
-    .notification-item.priority-high {
-        border-left: 3px solid #fd7e14;
-    }
-    
-    .notification-item.priority-normal {
-        border-left: 3px solid #0d6efd;
-    }
-    
-    .notification-title {
-        font-weight: 600;
-        margin-bottom: 3px;
-    }
-    
-    .notification-body {
-        font-size: 0.9rem;
-        color: #666;
-        margin-bottom: 5px;
-    }
-    
-    .notification-time {
-        font-size: 0.8rem;
-        color: #999;
-    }
+  .notification-widget { position: fixed; right: 2rem; top: 1rem; z-index: 1050; }
+  .notification-widget #notificationBell { font-size: 1.3rem; color: #333; text-decoration: none; }
+  .notifications-list { max-height: 400px; overflow-y: auto; min-width: 320px; }
+  .notification-item { padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+  .notification-item:hover { background-color: #f8f9fa; }
+  .notification-item.priority-urgent { border-left: 3px solid #dc3545; }
+  .notification-item.priority-high { border-left: 3px solid #fd7e14; }
+  .notification-item.priority-normal { border-left: 3px solid #0d6efd; }
+  .notification-item.is-read { opacity: .7; }
+  .notification-title { font-weight: 600; margin-bottom: 3px; }
+  .notification-body { font-size: .9rem; color: #666; margin-bottom: 5px; white-space: normal; }
+  .notification-time { font-size: .8rem; color: #777; }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    loadNotifications();
-    
-    // Refresh notifications every 30 seconds
-    setInterval(loadNotifications, 30000);
-    
-    // Load on dropdown click
-    document.getElementById('notificationBell').addEventListener('click', loadNotifications);
-});
+(function () {
+  const listUrl = '{% url "get_user_notifications" %}';
 
-function loadNotifications() {
-    fetch('{% url "get_user_notifications" %}')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayNotifications(data.notifications);
-                updateBadge(data.unread_count);
-            }
-        })
-        .catch(error => console.error('Error loading notifications:', error));
-}
+  function csrfToken() {
+    const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
 
-function displayNotifications(notifications) {
-    const notificationsList = document.getElementById('notificationsList');
-    
-    if (notifications.length === 0) {
-        notificationsList.innerHTML = `
-            <a class="dropdown-item text-muted text-center py-3" href="#">
-                <small>No notifications</small>
-            </a>
-        `;
-        return;
-    }
-    
-    notificationsList.innerHTML = notifications.map(notif => `
-        <a class="dropdown-item notification-item priority-${notif.priority}" href="#" onclick="handleNotificationClick(event, ${notif.id})">
-            <div class="notification-title">${notif.title}</div>
-            <div class="notification-body">${notif.body.substring(0, 100)}${notif.body.length > 100 ? '...' : ''}</div>
-            <div class="notification-time">${new Date(notif.created_at).toLocaleDateString()}</div>
-        </a>
-    `).join('');
-}
+  function emptyMessage() {
+    const item = document.createElement('div');
+    item.className = 'dropdown-item text-muted text-center py-3';
+    const text = document.createElement('small');
+    text.textContent = 'No notifications';
+    item.appendChild(text);
+    return item;
+  }
 
-function updateBadge(count) {
+  function notificationItem(notification) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = `dropdown-item notification-item priority-${notification.priority}`;
+    if (notification.is_read) item.classList.add('is-read');
+
+    const title = document.createElement('div');
+    title.className = 'notification-title';
+    title.textContent = notification.title;
+    const body = document.createElement('div');
+    body.className = 'notification-body';
+    body.textContent = notification.body.length > 100 ? `${notification.body.slice(0, 100)}...` : notification.body;
+    const time = document.createElement('div');
+    time.className = 'notification-time';
+    time.textContent = new Date(notification.created_at).toLocaleDateString();
+    item.append(title, body, time);
+    item.addEventListener('click', function () { markRead(notification.id); });
+    return item;
+  }
+
+  function updateBadge(count) {
     const badge = document.getElementById('notificationBadge');
-    const countSpan = document.getElementById('notificationCount');
-    
-    if (count > 0) {
-        countSpan.textContent = count > 99 ? '99+' : count;
-        badge.style.display = 'inline-block';
-    } else {
-        badge.style.display = 'none';
-    }
-}
+    document.getElementById('notificationCount').textContent = count > 99 ? '99+' : String(count);
+    badge.hidden = count === 0;
+  }
 
-function handleNotificationClick(event, notificationId) {
-    event.preventDefault();
-    // Optional: Mark as read and handle navigation
-    fetch(`{% url "mark_notification_read" 0 %}`.replace('/0/', `/${notificationId}/`), {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        }
+  function displayNotifications(notifications) {
+    const list = document.getElementById('notificationsList');
+    list.replaceChildren(...(notifications.length ? notifications.map(notificationItem) : [emptyMessage()]));
+  }
+
+  function loadNotifications() {
+    fetch(listUrl, { headers: { 'Accept': 'application/json' } })
+      .then(function (response) { if (!response.ok) throw new Error('Notification request failed'); return response.json(); })
+      .then(function (data) { displayNotifications(data.notifications); updateBadge(data.unread_count); })
+      .catch(function (error) { console.error(error); });
+  }
+
+  function markRead(notificationId) {
+    fetch(`${listUrl}${notificationId}/read/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken(), 'Accept': 'application/json' }
     })
-    .catch(error => console.error('Error marking notification as read:', error));
-}
+      .then(function (response) { if (!response.ok) throw new Error('Could not mark notification read'); return response.json(); })
+      .then(loadNotifications)
+      .catch(function (error) { console.error(error); });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const bell = document.getElementById('notificationBell');
+    if (!bell) return;
+    loadNotifications();
+    bell.addEventListener('click', loadNotifications);
+    window.setInterval(loadNotifications, 30000);
+  });
+}());
 </script>

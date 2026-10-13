@@ -415,6 +415,34 @@ class Notification(models.Model):
             # when creating, recipients will be saved after instance exists (save_m2m),
             # but we can still hint via form validation; leave model-level minimal.
             pass
+
+
+class NotificationReceipt(models.Model):
+    """Per-user notification read state; the notification remains shared."""
+
+    notification = models.ForeignKey(
+        Notification,
+        on_delete=models.CASCADE,
+        related_name='receipts',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_receipts',
+    )
+    read_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['notification', 'user'],
+                name='unique_notification_receipt_per_user',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user}: {self.notification}"
 """Clock In/Out Model - Tracks employee attendance"""
 from django.db import models
 from users.models import CustomUser

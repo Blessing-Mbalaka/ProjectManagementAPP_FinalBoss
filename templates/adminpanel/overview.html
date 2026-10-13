@@ -445,9 +445,9 @@ body{
         </div>
 
         <div class="notification-tabs">
-          <button class="active">Today</button>
-          <button>This Week</button>
-          <button>This Month</button>
+          <a class="{% if notifications_period == 'today' %}active{% endif %}" href="?notifications_period=today">Today</a>
+          <a class="{% if notifications_period == 'week' %}active{% endif %}" href="?notifications_period=week">This Week</a>
+          <a class="{% if notifications_period == 'month' %}active{% endif %}" href="?notifications_period=month">This Month</a>
         </div>
 
         {% if recent_notifications %}

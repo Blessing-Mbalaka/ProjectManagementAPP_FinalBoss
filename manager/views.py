@@ -24,6 +24,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.shortcuts import render
 from adminpanel.models import CostCentre, EngagementLog, Notification
+from adminpanel.notification_service import visible_notifications_for
 from projects.scope import scope_books_for_user, scope_outputs_for_user, scope_projects_for_user
 from projects.work_scope import assigned_projects_for, workable_tasks_for
 from projects.assignment_notifications import notify_project_assignment
@@ -43,30 +44,14 @@ def _normalize_client_label(label):
 @login_required
 def manager_dashboard(request):
     now = timezone.now()
-    user_role = getattr(request.user, 'role', None)
-
-    # Build base queryset (active window + audience for THIS user)
-    base_qs = (Notification.objects
-        .filter(
-            Q(scheduled_at__isnull=True) | Q(scheduled_at__lte=now),
-            Q(expires_at__isnull=True)   | Q(expires_at__gt=now),
-        )
-        .filter(
-            Q(audience='all') |
-            Q(audience='role', audience_role=user_role) |
-            Q(audience='specific', recipients=request.user)
-        )
-        .select_related('created_by')
-        .prefetch_related('recipients')
-        .distinct()  # in case M2M joins duplicate rows
-    )
+    base_qs = visible_notifications_for(request.user)
 
     # New since last login (NO slice here)
     last_login = getattr(request.user, 'last_login', None)
     new_count = base_qs.filter(created_at__gt=last_login).count() if last_login else 0
 
     # Final list to display (slice AFTER ordering)
-    my_notifications = base_qs.order_by('-is_pinned', '-created_at')[:10]
+    my_notifications = base_qs[:10]
 
     return render(request, 'manager/manager_dashboard.html', {
         'my_notifications': my_notifications,
