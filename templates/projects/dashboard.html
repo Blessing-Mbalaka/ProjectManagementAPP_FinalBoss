@@ -674,6 +674,7 @@
             {% endfor %}
         </div>
     </div>
+    {% comment "Recent Uploads disabled because it was a non-persistent placeholder" %}
     <div class="content-box">
         <h5>Recent Uploads</h5>
         <button class="btn btn-primary btn-sm w-100 mb-3" data-bs-toggle="modal" data-bs-target="#uploadModal">
@@ -703,6 +704,7 @@
             </div>
         </div>
     </div>
+    {% endcomment %}
    
 
 <div class="content-box">
@@ -762,6 +764,7 @@
 
 
 
+{% comment "Upload modal disabled with the Recent Uploads placeholder" %}
 <!-- Upload Modal -->
 <div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
 <div class="modal-dialog">
@@ -788,6 +791,7 @@
     </div>
 </div>
 </div>
+{% endcomment %}
 
 
 </div>

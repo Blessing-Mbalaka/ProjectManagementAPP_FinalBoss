@@ -2,7 +2,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import DailyTask, StudentProfile, Submission, Notification, Meeting, ChatMessage, Project, Assignment, TeamMember, Task
 from users.models import CustomUser
-from .forms import DailyTaskForm, StudentProfileForm, SubmissionForm, FeedbackReplyForm, MeetingForm, ChatForm, ProjectForm, AssignmentForm, FileUploadForm
+from .forms import DailyTaskForm, StudentProfileForm, SubmissionForm, FeedbackReplyForm, MeetingForm, ChatForm, ProjectForm, AssignmentForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from datetime import date
 from django.utils.timezone import now
@@ -34,8 +34,6 @@ def dashboard(request):
     tasks = DailyTask.objects.filter(user=request.user, work_date=selected_date).select_related(
         'task', 'task__project'
     ).order_by('is_done', '-created_at')
-    upload_form = FileUploadForm()
-
     my_notifications = visible_notifications_for(request.user)[:10]
 
     if request.method == 'POST':
@@ -55,7 +53,6 @@ def dashboard(request):
     return render(request, 'projects/dashboard.html', {
         'form': form,
         'daily_tasks': tasks,
-        'upload_form': upload_form,
         'my_notifications': my_notifications,  # <-- ensure this is passed
         'selected_date': selected_date,
     })

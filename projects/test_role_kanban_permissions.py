@@ -199,3 +199,14 @@ class RoleKanbanBehaviorTests(TestCase):
         self.assertNotContains(response, "Recent Uploads")
         self.assertNotContains(response, 'id="uploadModal"')
         self.assertNotContains(response, 'id="uploads-list"')
+
+    def test_staff_dashboard_omits_recent_uploads(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Recent Uploads")
+        self.assertNotContains(response, 'id="uploadModal"')
+        self.assertNotContains(response, 'id="uploads-list"')
+        self.assertNotIn("upload_form", response.context)
