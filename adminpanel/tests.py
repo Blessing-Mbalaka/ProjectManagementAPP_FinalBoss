@@ -9,7 +9,8 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 
-from .models import ClockInRecord, Notification, AuditLog
+from .models import ClockInRecord, Notification, NotificationReceipt, AuditLog
+from .notification_service import mark_read
 from manager.models import ChangeLog
 
 User = get_user_model()
@@ -81,7 +82,7 @@ class ClockInRecordModelTests(TestCase):
             clock_out_time=now + timedelta(hours=8, minutes=30)
         )
         total = ClockInRecord.get_today_total_hours(self.user)
-        self.assertEqual(total, 8.0)
+        self.assertEqual(total, '8h 0m')
         
     def test_timezone_display(self):
         """Test that times display in local timezone"""
@@ -111,23 +112,24 @@ class NotificationModelTests(TestCase):
         notification = Notification.objects.create(
             title='Test Notification',
             body='Test body',
-            recipient=self.user,
+            audience='specific',
             priority='high'
         )
+        notification.recipients.add(self.user)
         self.assertEqual(notification.title, 'Test Notification')
-        self.assertEqual(notification.recipient, self.user)
+        self.assertTrue(notification.recipients.filter(pk=self.user.pk).exists())
         
     def test_notification_read_status(self):
         """Test marking notification as read"""
         notification = Notification.objects.create(
             title='Test',
             body='Test',
-            recipient=self.user
+            audience='specific',
         )
-        self.assertFalse(notification.is_read)
-        notification.is_read = True
-        notification.save()
-        self.assertTrue(notification.is_read)
+        notification.recipients.add(self.user)
+        self.assertFalse(NotificationReceipt.objects.filter(notification=notification, user=self.user).exists())
+        receipt = mark_read(self.user, notification)
+        self.assertIsNotNone(receipt.read_at)
 
 
 class AuditLogModelTests(TestCase):
@@ -145,11 +147,12 @@ class AuditLogModelTests(TestCase):
         """Test creating an audit log entry"""
         log = AuditLog.objects.create(
             user=self.user,
-            action='login',
-            description='User logged in',
-            ip_address='127.0.0.1'
+            action='create_cost_centre',
+            entity_type='CostCentre',
+            entity_id=1,
+            entity_name='Test Centre',
         )
-        self.assertEqual(log.action, 'login')
+        self.assertEqual(log.action, 'create_cost_centre')
         self.assertEqual(log.user, self.user)
 
 
@@ -192,7 +195,7 @@ class ClockAPITests(TestCase):
     def test_get_clock_status_api(self):
         """Test getting clock status"""
         self.client.login(username='testuser', password='testpass123')
-        response = self.client.get(reverse('get_clock_status'))
+        response = self.client.get(reverse('clock_status'))
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
         self.assertIn('clocked_in', data)
@@ -201,7 +204,7 @@ class ClockAPITests(TestCase):
         """Test that clock status returns local timezone time"""
         self.client.login(username='testuser', password='testpass123')
         self.client.post(reverse('clock_in'))
-        response = self.client.get(reverse('get_clock_status'))
+        response = self.client.get(reverse('clock_status'))
         data = json.loads(response.content)
         # Should have time in HH:MM:SS format (local timezone)
         self.assertIsNotNone(data['clock_in_time'])
@@ -223,7 +226,7 @@ class ActivityTrackingTests(TestCase):
     def test_user_activity_data_view(self):
         """Test user activity data endpoint"""
         self.client.login(username='testuser', password='testpass123')
-        response = self.client.get(reverse('user_activity_data'))
+        response = self.client.get(reverse('user_activity_api'))
         self.assertIn(response.status_code, [200, 302])
         
     def test_hours_calculation_with_timezone(self):
@@ -235,4 +238,4 @@ class ActivityTrackingTests(TestCase):
             clock_out_time=now + timedelta(hours=5)
         )
         total = ClockInRecord.get_today_total_hours(self.user)
-        self.assertEqual(total, 5.0)
+        self.assertEqual(total, '5h 0m')

@@ -105,7 +105,8 @@ class CostCentreViewTests(TestCase):
         self.user = CustomUser.objects.create_user(
             username='testuser',
             password='testpass123',
-            email='test@test.com'
+            email='test@test.com',
+            role='admin',
         )
         self.client.login(username='testuser', password='testpass123')
     
@@ -235,7 +236,8 @@ class IntegrationTests(TestCase):
         self.user = CustomUser.objects.create_user(
             username='integrationuser',
             password='testpass123',
-            email='integration@test.com'
+            email='integration@test.com',
+            role='admin',
         )
         self.client.login(username='integrationuser', password='testpass123')
     

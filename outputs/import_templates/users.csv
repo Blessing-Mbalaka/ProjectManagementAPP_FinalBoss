@@ -1,2 +1,7 @@
 UserName,SURNAME,EMAIL,Role in App,Temporary Password
-firstname,lastname,user@example.org,Project Manager,ChangeMe-12345
+manager_username,Manager,manager@example.org,Project Manager,ChangeMe-12345
+lead_author_username,Author,lead.author@example.org,Staff,ChangeMe-12345
+staff_username,Staff,staff@example.org,Staff,ChangeMe-12345
+second_staff_username,Staff,second.staff@example.org,Staff,ChangeMe-12345
+coauthor_username,Author,coauthor@example.org,Staff,ChangeMe-12345
+reviewer_username,Reviewer,reviewer@example.org,Staff,ChangeMe-12345

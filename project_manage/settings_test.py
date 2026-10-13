@@ -6,6 +6,8 @@ from pathlib import Path
 
 from .settings import *  # noqa
 
+TEST_RUNNER = 'project_manage.test_runner.ApplicationDiscoverRunner'
+
 # Use a file-backed SQLite database that is isolated from production.
 TEST_DB_PATH = Path(BASE_DIR) / 'test_artifacts' / 'test.db'
 TEST_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -35,16 +37,6 @@ AUTH_PASSWORD_VALIDATORS = []
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.MD5PasswordHasher',
 ]
-
-# Disable migrations for test speed
-class DisableMigrations:
-    def __contains__(self, item):
-        return True
-
-    def __getitem__(self, item):
-        return None
-
-MIGRATION_MODULES = DisableMigrations()
 
 # Disable CSRF for API testing
 CSRF_TRUSTED_ORIGINS = ['http://testserver', 'http://127.0.0.1:8000']
