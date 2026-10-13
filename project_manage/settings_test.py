@@ -2,14 +2,22 @@
 Test settings for Django test suite
 Extends production settings with test-specific configuration
 """
+from pathlib import Path
+
 from .settings import *  # noqa
 
-# Use in-memory SQLite database for tests (fast, no setup required)
+# Use a file-backed SQLite database that is isolated from production.
+TEST_DB_PATH = Path(BASE_DIR) / 'test_artifacts' / 'test.db'
+TEST_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
+        'NAME': TEST_DB_PATH,
         'ATOMIC_REQUESTS': True,
+        'TEST': {
+            'NAME': TEST_DB_PATH,
+        },
     }
 }
 
