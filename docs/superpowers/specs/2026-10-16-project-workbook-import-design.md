@@ -11,7 +11,7 @@ Give project managers a safe, repeatable way to create or update projects, publi
 - Projects support the existing `software`, `book`, `paper`, and `conference` project types.
 - `portfolio` is optional free text stored on the project for later filtering.
 - Publication-specific author and metadata fields are validated only when required by the selected project type.
-- Books, papers, and conferences can link one lead author and any number of co-authors who already have system accounts.
+- Books, papers, and conferences can link one lead author and any number of co-authors who already have system accounts, while preserving separately named external authors.
 - Rows in `Tasks` explicitly identify parent tasks; repeated project names never imply a parent-child relationship.
 - Workbook uploads support team membership, task assignment, and nested subtasks.
 - Validation produces sheet, row, field, and reason for every rejected item before the user confirms a write.
@@ -28,7 +28,7 @@ Give project managers a safe, repeatable way to create or update projects, publi
 - Manager-only workbook upload, preview, confirmation, and result reporting.
 - A shared import service and a management command for seed operations.
 - Project, publication, team, task, subtask, and assignee creation or updates.
-- Multiple system authors for every publication type, including books.
+- Multiple system authors and external authors for every publication type, including books.
 - Validation, transaction boundaries, permissions, and automated tests.
 
 ### Excluded
@@ -75,6 +75,7 @@ One row represents one project. The sheet contains these columns:
 | `publication_status` | Conditional | Required for `book`, `paper`, and `conference`; validated against that model's status choices. |
 | `lead_author_username` | Optional | Existing user linked as the publication's lead author. An unknown username is skipped with a warning. |
 | `co_author_usernames` | Optional | Semicolon-separated system usernames for books, papers, and conferences. Unknown usernames are skipped with warnings. |
+| `external_authors` | Optional | Semicolon-separated author names for people who do not have system accounts. |
 | `reviewer_usernames` | Optional | Semicolon-separated existing users for papers and conferences. |
 | `publisher` | Optional | Book publisher. |
 | `total_chapters` | Optional | Positive integer for books; defaults to `1`. |
@@ -92,7 +93,9 @@ One row represents one project. The sheet contains these columns:
 
 For `software`, all publication columns are ignored when blank and rejected when populated with contradictory publication data. For publications, the importer creates or updates the linked `Book`, `Paper`, or `Conference` through the existing publication-project synchronization service. It never changes a linked publication to a different kind in place; that conflict is a validation error.
 
-Only users who already exist in the system are stored as authors. A missing or unknown lead-author or co-author username produces a warning and that author is omitted; it does not reject the project or publication. The importer does not preserve unknown names in an external-author text field. A publication may therefore be created without linked authors when every supplied author is unknown.
+Internal authors are resolved by stable username and stored as user relations, so changes to a user's first name, surname, or display name are reflected automatically without breaking authorship. A missing or unknown lead-author or co-author username produces a warning and that username is omitted; it does not reject the project or publication and is never silently converted into an external author.
+
+`external_authors` is an explicit, semicolon-separated list of names for people without system accounts. Names are trimmed, empty entries are removed, duplicates are removed case-insensitively while preserving the first spelling, and the remaining display names are stored independently from user relations. External names are never used for identity matching or assignment. Re-import replaces the publication's external-author list with the explicitly supplied list; a blank cell leaves the list empty for a newly created publication and clears it on an update after previewing that change.
 
 The project manager, team members, recognized linked authors, co-authors, reviewers, and task assignees must belong to the project's research centre when they have a centre assigned. A recognized task assignee or publication contributor is automatically added to project membership if not already present. Automatically created assignments receive a descriptive default responsibility such as `Task assignee` or `Publication contributor`; an existing responsibility is not overwritten. An author username belonging to another centre is skipped with a warning in the same way as an unknown author; manager, explicit team-member, reviewer, and task-assignee violations remain blocking errors.
 
@@ -137,7 +140,7 @@ The parser must cap file size and row counts, reject macros and unsupported form
 
 `Project` gains a nullable, blank `portfolio` character field with an index suitable for later exact filtering. Existing records migrate with `NULL` and remain valid.
 
-`Book` gains a nullable lead-author user relation and a many-to-many co-author user relation matching the existing paper and conference author relationships. Its legacy `lead_author` text remains for compatibility and is populated from the recognized lead user's display name when available; imports do not use it to retain unknown external authors. Existing book records remain valid.
+`Book` gains a nullable lead-author user relation and a many-to-many co-author user relation matching the existing paper and conference author relationships. `Book`, `Paper`, and `Conference` each gain an `external_authors` JSON list with an empty-list default. Their legacy author text remains for compatibility and is populated from recognized linked users where appropriate; workbook imports use the dedicated JSON list for explicitly supplied external names. Existing publication records remain valid.
 
 Task identity must support deterministic re-import without globally constraining ordinary task titles. The preferred design is a nullable `import_key` scoped uniquely to a project. For workbook rows, the importer derives a stable task key from the normalized task name when an explicit key is not exposed in the user-facing template. Manual tasks retain a null import key. Before adding the constraint, the migration must tolerate all existing manual tasks.
 
@@ -186,7 +189,7 @@ Validation covers:
 - unknown usernames or research centres, except author usernames, which are non-blocking warnings and are skipped;
 - role and research-centre eligibility;
 - project-management authorization for updates;
-- publication type requirements and non-blocking skipped-author warnings;
+- publication type requirements, normalized external-author lists, and non-blocking skipped-username warnings;
 - duplicate task names, missing parents, cross-project parents, and cycles; and
 - due dates that are malformed or logically inconsistent where a constraint is explicit.
 
@@ -208,7 +211,9 @@ Follow test-driven development. Tests cover:
 - template download, sheet names, headers, examples, and allowed-value guidance;
 - nullable portfolio migration, persistence, display, and import;
 - successful software, book, paper, and conference imports;
-- conditional publication fields, multiple linked authors for every publication type, and book author relations;
+- conditional publication fields, multiple linked authors for every publication type, book author relations, and external-author persistence;
+- linked authors continuing to display updated profile names because authorship is keyed by user ID rather than display name;
+- external-author trimming, case-insensitive de-duplication, explicit clearing, and separation from user matching;
 - unknown and cross-centre authors being skipped with visible warnings while the rest of the import succeeds;
 - existing username and research-centre enforcement;
 - automatic team membership for authors and task assignees;
