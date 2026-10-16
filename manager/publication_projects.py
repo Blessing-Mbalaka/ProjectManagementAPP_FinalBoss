@@ -41,7 +41,14 @@ def _project_status(publication):
 
 
 @transaction.atomic
-def sync_publication_project(publication, *, actor, manager=None, research_centre=None):
+def sync_publication_project(
+    publication,
+    *,
+    actor,
+    manager=None,
+    research_centre=None,
+    project_values=None,
+):
     project = publication.project if publication.project_id else Project()
     project.name = publication.title
     description = getattr(publication, 'description', None) or getattr(publication, 'abstract', None) or ''
@@ -58,6 +65,10 @@ def sync_publication_project(publication, *, actor, manager=None, research_centr
         project.research_centre = getattr(project.created_by, 'research_centre', None)
     if not project.import_key:
         project.import_key = f'publication:{_project_type(publication)}:{publication.pk}'
+    for field, value in (project_values or {}).items():
+        if field not in {'name', 'description', 'status', 'due_date', 'portfolio'}:
+            raise ValueError(f'Unsupported project override: {field}')
+        setattr(project, field, value)
     project.save()
     if publication.project_id != project.id:
         publication.project = project
