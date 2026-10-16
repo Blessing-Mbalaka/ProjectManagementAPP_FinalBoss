@@ -259,3 +259,49 @@ class WorkbookValidationTests(TestCase):
         self.assertTrue(all(issue.sheet == "Projects" and issue.row for issue in preview.errors))
         fields = {issue.field for issue in preview.errors}
         self.assertTrue({"publication_status", "due_date", "completed_chapters", "conference_name"} <= fields)
+
+    def test_choice_values_are_case_insensitive_and_store_canonical_values(self):
+        preview = self.preview(
+            [self.project_row(
+                project_type="BOOK",
+                project_status="IN-PROGRESS",
+                publication_status="WRITING",
+            )],
+            [self.task_row(
+                "Draft chapter",
+                status="TODO",
+                priority="high",
+                task_type="frontend",
+            )],
+        )
+
+        self.assertTrue(preview.is_valid, preview.errors)
+        self.assertEqual(preview.projects[0].project_type, "book")
+        self.assertEqual(preview.projects[0].publication_status, "writing")
+        self.assertEqual(preview.tasks[0].status, "todo")
+        self.assertEqual(preview.tasks[0].priority, "High")
+        self.assertEqual(preview.tasks[0].task_type, "Frontend")
+
+    def test_existing_normalized_task_duplicates_are_rejected_as_ambiguous(self):
+        project = Project.objects.create(
+            import_key="website-001",
+            name="Website Redesign",
+            project_type="software",
+            status="planning",
+            created_by=self.manager,
+            assigned_user=self.manager,
+            research_centre=self.centre,
+        )
+        Task.objects.create(project=project, title="Build frontend", created_by=self.manager)
+        Task.objects.create(project=project, title=" build  FRONTEND ", created_by=self.manager)
+
+        preview = self.preview(
+            [self.project_row()],
+            [self.task_row("Build frontend")],
+        )
+
+        self.assertFalse(preview.is_valid)
+        self.assertTrue(any(
+            issue.field == "task_name" and "ambiguous" in issue.message.lower()
+            for issue in preview.errors
+        ))

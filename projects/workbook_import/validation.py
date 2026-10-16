@@ -142,6 +142,12 @@ def _text(value) -> str:
     return str(value).strip()
 
 
+def _choice_value(value, choices):
+    text = _text(value)
+    canonical = {normalize_name(stored): stored for stored, _label in choices}
+    return canonical.get(normalize_name(text), text)
+
+
 def _split(value):
     return tuple(item.strip() for item in _text(value).split(";") if item.strip())
 
@@ -204,8 +210,8 @@ def validate_workbook(read_result, *, actor) -> WorkbookImportPreview:
         values = {key: _text(raw.get(key)) for key in raw if key != "_row"}
         import_key = values.get("import_key", "")
         name = values.get("project_name", "")
-        project_type = values.get("project_type", "").lower()
-        project_status = values.get("project_status", "").lower()
+        project_type = _choice_value(values.get("project_type"), Project.PROJECT_TYPES)
+        project_status = _choice_value(values.get("project_status"), Project.STATUS_CHOICES)
         normalized_name = normalize_name(name)
 
         for field in ("import_key", "project_name", "project_type", "project_status", "project_manager_username", "research_centre"):
@@ -285,9 +291,16 @@ def validate_workbook(read_result, *, actor) -> WorkbookImportPreview:
         submission_date = _date_value(raw.get("submission_date"), project_issue, field="submission_date")
         decision_date = _date_value(raw.get("decision_date"), project_issue, field="decision_date")
 
-        publication_status = values.get("publication_status", "").lower()
-        internal_external = values.get("internal_external", "").lower()
-        paper_type = values.get("paper_type", "").lower()
+        publication_model = {"book": Book, "paper": Paper, "conference": Conference}.get(project_type)
+        publication_status = _choice_value(
+            values.get("publication_status"),
+            publication_model.STATUS_CHOICES if publication_model else (),
+        )
+        internal_external = _choice_value(
+            values.get("internal_external"),
+            (("internal", "Internal"), ("external", "External")),
+        )
+        paper_type = _choice_value(values.get("paper_type"), Paper.PAPER_TYPE_CHOICES)
         total_chapters = 1
         completed_chapters = 0
         if project_type == "software":
@@ -361,7 +374,8 @@ def validate_workbook(read_result, *, actor) -> WorkbookImportPreview:
             existing_project_id=existing.id if existing else None,
         )
         projects.append(project_row)
-        project_context[normalized_name] = (project_row, centre, existing)
+        existing_tasks = tuple(existing.tasks.all()) if existing else ()
+        project_context[normalized_name] = (project_row, centre, existing, existing_tasks)
         actions.append(ImportAction("project", "update" if existing else "create", name))
         if existing and project_type in {"book", "paper", "conference"}:
             publication = getattr(existing, f"{project_type}_publication", None)
@@ -402,9 +416,9 @@ def validate_workbook(read_result, *, actor) -> WorkbookImportPreview:
             elif centre and assignee.research_centre_id not in (None, centre.id):
                 task_issue("assigned_to", f'Username "{assigned_username}" belongs to another research centre.')
 
-        status = _text(raw.get("status")) or "todo"
-        priority = _text(raw.get("priority"))
-        task_type = _text(raw.get("task_type"))
+        status = _choice_value(raw.get("status"), Task.STATUS_CHOICES) or "todo"
+        priority = _choice_value(raw.get("priority"), Task.PRIORITY_CHOICES)
+        task_type = _choice_value(raw.get("task_type"), Task.PROJECT_PHASES)
         if status not in {choice for choice, _ in Task.STATUS_CHOICES}:
             task_issue("status", f'Invalid task status "{status}".')
         if priority and priority not in {choice for choice, _ in Task.PRIORITY_CHOICES}:
@@ -416,7 +430,17 @@ def validate_workbook(read_result, *, actor) -> WorkbookImportPreview:
         existing_task = None
         existing_project = context[2] if context else None
         if existing_project and normalized_title:
-            existing_task = next((item for item in existing_project.tasks.all() if normalize_name(item.title) == normalized_title), None)
+            matching_tasks = [
+                item for item in context[3]
+                if normalize_name(item.title) == normalized_title
+            ]
+            if len(matching_tasks) > 1:
+                task_issue(
+                    "task_name",
+                    f'Task name "{title}" is ambiguous because multiple existing tasks normalize to the same name.',
+                )
+            elif matching_tasks:
+                existing_task = matching_tasks[0]
         task_row = TaskRow(
             row=row_number,
             project_import_key=context[0].import_key if context else "",
@@ -464,7 +488,7 @@ def validate_workbook(read_result, *, actor) -> WorkbookImportPreview:
         context = project_context.get(project_key)
         existing_project = context[2] if context else None
         existing_titles = {
-            normalize_name(item.title) for item in existing_project.tasks.all()
+            normalize_name(item.title) for item in context[3]
         } if existing_project else set()
         if task.parent_normalized not in existing_titles:
             other_project = any(

@@ -170,6 +170,10 @@ def apply_workbook_preview(preview: WorkbookImportPreview, *, actor) -> ImportRe
         existing = Project.objects.select_for_update().filter(import_key=row.import_key).first()
         if existing and not _can_manage_existing(actor, existing):
             raise PermissionDenied(f'You are no longer authorized to update project "{existing.name}".')
+        if actor.role not in {"admin", "dean"} and actor.research_centre_id != row.centre_id:
+            raise PermissionDenied(
+                f'You are no longer authorized to import project "{row.name}" for this research centre.'
+            )
         manager = User.objects.get(pk=row.manager_id)
         centre = ResearchCentre.objects.get(pk=row.centre_id)
         project, created = Project.objects.update_or_create(

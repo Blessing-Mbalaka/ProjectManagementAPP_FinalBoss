@@ -146,3 +146,22 @@ class ProjectWorkbookUITests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertFalse(Project.objects.exists())
+
+    def test_apply_rechecks_current_centre_for_new_projects(self):
+        self.client.force_login(self.manager)
+        preview_response = self.client.post(
+            reverse("preview_project_workbook"),
+            {"workbook": self.workbook_upload()},
+        )
+        token = preview_response.context["preview_token"]
+        other_centre = ResearchCentre.objects.create(name="Other Centre")
+        self.manager.research_centre = other_centre
+        self.manager.save(update_fields=["research_centre"])
+
+        response = self.client.post(
+            reverse("apply_project_workbook"),
+            {"preview_token": token},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Project.objects.exists())
