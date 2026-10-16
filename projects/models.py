@@ -21,6 +21,7 @@ class Project(models.Model):
     name = models.CharField(max_length=255)
     import_key = models.CharField(max_length=255, unique=True, null=True, blank=True)
     description = models.TextField(max_length=255, blank=True, null=True)
+    portfolio = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     project_type = models.CharField(max_length=20, choices=PROJECT_TYPES, default='software')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planning')
     created_by = models.ForeignKey(
@@ -91,6 +92,16 @@ class Task(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_tasks', null=True, blank=True)
     progress = models.IntegerField(default=0, help_text="Progress in percentage (0-100)")
     comments = models.TextField(blank=True)
+    import_key = models.CharField(max_length=64, blank=True, null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'import_key'],
+                condition=models.Q(import_key__isnull=False),
+                name='unique_task_import_key_per_project',
+            )
+        ]
     
     def __str__(self):
         return self.title

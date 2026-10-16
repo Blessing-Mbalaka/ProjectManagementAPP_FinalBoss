@@ -99,6 +99,7 @@ class Paper(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='papers', null=True, blank=True)
     reviewers = models.ManyToManyField(User, related_name='reviewed_papers', blank=True)
+    external_authors = models.JSONField(default=list, blank=True)
     project = models.OneToOneField(
         'projects.Project',
         on_delete=models.SET_NULL,
@@ -170,6 +171,19 @@ class Book(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='writing')
     due_date = models.DateField(blank=True, null=True)
     lead_author = models.CharField(max_length=255)
+    lead_author_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lead_books',
+    )
+    co_authors_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='co_authored_books',
+        blank=True,
+    )
+    external_authors = models.JSONField(default=list, blank=True)
     publisher = models.CharField(max_length=255, blank=True, null=True)
     total_chapters = models.PositiveIntegerField(default=1)
     completed_chapters = models.PositiveIntegerField(default=0)
@@ -275,6 +289,7 @@ class Conference(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='conferences', null=True, blank=True)
     reviewers = models.ManyToManyField(User, related_name='reviewed_conferences', blank=True)
+    external_authors = models.JSONField(default=list, blank=True)
     project = models.OneToOneField(
         'projects.Project',
         on_delete=models.SET_NULL,
