@@ -82,6 +82,7 @@ coverage.xml
 
 # Local execution and integration-test artifacts
 .superpowers/
+.worktrees/
 test_artifacts/
 
 # Translations
