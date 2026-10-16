@@ -7,7 +7,7 @@ from projects.models import Project, Task, Assignment,TeamMember
 from projects.forms import ProjectForm, AssignmentForm, TaskForm
 from .models import LearningContent, Template, Paper, Book, Chapter, PaperComment
 from .forms import BookForm, PaperForm, EngagementLogForm
-from django.http import JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.contrib import messages
 from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
@@ -21,6 +21,7 @@ from django.db.models import Q
 import pandas as pd
 from django.core.files.base import ContentFile
 from django.views.decorators.http import require_POST
+from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from django.shortcuts import render
 from adminpanel.models import CostCentre, EngagementLog, Notification
@@ -29,8 +30,69 @@ from projects.scope import scope_books_for_user, scope_outputs_for_user, scope_p
 from projects.work_scope import assigned_projects_for, workable_tasks_for
 from projects.assignment_notifications import notify_project_assignment
 from manager.publication_projects import sync_publication_project
+from projects.workbook_import.application import WorkbookImportError, apply_workbook_preview
+from projects.workbook_import.tokens import PreviewTokenError, sign_preview, unsign_preview
+from projects.workbook_import.validation import validate_workbook
+from projects.workbook_import.workbook import XLSX_MIME, build_template_workbook, read_workbook
 
 User = get_user_model()
+
+PROJECT_WORKBOOK_ROLES = {'manager', 'centrehead', 'dean', 'admin'}
+
+
+def _can_use_project_workbooks(user):
+    return bool(user.is_active and user.role in PROJECT_WORKBOOK_ROLES)
+
+
+@login_required
+def download_project_workbook(request):
+    if not _can_use_project_workbooks(request.user):
+        return HttpResponseForbidden('You are not authorized to import project workbooks.')
+    response = HttpResponse(build_template_workbook(), content_type=XLSX_MIME)
+    response['Content-Disposition'] = 'attachment; filename="project-import-template.xlsx"'
+    return response
+
+
+@login_required
+@require_POST
+def preview_project_workbook(request):
+    if not _can_use_project_workbooks(request.user):
+        return HttpResponseForbidden('You are not authorized to import project workbooks.')
+    upload = request.FILES.get('workbook')
+    if upload is None:
+        messages.error(request, 'Choose an .xlsx workbook to upload.')
+        return redirect('assign_projects')
+    preview = validate_workbook(read_workbook(upload), actor=request.user)
+    preview_token = sign_preview(preview, actor_id=request.user.id) if preview.is_valid else ''
+    return render(request, 'manager/project_workbook_preview.html', {
+        'preview': preview,
+        'preview_token': preview_token,
+    })
+
+
+@login_required
+@require_POST
+def apply_project_workbook(request):
+    if not _can_use_project_workbooks(request.user):
+        return HttpResponseForbidden('You are not authorized to import project workbooks.')
+    try:
+        preview = unsign_preview(request.POST.get('preview_token', ''), actor_id=request.user.id)
+        result = apply_workbook_preview(preview, actor=request.user)
+    except PermissionError:
+        return HttpResponseForbidden('This workbook preview belongs to another user.')
+    except (PreviewTokenError, WorkbookImportError) as exc:
+        return HttpResponseBadRequest(str(exc))
+    except PermissionDenied as exc:
+        return HttpResponseForbidden(str(exc))
+    messages.success(
+        request,
+        f'Workbook applied: {result.created_projects} projects created, '
+        f'{result.updated_projects} updated, {result.created_tasks} tasks created, '
+        f'and {result.updated_tasks} updated.',
+    )
+    for warning in result.warnings:
+        messages.warning(request, warning)
+    return redirect('assign_projects')
 
 
 def _client_label_for_cost_centre(cost_centre):

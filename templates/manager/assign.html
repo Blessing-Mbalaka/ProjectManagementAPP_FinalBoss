@@ -59,6 +59,14 @@ background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
 <div class="background-overlay"></div>
 
 <div class="dashboard-container">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
     <div class="header mb-4">
         <a href="{% url 'manager_dashboard' %}" class="btn btn-secondary">
             <i class="bi bi-arrow-left me-2"></i> Back to Dashboard
@@ -82,9 +90,17 @@ background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-folder2-open me-2"></i>Projects</span>
-                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createProjectModal">
-                        <i class="bi bi-plus-lg me-1"></i> New Project
-                    </button>
+                    <div class="d-flex flex-wrap gap-2 justify-content-end">
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'download_project_workbook' %}">
+                            <i class="bi bi-download me-1"></i> Download Template
+                        </a>
+                        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#uploadWorkbookModal">
+                            <i class="bi bi-upload me-1"></i> Upload Workbook
+                        </button>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createProjectModal">
+                            <i class="bi bi-plus-lg me-1"></i> New Project
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     {% for project in projects %}
@@ -317,6 +333,30 @@ background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
 </div>
 {% endif %}
 
+
+<!-- Upload Project Workbook Modal -->
+<div class="modal fade" id="uploadWorkbookModal" tabindex="-1" aria-labelledby="uploadWorkbookModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'preview_project_workbook' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="uploadWorkbookModalLabel"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Upload Project Workbook</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <label for="projectWorkbook" class="form-label fw-bold">Excel workbook</label>
+          <input id="projectWorkbook" class="form-control" type="file" name="workbook" accept=".xlsx" required>
+          <div class="form-text">Maximum 2 MiB. The workbook is validated and previewed before anything is saved.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Validate and Preview</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- Create Project Modal -->
 <div class="modal fade" id="createProjectModal" tabindex="-1" aria-labelledby="createProjectModalLabel" aria-hidden="true">
