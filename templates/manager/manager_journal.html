@@ -79,9 +79,13 @@
                                     <td>{{ paper.version }}</td>
                                     <td>{{ paper.updated_at|date:"Y-m-d" }}</td>
                                    <td>
+    {% if paper.manuscript %}
     <a href="{{ paper.manuscript.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
         <i class="bi bi-eye"></i> View
     </a>
+    {% else %}
+    <span class="text-muted small">No manuscript uploaded</span>
+    {% endif %}
     <button 
         class="btn btn-sm btn-warning editBtn"
         data-id="{{ paper.id }}"
@@ -145,9 +149,13 @@
                                         <td>{{ paper.submission_date }}</td>
                                         <td>{{ paper.updated_at|date:"Y-m-d" }}</td>
                                      <td>
+    {% if paper.manuscript %}
     <a href="{{ paper.manuscript.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
         <i class="bi bi-eye"></i> View
     </a>
+    {% else %}
+    <span class="text-muted small">No manuscript uploaded</span>
+    {% endif %}
     <button 
         class="btn btn-sm btn-warning editBtn"
         data-id="{{ paper.id }}"
