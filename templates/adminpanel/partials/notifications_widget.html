@@ -6,7 +6,7 @@
           id="notificationBadge" hidden><span id="notificationCount">0</span></span>
   </button>
   <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationBell" id="notificationDropdown">
-    <li><h6 class="dropdown-header">Notifications</h6></li>
+    <li class="d-flex align-items-center justify-content-between px-3"><h6 class="dropdown-header px-0 mb-0">Notifications</h6><a class="small" href="{% url 'security_center' %}"><i class="bi bi-shield-check"></i> Account Security</a></li>
     <li><hr class="dropdown-divider"></li>
     <li id="notificationsList" class="notifications-list"></li>
   </ul>

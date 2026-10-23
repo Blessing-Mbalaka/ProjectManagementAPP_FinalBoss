@@ -1,0 +1,37 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Account Security{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+  <style>
+    body { min-height: 100vh; background: linear-gradient(145deg,#fff5ef,#f7f4fb); color:#243044; }
+    .security-shell { width:min(880px,92vw); margin:42px auto; }
+    .security-brand { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:18px; }
+    .security-brand img { width:170px; max-width:42vw; }
+    .security-card { background:#fff; border:1px solid #eadfd8; border-radius:22px; box-shadow:0 20px 55px rgba(59,35,25,.12); overflow:hidden; }
+    .security-hero { padding:28px; color:#fff; background:linear-gradient(135deg,#5f0a63,#f0642b); }
+    .security-body { padding:28px; }
+    .security-detail { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .security-detail > div { border:1px solid #e7e1eb; border-radius:14px; padding:14px; background:#fcfbfd; }
+    .security-detail small { display:block; color:#6c757d; margin-bottom:4px; }
+    .btn-security { background:#5f0a63; border-color:#5f0a63; color:#fff; }
+    .btn-security:hover { background:#4b084f; border-color:#4b084f; color:#fff; }
+    input { width:100%; border:1px solid #d8dce2; border-radius:10px; padding:10px 12px; }
+    @media(max-width:620px){ .security-shell{margin:20px auto}.security-detail{grid-template-columns:1fr}.security-body,.security-hero{padding:20px} }
+  </style>
+</head>
+<body>
+  <main class="security-shell">
+    <div class="security-brand">
+      <img src="{% static 'img/logo_uj-removebg-preview.png' %}" alt="Johannesburg Business School">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'security_center' %}"><i class="bi bi-shield-check"></i> Account Security</a>
+    </div>
+    {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% block security_content %}{% endblock %}
+  </main>
+</body>
+</html>

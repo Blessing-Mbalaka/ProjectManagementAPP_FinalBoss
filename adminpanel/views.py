@@ -10,7 +10,7 @@ from projects.work_scope import manageable_projects_for
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
 from manager.models import Book, Chapter
-from .models import CostCentre, EngagementLog, Expenditure, FinancialProject, ResearchCentre, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord, PageVisitLog
+from .models import CostCentre, EngagementLog, Expenditure, FinancialProject, ResearchCentre, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord, PageVisitLog, SecurityEvent
 from .audit_service import (
     log_cost_centre_creation, log_cost_centre_edit, log_cost_centre_deletion,
     log_expenditure_creation, log_expenditure_edit, log_expenditure_deletion,
@@ -45,6 +45,7 @@ from projects.models import StudentProfile
 from projects.scope import scope_books_for_user, scope_outputs_for_user
 from projects.assignment_notifications import notify_project_assignment
 from .notification_service import visible_notifications_for
+from .security_service import device_label, masked_ip
 from users.email_service import send_html_email_safely
 import csv
 from datetime import datetime, timedelta
@@ -111,6 +112,56 @@ def page_visit_audit(request):
             if has_role(request.user, 'admin')
             else getattr(request.user.research_centre, 'name', 'Unassigned centre')
         ),
+    })
+
+
+@login_required
+def security_event_audit(request):
+    if not has_role(request.user, 'admin', 'centrehead'):
+        return HttpResponseForbidden('Only Admin and Centre Heads can view security alerts.')
+
+    events = SecurityEvent.objects.select_related('user', 'user__research_centre').filter(is_suspicious=True)
+    users = CustomUser.objects.filter(is_active=True)
+    if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin'):
+        centre_id = getattr(request.user, 'research_centre_id', None)
+        events = events.filter(user__research_centre_id=centre_id) if centre_id else events.none()
+        users = users.filter(research_centre_id=centre_id) if centre_id else users.none()
+
+    if request.method == 'POST':
+        event = get_object_or_404(events, pk=request.POST.get('event_id'))
+        event.status = 'resolved'
+        event.reviewed_at = timezone.now()
+        event.save(update_fields=['status', 'reviewed_at'])
+        messages.success(request, 'Security alert marked as resolved.')
+        return redirect('security_event_audit')
+
+    selected_user = request.GET.get('user', '').strip()
+    selected_type = request.GET.get('type', '').strip()
+    selected_status = request.GET.get('status', '').strip()
+    if selected_user.isdigit() and users.filter(pk=selected_user).exists():
+        events = events.filter(user_id=int(selected_user))
+    if selected_type in dict(SecurityEvent.EVENT_TYPES):
+        events = events.filter(event_type=selected_type)
+    if selected_status in dict(SecurityEvent.STATUS_CHOICES):
+        events = events.filter(status=selected_status)
+
+    filtered = events.order_by('-occurred_at')
+    page_obj = Paginator(filtered, 50).get_page(request.GET.get('page'))
+    for event in page_obj.object_list:
+        event.display_ip = masked_ip(event.ip_address)
+        event.display_device = device_label(event.user_agent)
+
+    return render(request, 'adminpanel/security_event_audit.html', {
+        'page_obj': page_obj,
+        'security_users': users.order_by('first_name', 'last_name', 'username'),
+        'event_types': SecurityEvent.EVENT_TYPES,
+        'event_statuses': SecurityEvent.STATUS_CHOICES,
+        'selected_user': selected_user,
+        'selected_type': selected_type,
+        'selected_status': selected_status,
+        'security_total': filtered.count(),
+        'security_open_count': filtered.filter(status='open').count(),
+        'security_high_count': filtered.filter(severity='high').count(),
     })
 
 

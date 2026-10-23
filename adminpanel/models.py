@@ -625,6 +625,59 @@ class PageVisitLog(models.Model):
         raise ValidationError('Page visit logs are immutable and cannot be deleted')
 
 
+class SecurityEvent(models.Model):
+    """Auditable security signal raised by authentication and request monitoring."""
+
+    EVENT_TYPES = [
+        ('login', 'Login'),
+        ('failed_login_burst', 'Repeated failed logins'),
+        ('access_denied', 'Denied page access'),
+        ('request_burst', 'Unusual request volume'),
+    ]
+    SEVERITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+    STATUS_CHOICES = [
+        ('open', 'Needs review'),
+        ('confirmed', 'Confirmed by user'),
+        ('secured', 'Account secured'),
+        ('resolved', 'Resolved by administrator'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='security_events',
+    )
+    event_type = models.CharField(max_length=30, choices=EVENT_TYPES)
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='low')
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='open')
+    is_suspicious = models.BooleanField(default=True, db_index=True)
+    reason = models.CharField(max_length=255)
+    path = models.CharField(max_length=500, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=500, blank=True)
+    request_count = models.PositiveIntegerField(null=True, blank=True)
+    occurred_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-occurred_at']
+        indexes = [
+            models.Index(fields=['user', '-occurred_at'], name='security_user_time_idx'),
+            models.Index(fields=['event_type', '-occurred_at'], name='security_type_time_idx'),
+            models.Index(fields=['status', '-occurred_at'], name='security_status_time_idx'),
+        ]
+
+    def __str__(self):
+        actor = self.user.username if self.user else 'Unknown user'
+        return f'{self.get_event_type_display()} for {actor} at {self.occurred_at}'
+
+
 class ClockInRecord(models.Model):
     """Records employee clock in/out times"""
     

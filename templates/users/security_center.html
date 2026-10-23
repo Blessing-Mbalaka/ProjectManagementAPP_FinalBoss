@@ -1,0 +1,25 @@
+{% extends 'users/security_base.html' %}
+{% block title %}Account Security{% endblock %}
+{% block security_content %}
+<section class="security-card">
+  <div class="security-hero"><h1 class="h3 mb-1"><i class="bi bi-shield-check me-2"></i>Account Security</h1><p class="mb-0 opacity-75">Review unusual activity recorded for {{ user.username }}.</p></div>
+  <div class="security-body">
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead><tr><th>Time</th><th>Activity</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          {% for event in security_events %}
+          <tr>
+            <td class="text-nowrap">{{ event.occurred_at|date:'d M Y H:i' }}</td>
+            <td>{{ event.get_event_type_display }}</td>
+            <td>{{ event.reason }}</td>
+            <td><span class="badge {% if event.status == 'open' %}bg-danger{% elif event.status == 'secured' %}bg-success{% else %}bg-secondary{% endif %}">{{ event.get_status_display }}</span></td>
+            <td>{% if event.status == 'open' %}<a class="btn btn-sm btn-outline-danger" href="{% url 'security_event_review' event.id %}">Review</a>{% endif %}</td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="text-center text-muted py-5">No suspicious activity has been recorded for your account.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

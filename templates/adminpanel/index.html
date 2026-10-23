@@ -166,6 +166,7 @@
                 {% endif %}
                 {% if user.is_superuser or user.role == 'admin' or user.role == 'centrehead' %}
                 <li><a href="{% url 'page_visit_audit' %}" class="nav-link"><i class="bi bi-activity"></i><span>User Page Activity</span></a></li>
+                <li><a href="{% url 'security_event_audit' %}" class="nav-link"><i class="bi bi-shield-exclamation"></i><span>Security Alerts</span></a></li>
                 {% endif %}
                 {% endif %}
                 {% endif %}

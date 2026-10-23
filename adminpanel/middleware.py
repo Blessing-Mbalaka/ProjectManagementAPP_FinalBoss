@@ -3,6 +3,7 @@ import logging
 from django.db import DatabaseError
 
 from adminpanel.models import PageVisitLog
+from adminpanel.security_service import monitor_request_volume, record_denied_access, safe_monitor
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,12 @@ class PageVisitAuditMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        if not request.path.startswith(('/static/', '/media/', '/test_media/')):
+            safe_monitor(monitor_request_volume, request)
         response = self.get_response(request)
+        resolver_match = getattr(request, 'resolver_match', None)
+        if response.status_code == 403 or (response.status_code == 404 and resolver_match is not None):
+            safe_monitor(record_denied_access, request, response.status_code)
         self._record(request, response)
         return response
 

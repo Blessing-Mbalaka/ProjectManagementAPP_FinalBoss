@@ -1,0 +1,55 @@
+{% extends 'adminpanel/index.html' %}
+{% block title %}Security Alerts{% endblock %}
+{% block content %}
+<style>
+  .security-audit { padding:24px; }
+  .security-audit-hero { background:linear-gradient(135deg,#301446,#a62c48,#f0642b); color:#fff; border-radius:20px; padding:25px; }
+  .security-audit-hero p { color:rgba(255,255,255,.82); margin:5px 0 0; }
+  .security-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:18px 0; }
+  .security-metric,.security-panel { background:#fff; border:1px solid #eadfd8; border-radius:16px; padding:18px; }
+  .security-metric strong { display:block; font-size:1.5rem; color:#5f0a63; }
+  .security-filters { display:grid; grid-template-columns:1.2fr 1fr 1fr auto; gap:10px; align-items:end; }
+  .security-path { max-width:240px; word-break:break-word; font-family:ui-monospace,monospace; }
+  @media(max-width:900px){.security-filters{grid-template-columns:1fr 1fr}}
+  @media(max-width:620px){.security-audit{padding:14px}.security-metrics,.security-filters{grid-template-columns:1fr}}
+</style>
+<main class="security-audit">
+  <section class="security-audit-hero">
+    <h1 class="h3 mb-1"><i class="bi bi-shield-exclamation me-2"></i>Security Alerts</h1>
+    <p>Unusual-hour logins, repeated failed sign-ins, denied pages and abnormal request bursts. These are review flags—not automatic proof of misuse.</p>
+  </section>
+  {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }} mt-3">{{ message }}</div>{% endfor %}{% endif %}
+  <section class="security-metrics">
+    <div class="security-metric"><span class="text-muted">Matching alerts</span><strong>{{ security_total }}</strong></div>
+    <div class="security-metric"><span class="text-muted">Needs review</span><strong>{{ security_open_count }}</strong></div>
+    <div class="security-metric"><span class="text-muted">High severity</span><strong>{{ security_high_count }}</strong></div>
+  </section>
+  <section class="security-panel">
+    <form method="get" class="security-filters mb-4">
+      <div><label class="form-label">User</label><select class="form-select" name="user"><option value="">All permitted users</option>{% for person in security_users %}<option value="{{ person.id }}" {% if selected_user == person.id|stringformat:'s' %}selected{% endif %}>{{ person.get_full_name|default:person.username }}</option>{% endfor %}</select></div>
+      <div><label class="form-label">Alert type</label><select class="form-select" name="type"><option value="">All types</option>{% for value,label in event_types %}<option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div><label class="form-label">Status</label><select class="form-select" name="status"><option value="">All statuses</option>{% for value,label in event_statuses %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="d-flex gap-2"><button class="btn btn-primary">Filter</button><a class="btn btn-outline-secondary" href="{% url 'security_event_audit' %}">Clear</a></div>
+    </form>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead><tr><th>Time</th><th>User</th><th>Flag</th><th>Reason</th><th>Network / device</th><th>Path</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          {% for event in page_obj %}
+          <tr>
+            <td class="text-nowrap">{{ event.occurred_at|date:'d M Y H:i' }}</td>
+            <td><strong>{{ event.user.get_full_name|default:event.user.username|default:'Unknown visitor' }}</strong><div class="small text-muted">{{ event.user.username }}</div></td>
+            <td><span class="badge {% if event.severity == 'high' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ event.get_event_type_display }}</span></td>
+            <td>{{ event.reason }}{% if event.request_count %}<div class="small text-muted">Count: {{ event.request_count }}</div>{% endif %}</td>
+            <td>{{ event.display_ip }}<div class="small text-muted">{{ event.display_device }}</div></td>
+            <td class="security-path">{{ event.path|default:'—' }}</td>
+            <td>{{ event.get_status_display }}</td>
+            <td>{% if event.status == 'open' %}<form method="post">{% csrf_token %}<input type="hidden" name="event_id" value="{{ event.id }}"><button class="btn btn-sm btn-outline-success">Resolve</button></form>{% endif %}</td>
+          </tr>
+          {% empty %}<tr><td colspan="8" class="text-center text-muted py-5">No security alerts match the selected filters.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

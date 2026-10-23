@@ -1,5 +1,8 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout
+from django.contrib import messages
+from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import PasswordResetView
 import logging
 from .forms import CustomUserCreationForm, CustomLoginForm, StrictPasswordResetForm
@@ -7,6 +10,10 @@ from .models import CustomUser
 from projects.models import StudentProfile
 from django.conf import settings
 from django.http import HttpResponseForbidden
+from django.utils import timezone
+
+from adminpanel.models import Notification, SecurityEvent
+from adminpanel.security_service import device_label, masked_ip, record_failed_login, record_login
 
 logger = logging.getLogger(__name__)
 
@@ -43,25 +50,94 @@ def login_view(request):
     if form.is_valid():
         user = form.get_user()
         login(request, user)
+        security_event = record_login(request, user)
+        if security_event.is_suspicious:
+            return redirect('security_event_review', event_id=security_event.id)
 
         # Redirect based on user role
-        if user.role == 'admin':
-            return redirect('overview') # Admin
-        elif user.role == 'dean':
-            return redirect('overview') # Dean
-        elif user.role == 'centrehead':
-            return redirect('overview') # Centre Head
-        elif user.role == 'supervisor':
-            return redirect('supervisor_dashboard_portal') # Supervisor Portal
-        elif user.role == 'manager':
-            return redirect('manager_dashboard') # Project Manager
-        elif user.role == 'financialadmin':
-            return redirect('finance') # Financial Admin
-        elif user.role == 'student':
-            return redirect('student_dashboard')  # Student
-        else:
-            return redirect('dashboard') # Staff
+        return redirect(_role_home_name(user))
+    if request.method == 'POST':
+        record_failed_login(request, request.POST.get('username', '').strip())
     return render(request, 'users/login.html', {'form': form})
+
+
+def _role_home_name(user):
+    if user.role in {'admin', 'dean', 'centrehead'}:
+        return 'overview'
+    if user.role == 'supervisor':
+        return 'supervisor_dashboard_portal'
+    if user.role == 'manager':
+        return 'manager_dashboard'
+    if user.role == 'financialadmin':
+        return 'finance'
+    if user.role == 'student':
+        return 'student_dashboard'
+    return 'dashboard'
+
+
+@login_required
+def security_center(request):
+    events = request.user.security_events.filter(is_suspicious=True).order_by('-occurred_at')[:50]
+    return render(request, 'users/security_center.html', {'security_events': events})
+
+
+@login_required
+def security_event_review(request, event_id):
+    event = SecurityEvent.objects.filter(pk=event_id, user=request.user, is_suspicious=True).first()
+    if not event:
+        return HttpResponseForbidden('This security event does not belong to your account.')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'confirm':
+            event.status = 'confirmed'
+            event.reviewed_at = timezone.now()
+            event.save(update_fields=['status', 'reviewed_at'])
+            request.session.pop('pending_security_event_id', None)
+            messages.success(request, 'Thank you. This activity is now confirmed as yours.')
+            return redirect(_role_home_name(request.user))
+        if action == 'secure':
+            request.session['security_password_event_id'] = event.id
+            return redirect('security_password_change')
+
+    return render(request, 'users/security_event_review.html', {
+        'security_event': event,
+        'security_local_time': timezone.localtime(event.occurred_at),
+        'security_ip': masked_ip(event.ip_address),
+        'security_device': device_label(event.user_agent),
+    })
+
+
+@login_required
+def security_password_change(request):
+    event_id = request.session.get('security_password_event_id')
+    event = SecurityEvent.objects.filter(pk=event_id, user=request.user, is_suspicious=True).first()
+    if not event:
+        messages.info(request, 'Choose a security alert before starting the protected password-change flow.')
+        return redirect('security_center')
+
+    form = PasswordChangeForm(request.user, request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        user = form.save()
+        update_session_auth_hash(request, user)
+        event.status = 'secured'
+        event.reviewed_at = timezone.now()
+        event.save(update_fields=['status', 'reviewed_at'])
+        request.session.pop('security_password_event_id', None)
+        request.session.pop('pending_security_event_id', None)
+        notification = Notification.objects.create(
+            title='Your account password was changed',
+            body='Your password was changed through the Account Security workflow. Other signed-in sessions must authenticate again.',
+            priority='high',
+            audience='specific',
+        )
+        notification.recipients.add(request.user)
+        messages.success(request, 'Password changed. Other signed-in sessions have been invalidated.')
+        return redirect('security_center')
+    return render(request, 'users/security_password_change.html', {
+        'form': form,
+        'security_event': event,
+    })
 
 
 def logout_view(request):

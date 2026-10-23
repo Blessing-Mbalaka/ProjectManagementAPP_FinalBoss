@@ -32,6 +32,7 @@ urlpatterns = [
     path('admin_ganttchart/', views.admin_ganttchart, name='admin_ganttchart'),
     path('overview/', views.overview, name='overview'),
     path('activity/page-visits/', views.page_visit_audit, name='page_visit_audit'),
+    path('activity/security/', views.security_event_audit, name='security_event_audit'),
     path('crm/', views.crm, name='crm'),
     path('crm/reports/data/', views.crm_reporting_data, name='crm_reporting_data'),
     path('crm/reports/export/<str:period>/', views.crm_report_export, name='crm_report_export'),

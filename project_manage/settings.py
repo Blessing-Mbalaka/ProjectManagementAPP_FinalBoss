@@ -182,6 +182,16 @@ TIME_ZONE = 'Africa/Johannesburg'
 USE_I18N = True
 USE_TZ = True
 
+# Security activity monitoring. These values flag activity for review without
+# throttling or interrupting legitimate work.
+SECURITY_SUSPICIOUS_LOGIN_START_HOUR = int(os.getenv('SECURITY_SUSPICIOUS_LOGIN_START_HOUR', '0'))
+SECURITY_SUSPICIOUS_LOGIN_END_HOUR = int(os.getenv('SECURITY_SUSPICIOUS_LOGIN_END_HOUR', '5'))
+SECURITY_FAILED_LOGIN_LIMIT = int(os.getenv('SECURITY_FAILED_LOGIN_LIMIT', '5'))
+SECURITY_FAILED_LOGIN_WINDOW_SECONDS = int(os.getenv('SECURITY_FAILED_LOGIN_WINDOW_SECONDS', '600'))
+SECURITY_REQUEST_LIMIT = int(os.getenv('SECURITY_REQUEST_LIMIT', '120'))
+SECURITY_REQUEST_WINDOW_SECONDS = int(os.getenv('SECURITY_REQUEST_WINDOW_SECONDS', '60'))
+SECURITY_ACCESS_ALERT_COOLDOWN_SECONDS = int(os.getenv('SECURITY_ACCESS_ALERT_COOLDOWN_SECONDS', '900'))
+
 # Static files configuration
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")] if os.path.exists(os.path.join(BASE_DIR, "static")) else []
