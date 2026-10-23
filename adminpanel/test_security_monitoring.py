@@ -62,6 +62,7 @@ class SecurityMonitoringTests(TestCase):
         event.refresh_from_db()
         self.assertEqual(event.status, 'confirmed')
         self.assertIsNotNone(event.reviewed_at)
+        self.assertIn('_auth_user_id', self.client.session)
         self.assertRedirects(
             response,
             reverse('dashboard'),
@@ -91,18 +92,19 @@ class SecurityMonitoringTests(TestCase):
         event = SecurityEvent.objects.get(user=self.head, event_type='login')
         self.assertRedirects(
             login_response,
-            reverse('security_event_review', args=[event.id]),
+            f'{reverse("security_event_review", args=[event.id])}?next=%2Fadminpanel%2Factivity%2Fsecurity%2F',
             fetch_redirect_response=False,
         )
 
         confirmation = self.client.post(
             reverse('security_event_review', args=[event.id]),
-            {'action': 'confirm'},
+            {'action': 'confirm', 'next': security_log_url},
             follow=True,
         )
 
         event.refresh_from_db()
         self.assertEqual(event.status, 'confirmed')
+        self.assertIn('_auth_user_id', self.client.session)
         self.assertEqual(confirmation.status_code, 200)
         self.assertEqual(confirmation.redirect_chain[-1][0], security_log_url)
         self.assertContains(confirmation, 'Security Alerts')

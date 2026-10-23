@@ -19,6 +19,7 @@
     <p class="text-muted">If this was you, confirm it and continue. If not, change your password immediately; other signed-in sessions will be required to authenticate again.</p>
     <form method="post" class="d-flex flex-wrap gap-2">
       {% csrf_token %}
+      {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}" />{% endif %}
       <button class="btn btn-success" name="action" value="confirm" type="submit"><i class="bi bi-check-circle"></i> Yes, this was me</button>
       <button class="btn btn-danger" name="action" value="secure" type="submit"><i class="bi bi-lock"></i> No, secure my account</button>
     </form>

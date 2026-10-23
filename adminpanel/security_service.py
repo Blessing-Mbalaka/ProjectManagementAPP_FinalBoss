@@ -127,7 +127,6 @@ def record_login(request, user):
         reviewed_at=None if unusual else timezone.now(),
     )
     if unusual:
-        request.session['pending_security_event_id'] = event.id
         notify_security_event(event)
     return event
 

@@ -13,6 +13,7 @@ from django.http import HttpResponseForbidden
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse
+from urllib.parse import urlencode
 
 from adminpanel.models import Notification, SecurityEvent
 from adminpanel.security_service import device_label, masked_ip, record_failed_login, record_login
@@ -49,12 +50,13 @@ def register_view(request):
 
 def login_view(request):
     requested_next = request.POST.get('next') or request.GET.get('next')
+    safe_destination = None
     if requested_next and url_has_allowed_host_and_scheme(
         requested_next,
         allowed_hosts={request.get_host()},
         require_https=request.is_secure(),
     ):
-        request.session['post_login_redirect'] = requested_next
+        safe_destination = requested_next
 
     form = CustomLoginForm(data=request.POST or None)
     if form.is_valid():
@@ -62,9 +64,11 @@ def login_view(request):
         login(request, user)
         security_event = record_login(request, user)
         if security_event.is_suspicious:
-            return redirect('security_event_review', event_id=security_event.id)
+            review_url = reverse('security_event_review', args=[security_event.id])
+            if safe_destination:
+                review_url = f'{review_url}?{urlencode({"next": safe_destination})}'
+            return redirect(review_url)
 
-        safe_destination = request.session.pop('post_login_redirect', None)
         if safe_destination:
             return redirect(safe_destination)
 
@@ -110,9 +114,14 @@ def security_event_review(request, event_id):
             event.status = 'confirmed'
             event.reviewed_at = timezone.now()
             event.save(update_fields=['status', 'reviewed_at'])
-            request.session.pop('pending_security_event_id', None)
-            messages.success(request, 'Thank you. This activity is now confirmed as yours.')
-            safe_destination = request.session.pop('post_login_redirect', None)
+            requested_next = request.POST.get('next') or request.GET.get('next')
+            safe_destination = None
+            if requested_next and url_has_allowed_host_and_scheme(
+                requested_next,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                safe_destination = requested_next
             if safe_destination and url_has_allowed_host_and_scheme(
                 safe_destination,
                 allowed_hosts={request.get_host()},
@@ -129,6 +138,7 @@ def security_event_review(request, event_id):
         'security_local_time': timezone.localtime(event.occurred_at),
         'security_ip': masked_ip(event.ip_address),
         'security_device': device_label(event.user_agent),
+        'next_url': request.GET.get('next', ''),
     })
 
 
