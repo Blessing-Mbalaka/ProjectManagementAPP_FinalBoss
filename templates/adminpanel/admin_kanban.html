@@ -714,7 +714,7 @@
             if (readonlyKanbanUserSelect && readonlyKanbanBoardArea) {
                 let boardRequest = null;
                 let boardRequestSequence = 0;
-                const loadReadonlyBoard = function() {
+                const loadReadonlyBoard = function({ background = false } = {}) {
                     const userId = readonlyKanbanUserSelect.value;
                     if (!userId) {
                         readonlyKanbanBoardArea.innerHTML = '<p class="text-muted mb-0">Choose a staff member to view their task board.</p>';
@@ -722,8 +722,15 @@
                         return;
                     }
 
-                    if (refreshReadonlyKanban) refreshReadonlyKanban.disabled = false;
-                    readonlyKanbanBoardArea.innerHTML = '<p class="text-muted mb-0">Loading task board...</p>';
+                    const hasRenderedBoard = Boolean(readonlyKanbanBoardArea.querySelector('[data-last-updated]'));
+                    if (refreshReadonlyKanban) {
+                        refreshReadonlyKanban.disabled = true;
+                        refreshReadonlyKanban.dataset.previousLabel = refreshReadonlyKanban.textContent;
+                        refreshReadonlyKanban.textContent = 'Refreshing…';
+                    }
+                    if (!background && !hasRenderedBoard) {
+                        readonlyKanbanBoardArea.innerHTML = '<p class="text-muted mb-0">Loading task board…</p>';
+                    }
                     const url = "{% url 'admin_user_kanban' 0 %}".replace('/0/', `/${userId}/`);
                     if (boardRequest) boardRequest.abort();
                     boardRequest = new AbortController();
@@ -735,19 +742,31 @@
                         })
                         .then(html => {
                             if (sequence === boardRequestSequence && readonlyKanbanUserSelect.value === userId) {
+                                const userIsInteracting = readonlyKanbanBoardArea.contains(document.activeElement)
+                                    || Boolean(readonlyKanbanBoardArea.querySelector('.modal.show'));
+                                if (background && userIsInteracting) return;
                                 readonlyKanbanBoardArea.innerHTML = html;
                             }
                         })
                         .catch(error => {
                             if (error.name === 'AbortError') return;
-                            readonlyKanbanBoardArea.innerHTML = '<div class="alert alert-danger mb-0">Unable to load this task board.</div>';
+                            if (!hasRenderedBoard) {
+                                readonlyKanbanBoardArea.innerHTML = '<div class="alert alert-danger mb-0">Unable to load this task board.</div>';
+                            }
+                        })
+                        .finally(() => {
+                            if (sequence !== boardRequestSequence || !refreshReadonlyKanban) return;
+                            refreshReadonlyKanban.disabled = false;
+                            refreshReadonlyKanban.textContent = refreshReadonlyKanban.dataset.previousLabel || 'Refresh';
                         });
                 };
                 readonlyKanbanUserSelect.addEventListener('change', loadReadonlyBoard);
                 if (refreshReadonlyKanban) refreshReadonlyKanban.addEventListener('click', loadReadonlyBoard);
                 if (readonlyKanbanUserSelect.value) loadReadonlyBoard();
                 window.setInterval(function() {
-                    if (!document.hidden && readonlyKanbanUserSelect.value) loadReadonlyBoard();
+                    if (!document.hidden && readonlyKanbanUserSelect.value) {
+                        loadReadonlyBoard({ background: true });
+                    }
                 }, 30000);
             }
             

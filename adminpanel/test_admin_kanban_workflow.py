@@ -110,6 +110,9 @@ class AdminKanbanWorkflowTests(TestCase):
             response,
             f'<option value="{self.staff.id}" selected>',
         )
+        self.assertContains(response, "loadReadonlyBoard({ background: true })")
+        self.assertContains(response, "userIsInteracting")
+        self.assertContains(response, "Refreshing…")
 
     def test_refreshed_staff_board_contains_another_clients_committed_update(self):
         updater = Client()
