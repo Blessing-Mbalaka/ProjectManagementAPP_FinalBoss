@@ -141,3 +141,12 @@ class SecurityMonitoringTests(TestCase):
         admin_response = self.client.get(reverse('security_event_audit'))
         self.assertEqual(admin_response.status_code, 200)
         self.assertContains(admin_response, self.staff.username)
+
+    def test_logged_out_security_page_uses_the_real_login_route(self):
+        response = self.client.get(reverse('security_event_audit'))
+
+        self.assertRedirects(
+            response,
+            f"{reverse('login')}?next={reverse('security_event_audit')}",
+            fetch_redirect_response=False,
+        )
