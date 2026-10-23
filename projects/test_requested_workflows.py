@@ -163,3 +163,7 @@ class PublicationAndGanttTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'P149')
         self.assertEqual(len(response.context['projects']), 150)
+        self.assertContains(response, 'Back to Overview')
+        self.assertContains(response, 'Fit Screen')
+        self.assertContains(response, 'toggleGanttSidebar')
+        self.assertContains(response, 'fitGanttToWidth')

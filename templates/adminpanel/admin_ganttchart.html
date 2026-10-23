@@ -6,25 +6,99 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/gant.css' %}">
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
-            <div class="welcome-box">
-                <h3>{% if is_gantt_readonly %}Read-Only Gantt Chart{% else %}Gantt Chart{% endif %}</h3>
-                <p class="text-muted">Project Timeline Planner</p>
+<style>
+    :root { --gantt-label-width: 320px; }
+    .gantt-focus-toolbar {
+        align-items: center;
+        background: rgba(255, 255, 255, .96);
+        border: 1px solid #eadfd8;
+        border-radius: 12px;
+        box-shadow: 0 5px 18px rgba(44, 32, 24, .08);
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding: 12px 16px;
+        position: sticky;
+        top: 8px;
+        z-index: 30;
+    }
+    .gantt-focus-toolbar h1 { font-size: 1.25rem; margin: 0; }
+    .gantt-focus-toolbar p { margin: 2px 0 0; }
+    .gantt-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .gantt-page-controls { margin-bottom: 12px; }
+    .gantt-container {
+        max-height: calc(100vh - 185px);
+        min-height: 430px;
+        overflow: auto !important;
+        position: relative;
+        scrollbar-gutter: stable;
+    }
+    #gantt-chart { min-width: 100%; width: max-content; }
+    .gantt-header {
+        position: sticky !important;
+        top: 0;
+        width: max-content;
+        z-index: 12;
+    }
+    .gantt-header-item,
+    .gantt-grid-cell {
+        box-sizing: border-box;
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+    }
+    .gantt-label-header {
+        flex: 0 0 var(--gantt-label-width) !important;
+        left: 0;
+        min-width: var(--gantt-label-width) !important;
+        position: sticky;
+        width: var(--gantt-label-width) !important;
+        z-index: 14;
+    }
+    .gantt-row {
+        height: 56px !important;
+        min-width: 100%;
+        width: max-content;
+    }
+    .gantt-row-label {
+        flex: 0 0 var(--gantt-label-width) !important;
+        min-width: var(--gantt-label-width);
+        width: var(--gantt-label-width) !important;
+        z-index: 8 !important;
+    }
+    .gantt-row-bars { flex: 0 0 auto !important; }
+    .task-name {
+        display: -webkit-box;
+        line-height: 1.25;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal !important;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+    #zoomLevel { min-width: 74px; text-align: center; }
+    @media (max-width: 768px) {
+        :root { --gantt-label-width: 240px; }
+        .gantt-focus-toolbar { align-items: flex-start; position: static; }
+        .gantt-container { max-height: calc(100vh - 230px); }
+    }
+</style>
 
-                <p>{% if is_gantt_readonly %}View staff project timelines without changing task dates or project structure.{% else %}You have 3 tasks to complete today. Let's make progress!{% endif %}</p>
-                <div class="progress mt-2" style="width: 75%; height: 10px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 75%"></div>
+            <div class="gantt-focus-toolbar">
+                <div class="d-flex align-items-center gap-3">
+                    <a class="btn btn-outline-secondary" href="{% url 'pm_overview' %}"><i class="bi bi-arrow-left me-1"></i>Back to Overview</a>
+                    <div>
+                        <h1 id="project-title">{% if is_gantt_readonly %}Read-Only Project Timeline{% else %}Project Timeline{% endif %}</h1>
+                        <p class="text-muted small">Scroll inside the chart, or use Fit Screen to show the complete date range.</p>
+                    </div>
+                </div>
+                <div class="gantt-toolbar-actions">
+                    <button class="btn btn-outline-secondary" id="toggleGanttSidebar" type="button"><i class="bi bi-layout-sidebar me-1"></i><span>Show sidebar</span></button>
                 </div>
             </div>
 
-           
-
-            <!-- Project Header -->
-            <div class="project-header">
-                <h1 class="project-title" id="project-title">Project Timeline</h1>
-            </div>
-
             <!-- Controls -->
-            <div class="controls">
+            <div class="controls gantt-page-controls">
                 <a class="btn" href="?">Project summary</a>
                 <a class="btn" href="?detail=tasks">Task detail</a>
                 {% if is_gantt_readonly %}
@@ -44,16 +118,18 @@
                 </button>
                 {% endif %}
                 <div style="flex-grow: 1;"></div>
+                <button class="btn" id="fitGantt" type="button"><i class="bi bi-arrows-angle-contract"></i> Fit Screen</button>
                 <button class="btn" id="zoomIn">
-                    <span>🔍</span> Zoom In
+                    <i class="bi bi-zoom-in"></i> Zoom In
                 </button>
                 <button class="btn" id="zoomOut">
-                    <span>🔍</span> Zoom Out
+                    <i class="bi bi-zoom-out"></i> Zoom Out
                 </button>
+                <span class="badge text-bg-light" id="zoomLevel">Auto fit</span>
             </div>
 
             <!-- Gantt Chart -->
-            <div class="gantt-container">
+            <div class="gantt-container" id="ganttContainer">
                 <div id="gantt-chart"></div>
             </div>
 
@@ -113,6 +189,8 @@
 
                     let daysToShow = 20;
                     let dayWidth = 40;
+                    const labelWidth = window.innerWidth <= 768 ? 240 : 320;
+                    let fitMode = true;
                     let nextId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
 
                     // DOM elements
@@ -121,14 +199,36 @@
                     const taskModal = document.getElementById('task-modal');
                     const projectModal = document.getElementById('project-modal');
                     const ownerFilter = document.getElementById('ganttOwnerFilter');
+                    const ganttContainer = document.getElementById('ganttContainer');
+                    const zoomLevel = document.getElementById('zoomLevel');
+                    const pageSidebar = document.getElementById('sidebar');
+                    const pageMainContent = document.getElementById('mainContent');
+                    const sidebarToggle = document.getElementById('toggleBtn');
+                    const ganttSidebarToggle = document.getElementById('toggleGanttSidebar');
+
+                    function updateSidebarButton() {
+                        if (!ganttSidebarToggle || !pageSidebar) return;
+                        ganttSidebarToggle.querySelector('span').textContent = pageSidebar.classList.contains('collapsed') ? 'Show sidebar' : 'Hide sidebar';
+                    }
+
+                    if (window.innerWidth > 768 && pageSidebar && pageMainContent) {
+                        pageSidebar.classList.add('collapsed');
+                        pageMainContent.classList.add('expanded');
+                        const icon = sidebarToggle ? sidebarToggle.querySelector('i') : null;
+                        if (icon) {
+                            icon.classList.remove('bi-chevron-left');
+                            icon.classList.add('bi-chevron-right');
+                        }
+                    }
+                    updateSidebarButton();
 
                     // Initialize the chart
-                    renderGanttChart();
+                    window.setTimeout(fitGanttToWidth, 350);
 
                     if (ownerFilter) {
                         ownerFilter.addEventListener('change', function () {
                             tasks = this.value ? allTasks.filter(task => String(task.ownerId) === this.value) : [...allTasks];
-                            renderGanttChart();
+                            fitGanttToWidth();
                         });
                     }
 
@@ -143,13 +243,29 @@
                     }
 
                     document.getElementById('zoomIn').addEventListener('click', function () {
-                        dayWidth = Math.min(dayWidth + 10, 80);
+                        fitMode = false;
+                        dayWidth = Math.min(Math.ceil(dayWidth * 1.25) + 1, 120);
                         renderGanttChart();
                     });
 
                     document.getElementById('zoomOut').addEventListener('click', function () {
-                        dayWidth = Math.max(dayWidth - 10, 20);
+                        fitMode = false;
+                        dayWidth = Math.max(Math.floor(dayWidth * 0.75), 2);
                         renderGanttChart();
+                    });
+
+                    document.getElementById('fitGantt').addEventListener('click', fitGanttToWidth);
+
+                    if (ganttSidebarToggle && sidebarToggle) {
+                        ganttSidebarToggle.addEventListener('click', function () {
+                            sidebarToggle.click();
+                            updateSidebarButton();
+                            window.setTimeout(fitGanttToWidth, 350);
+                        });
+                    }
+
+                    window.addEventListener('resize', function () {
+                        if (fitMode) window.setTimeout(fitGanttToWidth, 80);
                     });
 
                     // Task modal handlers
@@ -252,15 +368,20 @@
                         // Calculate days needed based on tasks
                         const maxEndDay = tasks.reduce((max, task) => Math.max(max, task.end), 0);
                         daysToShow = Math.max(20, maxEndDay + 5);
+                        const timelineWidth = daysToShow * dayWidth;
+                        const totalWidth = labelWidth + timelineWidth;
+                        ganttChart.style.width = `${totalWidth}px`;
+                        if (zoomLevel) zoomLevel.textContent = fitMode ? 'Fit screen' : `${dayWidth}px / day`;
 
                         // Create header
                         const header = document.createElement('div');
                         header.className = 'gantt-header';
+                        header.style.width = `${totalWidth}px`;
 
                         // Add empty cell for row labels
                         const headerLabel = document.createElement('div');
-                        headerLabel.className = 'gantt-header-item';
-                        headerLabel.style.width = '250px';
+                        headerLabel.className = 'gantt-header-item gantt-label-header';
+                        headerLabel.style.width = `${labelWidth}px`;
                         headerLabel.textContent = 'Project / Task';
                         header.appendChild(headerLabel);
 
@@ -280,6 +401,7 @@
                             const row = document.createElement('div');
                             row.className = 'gantt-row';
                             row.dataset.taskId = task.id;
+                            row.style.width = `${totalWidth}px`;
 
                             // Add task label section
                             const label = document.createElement('div');
@@ -288,7 +410,7 @@
                             // Task name display/edit
                             const nameSpan = document.createElement('span');
                             nameSpan.className = 'task-name';
-                            nameSpan.textContent = task.project ? `${task.project}: ${task.name}` : task.name;
+                            nameSpan.textContent = task.project && task.project !== task.name ? `${task.project}: ${task.name}` : task.name;
                             nameSpan.title = `${task.owner || 'Unassigned'} | ${task.status || 'No status'} | ${task.progress || 0}%`;
 
                             // Task actions
@@ -328,6 +450,7 @@
                             const barsContainer = document.createElement('div');
                             barsContainer.className = 'gantt-row-bars';
                             barsContainer.style.width = `${daysToShow * dayWidth}px`;
+                            barsContainer.style.flexBasis = `${timelineWidth}px`;
 
                             // Add grid
                             const grid = document.createElement('div');
@@ -358,6 +481,16 @@
                             row.appendChild(barsContainer);
                             ganttChart.appendChild(row);
                         });
+                    }
+
+                    function fitGanttToWidth() {
+                        const maxEndDay = tasks.length ? tasks.reduce((max, task) => Math.max(max, task.end), 0) : 20;
+                        daysToShow = Math.max(20, maxEndDay + 5);
+                        const availableTimelineWidth = Math.max(160, ganttContainer.clientWidth - labelWidth - 4);
+                        dayWidth = Math.max(2, Math.floor(availableTimelineWidth / daysToShow));
+                        fitMode = true;
+                        renderGanttChart();
+                        ganttContainer.scrollLeft = 0;
                     }
 
                     function editTaskName(task) {
