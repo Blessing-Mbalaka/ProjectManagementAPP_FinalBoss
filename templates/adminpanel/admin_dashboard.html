@@ -74,7 +74,7 @@
             </div>
             <div class="small text-muted">
               {{ n.created_at|date:"Y-m-d H:i" }}
-              • by {{ n.created_by.get_full_name|default:n.created_by.username }}
+              • by {% if n.created_by %}{{ n.created_by.get_full_name|default:n.created_by.username }}{% else %}System{% endif %}
               {% if n.audience == 'all' %} • Audience: All
               {% elif n.audience == 'role' %} • Role: {{ n.audience_role|title }}
               {% else %} • Specific recipients

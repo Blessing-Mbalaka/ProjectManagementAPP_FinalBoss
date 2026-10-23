@@ -659,7 +659,7 @@
                 {% elif n.audience == 'role' %}Managers
                 {% else %}Direct to you
                 {% endif %}
-              • by {{ n.created_by.get_full_name|default:n.created_by.username }}
+              • by {% if n.created_by %}{{ n.created_by.get_full_name|default:n.created_by.username }}{% else %}System{% endif %}
             </div>
 
             <div class="mt-2">{{ n.body }}</div>
