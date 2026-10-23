@@ -63,6 +63,35 @@
     padding-left: 18px;
   }
 
+  .task-summary {
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+  }
+
+  .task-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .task-summary::before {
+    content: "\25B8";
+    display: inline-block;
+    margin-right: 7px;
+    transition: transform 160ms ease;
+  }
+
+  details[open] > .task-summary::before {
+    transform: rotate(90deg);
+  }
+
+  .task-list-shell {
+    border-left: 2px solid #e9ecef;
+    margin-top: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 2px 8px 2px 12px;
+  }
+
   .task-status {
     min-width: 82px;
   }
@@ -117,17 +146,22 @@
                 </td>
                 <td>
                   {% if project_entry.tasks %}
-                    <ul class="task-list">
-                      {% for task in project_entry.tasks %}
-                        <li{% if task.parent_task_id %} class="subtask"{% endif %}>
-                          {% if task.parent_task_id %}<i class="bi bi-arrow-return-right text-muted"></i>{% endif %}
-                          <span class="flex-grow-1">{{ task.title }}</span>
-                          <span class="badge text-bg-light task-status">{{ task.get_status_display }}</span>
-                        </li>
-                      {% endfor %}
-                    </ul>
+                    <details>
+                      <summary class="task-summary">{{ project_entry.task_count }} assigned task{{ project_entry.task_count|pluralize }}</summary>
+                      <div class="task-list-shell">
+                        <ul class="task-list">
+                          {% for task in project_entry.tasks %}
+                            <li{% if task.parent_task_id %} class="subtask"{% endif %}>
+                              {% if task.parent_task_id %}<i class="bi bi-arrow-return-right text-muted"></i>{% endif %}
+                              <span class="flex-grow-1">{{ task.title }}</span>
+                              <span class="badge text-bg-light task-status">{{ task.get_status_display }}</span>
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                    </details>
                   {% else %}
-                    <span class="text-muted">No tasks yet</span>
+                    <span class="text-muted">No tasks assigned to this person</span>
                   {% endif %}
                 </td>
                 <td>

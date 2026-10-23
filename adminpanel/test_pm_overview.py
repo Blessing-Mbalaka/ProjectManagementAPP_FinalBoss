@@ -3,7 +3,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from adminpanel.models import ResearchCentre
-from projects.models import Project, Task
+from projects.models import Assignment, Project, Task, TeamMember
 
 
 User = get_user_model()
@@ -96,6 +96,44 @@ class ProjectManagementOverviewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.staff.get_full_name())
         self.assertNotContains(response, self.outside_staff.get_full_name())
+
+    def test_each_person_row_contains_only_their_assigned_tasks(self):
+        teammate = User.objects.create_user(
+            username="overview-teammate",
+            first_name="Themba",
+            last_name="Dlamini",
+            password="pass",
+            role="staff",
+            research_centre=self.centre,
+        )
+        team_member = TeamMember.objects.create(
+            user=teammate,
+            full_name=teammate.get_full_name(),
+            role="Author",
+        )
+        Assignment.objects.create(
+            project=self.project,
+            team_member=team_member,
+            responsibility="Assigned chapter only",
+        )
+        teammate_task = Task.objects.create(
+            title="Write assigned chapter",
+            project=self.project,
+            assigned_to=teammate,
+            created_by=self.admin,
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("pm_overview"))
+
+        overview = {entry["user"].id: entry for entry in response.context["people_overview"]}
+        staff_tasks = overview[self.staff.id]["projects"][0]["tasks"]
+        teammate_tasks = overview[teammate.id]["projects"][0]["tasks"]
+        self.assertEqual({task.id for task in staff_tasks}, {self.parent_task.id, self.subtask.id})
+        self.assertEqual([task.id for task in teammate_tasks], [teammate_task.id])
+        self.assertContains(response, "2 assigned tasks")
+        self.assertContains(response, "1 assigned task")
+        self.assertContains(response, "task-list-shell")
 
     def test_creator_only_project_is_shown_as_not_assigned(self):
         manager = User.objects.create_user(

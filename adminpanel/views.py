@@ -2482,17 +2482,23 @@ def pm_overview(request):
         elif project.created_by_id:
             assignee_ids.add(project.created_by_id)
 
-        tasks = list(project.tasks.all())
-        completed_tasks = sum(task.status == 'done' for task in tasks)
-        project_summary = {
-            'project': project,
-            'tasks': tasks,
-            'progress': int((completed_tasks / len(tasks)) * 100) if tasks else 0,
-        }
+        project_tasks = list(project.tasks.all())
         for user_id in assignee_ids:
             if user_id in user_ids:
+                # An assignment to the project is not permission to expose every
+                # team member's task list. Keep each overview row person-specific,
+                # matching the per-person Kanban visibility rule.
+                tasks = [
+                    task for task in project_tasks
+                    if task.assigned_to_id == user_id
+                    or (task.assigned_to_id is None and task.created_by_id == user_id)
+                ]
+                completed_tasks = sum(task.status == 'done' for task in tasks)
                 projects_by_user[user_id].append({
-                    **project_summary,
+                    'project': project,
+                    'tasks': tasks,
+                    'task_count': len(tasks),
+                    'progress': int((completed_tasks / len(tasks)) * 100) if tasks else 0,
                     'created_unassigned': (
                         project.assigned_user_id is None
                         and project.created_by_id == user_id
