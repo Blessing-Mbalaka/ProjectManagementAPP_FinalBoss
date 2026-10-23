@@ -108,6 +108,59 @@ class ProjectManagementOverviewTests(TestCase):
         self.assertNotContains(response, self.outside_staff.get_full_name())
         self.assertContains(response, "Gantt Chart")
 
+    def test_centre_head_sidebar_hides_manage_users_and_links_editable_kanban(self):
+        self.client.force_login(self.centre_head)
+
+        response = self.client.get(reverse('overview'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '>Manage Users<')
+        self.assertContains(response, 'Team Monitoring Kanban')
+        self.assertContains(response, 'My Editable Kanban')
+        self.assertContains(response, reverse('manager_kanban'))
+
+    def test_admin_sidebar_keeps_manage_users(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse('overview'))
+
+        self.assertContains(response, '>Manage Users<')
+
+    def test_centre_head_can_update_tasks_in_project_assigned_to_them(self):
+        assigned_project = Project.objects.create(
+            name='Centre Head Assigned Project',
+            assigned_user=self.centre_head,
+            created_by=self.admin,
+            research_centre=self.centre,
+        )
+        assigned_task = Task.objects.create(
+            title='Centre Head Editable Task',
+            project=assigned_project,
+            assigned_to=self.staff,
+            created_by=self.admin,
+            status='todo',
+        )
+        self.client.force_login(self.centre_head)
+
+        board = self.client.get(reverse('manager_kanban'))
+        update = self.client.post(
+            reverse('update_task_status', args=[assigned_task.id]),
+            data='{"status":"in_progress"}',
+            content_type='application/json',
+        )
+
+        self.assertEqual(board.status_code, 200)
+        self.assertContains(board, 'My Editable Project Kanban')
+        self.assertContains(board, assigned_project.name)
+        self.assertContains(board, assigned_task.title)
+        self.assertTemplateUsed(board, 'manager/manager_kanban.html')
+        self.assertTemplateUsed(board, 'adminpanel/index.html')
+        self.assertEqual(update.status_code, 200)
+        self.assertTrue(update.json()['success'])
+        assigned_task.refresh_from_db()
+        self.assertEqual(assigned_task.status, 'in_progress')
+        self.assertEqual(assigned_task.progress, 33)
+
     def test_each_person_row_contains_only_their_assigned_tasks(self):
         teammate = User.objects.create_user(
             username="overview-teammate",

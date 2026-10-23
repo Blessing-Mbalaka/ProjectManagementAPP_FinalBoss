@@ -131,7 +131,10 @@
                             <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>
                             <a href="{% url 'applied_bids' %}" class="nav-link"><i class="bi bi-send-check"></i><span>Applied Bids</span></a>
                             {% endif %}
-                            <a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a>
+                            <a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-eye"></i><span>Team Monitoring Kanban</span></a>
+                            {% if user.role == 'centrehead' %}
+                            <a href="{% url 'manager_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>My Editable Kanban</span></a>
+                            {% endif %}
                             {% if user.role == 'admin' %}
                             <a href="{% url 'admin_my_projects' %}" class="nav-link"><i class="bi bi-folder-check"></i><span>My Projects</span></a>
                             {% endif %}
@@ -158,7 +161,9 @@
                 {% if user.role == 'admin' %}
                 <li><a href="{% url 'supervisor_dashboard' %}" class="nav-link"><i class="bi bi-collection-play"></i><span>Supervision</span></a></li>
                 {% endif %}
+                {% if user.role == 'admin' %}
                 <li><a href="{% url 'manage_users' %}" class="nav-link"><i class="bi bi-people"></i><span>Manage Users</span></a></li>
+                {% endif %}
                 {% if user.is_superuser or user.role == 'admin' or user.role == 'centrehead' %}
                 <li><a href="{% url 'page_visit_audit' %}" class="nav-link"><i class="bi bi-activity"></i><span>User Page Activity</span></a></li>
                 {% endif %}

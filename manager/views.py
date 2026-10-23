@@ -386,14 +386,23 @@ def manager_kanban(request):
         'task_types': TASK_TYPES,
         'projects': projects,
         'today': now().date(),
+        'kanban_base_template': (
+            'adminpanel/index.html'
+            if has_role(request.user, 'admin', 'centrehead')
+            else 'manager/home.html'
+        ),
         'kanban_title': (
             'My Financial Projects Kanban'
             if getattr(request, '_financial_board', False)
+            else 'My Editable Project Kanban'
+            if has_role(request.user, 'centrehead')
             else 'Project Manager Kanban'
         ),
         'kanban_intro': (
             'Update the client bids and other project tasks assigned to you.'
             if getattr(request, '_financial_board', False)
+            else 'Update tasks in projects assigned to you or managed by you.'
+            if has_role(request.user, 'centrehead')
             else 'Track and manage tasks for your assigned projects.'
         ),
     }
