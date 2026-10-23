@@ -18,6 +18,7 @@ SECURE_HSTS_SECONDS = 0
 
 # Use a file-backed SQLite database that is isolated from production.
 TEST_DB_PATH = Path(BASE_DIR) / 'test_artifacts' / 'test.db'
+TEST_SUITE_DB_PATH = Path(BASE_DIR) / 'test_artifacts' / 'test_suite.db'
 TEST_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 DATABASES = {
@@ -26,7 +27,9 @@ DATABASES = {
         'NAME': TEST_DB_PATH,
         'ATOMIC_REQUESTS': True,
         'TEST': {
-            'NAME': TEST_DB_PATH,
+            # Never let Django's test runner create, flush, or delete the
+            # persistent demo database used by the local review server.
+            'NAME': TEST_SUITE_DB_PATH,
         },
     }
 }

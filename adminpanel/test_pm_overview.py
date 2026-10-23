@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from adminpanel.models import ResearchCentre
 from projects.models import Assignment, Project, Task, TeamMember
@@ -196,3 +199,62 @@ class ManagerKanbanEmptyStateTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No projects have been assigned to you yet")
         self.assertNotContains(response, 'data-bs-target="#addTaskModal"')
+
+
+class ExecutiveOverviewInsightsTests(TestCase):
+    def setUp(self):
+        self.centre = ResearchCentre.objects.create(name="Insights Centre")
+        self.other_centre = ResearchCentre.objects.create(name="Outside Insights Centre")
+        self.head = User.objects.create_user(
+            username="insights-head",
+            password="pass",
+            role="centrehead",
+            research_centre=self.centre,
+        )
+        self.owner = User.objects.create_user(
+            username="insights-owner",
+            password="pass",
+            role="staff",
+            research_centre=self.centre,
+        )
+        overdue = Project.objects.create(
+            name="Overdue Book",
+            project_type="book",
+            status="in-progress",
+            due_date=timezone.localdate() - timedelta(days=1),
+            assigned_user=self.owner,
+            research_centre=self.centre,
+        )
+        completed = Project.objects.create(
+            name="Completed Paper",
+            project_type="paper",
+            status="completed",
+            assigned_user=self.owner,
+            research_centre=self.centre,
+        )
+        Project.objects.create(
+            name="Outside Software Project",
+            project_type="software",
+            status="planning",
+            research_centre=self.other_centre,
+        )
+        Task.objects.create(project=overdue, title="Finished chapter", status="done", assigned_to=self.owner)
+        Task.objects.create(project=overdue, title="Open chapter", status="todo", assigned_to=self.owner)
+        Task.objects.create(project=completed, title="Published", status="done", assigned_to=self.owner)
+
+    def test_centre_head_sees_scoped_project_mix_and_delivery_health(self):
+        self.client.force_login(self.head)
+
+        response = self.client.get(reverse("overview"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["dashboard_stats"]["projects"], 2)
+        self.assertEqual(response.context["portfolio_health"]["average_progress"], 75)
+        self.assertEqual(response.context["portfolio_health"]["overdue"], 1)
+        self.assertEqual(
+            {item["value"]: item["count"] for item in response.context["project_mix"]},
+            {"book": 1, "paper": 1},
+        )
+        self.assertContains(response, "Project Mix")
+        self.assertContains(response, "Delivery Health")
+        self.assertNotContains(response, "Outside Software Project")

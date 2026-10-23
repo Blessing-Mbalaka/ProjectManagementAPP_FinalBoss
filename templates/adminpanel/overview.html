@@ -176,6 +176,164 @@ body{
   text-decoration:none;
 }
 
+/* PORTFOLIO VISUALS */
+.portfolio-card{
+  background:rgba(255,255,255,.96);
+  border:1px solid var(--uj-border);
+  border-radius:24px;
+  padding:24px;
+  height:100%;
+  box-shadow:0 12px 30px rgba(0,0,0,.035);
+}
+
+.portfolio-card-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:22px;
+}
+
+.portfolio-card-header h5{
+  margin:0 0 4px;
+  font-size:18px;
+  font-weight:800;
+  color:#26384d;
+}
+
+.portfolio-card-header p{
+  margin:0;
+  color:#777;
+  font-size:13px;
+}
+
+.portfolio-card-header a{
+  color:var(--uj-orange);
+  font-size:13px;
+  font-weight:700;
+  text-decoration:none;
+  white-space:nowrap;
+}
+
+.project-mix-layout{
+  display:grid;
+  grid-template-columns:170px minmax(0,1fr);
+  align-items:center;
+  gap:28px;
+}
+
+.mix-donut{
+  width:164px;
+  aspect-ratio:1;
+  border-radius:50%;
+  background:var(--mix-gradient);
+  display:grid;
+  place-items:center;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.04);
+}
+
+.mix-donut::before{
+  content:"";
+  width:104px;
+  aspect-ratio:1;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+
+.mix-donut-label{
+  position:absolute;
+  text-align:center;
+  color:#26384d;
+}
+
+.mix-donut-wrap{
+  position:relative;
+  display:grid;
+  place-items:center;
+}
+
+.mix-donut-label strong{
+  display:block;
+  font-size:28px;
+  line-height:1;
+}
+
+.mix-donut-label span{
+  font-size:11px;
+  color:#777;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.mix-legend{
+  display:grid;
+  gap:12px;
+}
+
+.mix-legend-row{
+  display:grid;
+  grid-template-columns:10px minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  font-size:13px;
+}
+
+.mix-dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+}
+
+.mix-legend-row strong{
+  color:#26384d;
+}
+
+.mix-legend-row small{
+  color:#777;
+  margin-left:5px;
+}
+
+.status-stack{
+  display:flex;
+  height:12px;
+  overflow:hidden;
+  background:#eee;
+  border-radius:999px;
+  margin:8px 0 20px;
+}
+
+.status-stack span{
+  min-width:0;
+  transition:width .35s ease;
+}
+
+.health-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-top:22px;
+}
+
+.health-metric{
+  border:1px solid #eee;
+  background:#fafafa;
+  border-radius:16px;
+  padding:15px;
+}
+
+.health-metric strong{
+  display:block;
+  font-size:24px;
+  color:#26384d;
+  margin-bottom:3px;
+}
+
+.health-metric span{
+  color:#777;
+  font-size:12px;
+}
+
 /* QUICK LINKS */
 .quick-grid{
   display:grid;
@@ -231,7 +389,7 @@ body{
   margin-bottom:16px;
 }
 
-.notification-tabs button{
+.notification-tabs a{
   border:0;
   background:transparent;
   flex:1;
@@ -239,9 +397,11 @@ body{
   border-radius:10px;
   font-size:13px;
   color:#666;
+  text-align:center;
+  text-decoration:none;
 }
 
-.notification-tabs button.active{
+.notification-tabs a.active{
   background:#fff;
   color:#111;
   font-weight:700;
@@ -315,6 +475,18 @@ body{
   .hero-box h1{
     font-size:32px;
   }
+
+  .project-mix-layout{
+    grid-template-columns:1fr;
+  }
+
+  .mix-donut-wrap{
+    justify-self:center;
+  }
+
+  .health-grid{
+    grid-template-columns:1fr;
+  }
 }
 </style>
 
@@ -387,6 +559,85 @@ body{
       </div>
     </div>
 
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-xl-6">
+      <section class="portfolio-card" aria-labelledby="project-mix-heading">
+        <div class="portfolio-card-header">
+          <div>
+            <h5 id="project-mix-heading">Project Mix</h5>
+            <p>Current portfolio grouped by project type.</p>
+          </div>
+          <a href="{% url 'pm_overview' %}">View projects <i class="bi bi-arrow-right"></i></a>
+        </div>
+
+        {% if project_mix %}
+        <div class="project-mix-layout">
+          <div class="mix-donut-wrap">
+            <div class="mix-donut" style="--mix-gradient:conic-gradient({{ project_mix_gradient }});"></div>
+            <div class="mix-donut-label">
+              <strong>{{ dashboard_stats.projects }}</strong>
+              <span>Total projects</span>
+            </div>
+          </div>
+          <div class="mix-legend">
+            {% for item in project_mix %}
+            <div class="mix-legend-row">
+              <span class="mix-dot" style="background:{{ item.colour }};"></span>
+              <span>{{ item.label }} <small>{{ item.percentage }}%</small></span>
+              <strong>{{ item.count }}</strong>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+        <div class="text-muted small py-4">Project mix will appear when projects are added.</div>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="col-xl-6">
+      <section class="portfolio-card" aria-labelledby="delivery-health-heading">
+        <div class="portfolio-card-header">
+          <div>
+            <h5 id="delivery-health-heading">Delivery Health</h5>
+            <p>Status distribution and items that may need attention.</p>
+          </div>
+          <a href="{% url 'admin_ganttchart' %}">Open Gantt <i class="bi bi-arrow-right"></i></a>
+        </div>
+
+        <div class="mix-legend">
+          {% for item in project_status_mix %}
+          <div class="mix-legend-row">
+            <span class="mix-dot" style="background:{{ item.colour }};"></span>
+            <span>{{ item.label }} <small>{{ item.percentage }}%</small></span>
+            <strong>{{ item.count }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="status-stack" aria-label="Project status distribution">
+          {% for item in project_status_mix %}
+          <span style="width:{{ item.percentage }}%;background:{{ item.colour }};" title="{{ item.label }}: {{ item.count }}"></span>
+          {% endfor %}
+        </div>
+
+        <div class="health-grid">
+          <div class="health-metric">
+            <strong>{{ portfolio_health.average_progress }}%</strong>
+            <span>Average completion</span>
+          </div>
+          <div class="health-metric">
+            <strong>{{ portfolio_health.overdue }}</strong>
+            <span>Overdue active projects</span>
+          </div>
+          <div class="health-metric">
+            <strong>{{ portfolio_health.on_hold }}</strong>
+            <span>Projects on hold</span>
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
 
   <div class="row g-4">

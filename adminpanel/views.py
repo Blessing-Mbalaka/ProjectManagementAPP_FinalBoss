@@ -556,6 +556,17 @@ def overview(request):
         'tasks',
         'assignments__team_member__user'
     ).select_related('created_by', 'assigned_user')
+    if request.user.role == 'centrehead':
+        centre_id = request.user.research_centre_id
+        if centre_id:
+            projects = projects.filter(
+                Q(research_centre_id=centre_id)
+                | Q(assigned_user__research_centre_id=centre_id)
+                | Q(created_by__research_centre_id=centre_id)
+                | Q(assignments__team_member__user__research_centre_id=centre_id)
+            ).distinct()
+        else:
+            projects = projects.none()
 
     progress_list, status_list, type_list = [], [], []
 
@@ -585,6 +596,61 @@ def overview(request):
         'progress_hist': bins,
     }
 
+    project_total = len(progress_list)
+    type_colours = {
+        'software': '#ff5a1f',
+        'book': '#641566',
+        'paper': '#2563eb',
+        'conference': '#16a085',
+    }
+    project_mix = []
+    mix_stops = []
+    mix_cursor = 0.0
+    for value, label in Project.PROJECT_TYPES:
+        count = type_counts.get(value, 0)
+        if not count:
+            continue
+        percentage = round((count / project_total) * 100, 1) if project_total else 0
+        next_cursor = mix_cursor + percentage
+        colour = type_colours[value]
+        project_mix.append({
+            'value': value,
+            'label': label,
+            'count': count,
+            'percentage': percentage,
+            'colour': colour,
+        })
+        mix_stops.append(f'{colour} {mix_cursor:.1f}% {next_cursor:.1f}%')
+        mix_cursor = next_cursor
+
+    status_colours = {
+        'planning': '#f59e0b',
+        'in-progress': '#2563eb',
+        'on-hold': '#dc3545',
+        'completed': '#16a34a',
+    }
+    project_status_mix = []
+    for value, label in Project.STATUS_CHOICES:
+        count = status_counts.get(value, 0)
+        project_status_mix.append({
+            'value': value,
+            'label': label,
+            'count': count,
+            'percentage': round((count / project_total) * 100, 1) if project_total else 0,
+            'colour': status_colours[value],
+        })
+
+    today = timezone.localdate()
+    portfolio_health = {
+        'average_progress': round(sum(progress_list) / project_total) if project_total else 0,
+        'completed': status_counts.get('completed', 0),
+        'on_hold': status_counts.get('on-hold', 0),
+        'overdue': sum(
+            bool(project.due_date and project.due_date < today and project.status != 'completed')
+            for project in projects
+        ),
+    }
+
         # --- Notifications for the page ---
     notifications_period = request.GET.get('notifications_period')
     if notifications_period not in {'today', 'week', 'month'}:
@@ -605,6 +671,10 @@ def overview(request):
         'projects': projects,
         'users': users,
         'insights_json': json.dumps(insights),
+        'project_mix': project_mix,
+        'project_mix_gradient': ', '.join(mix_stops) or '#e9ecef 0% 100%',
+        'project_status_mix': project_status_mix,
+        'portfolio_health': portfolio_health,
         'recent_notifications': recent_notifications,
         'notifications_period': notifications_period,
         'can_manage_overview': request.user.role == 'admin',

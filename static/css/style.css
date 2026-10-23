@@ -44,6 +44,8 @@ body {
     background-color: rgba(255, 255, 255, 0.416);
     width: 250px;
     height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
     position: fixed;
     left: 0;
     top: 0;
@@ -53,6 +55,8 @@ body {
     transition: all 0.3s ease;
     z-index: 1000;
     border-right: 1px solid var(--sidebar-border);
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .sidebar.collapsed {
