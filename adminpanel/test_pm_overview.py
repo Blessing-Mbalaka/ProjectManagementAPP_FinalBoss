@@ -81,6 +81,11 @@ class ProjectManagementOverviewTests(TestCase):
         self.assertContains(response, self.project.name)
         self.assertContains(response, "Project type")
         self.assertContains(response, self.project.get_project_type_display())
+        self.assertContains(response, "Project timeline preview")
+        self.assertContains(response, "Open full Gantt")
+        self.assertContains(response, reverse("admin_ganttchart"))
+        self.assertEqual(response.context["gantt_preview_total"], 1)
+        self.assertEqual(response.context["gantt_preview"][0]["project"], self.project)
         self.assertContains(response, self.parent_task.title)
         self.assertContains(response, self.subtask.title)
         full_kanban_url = f'{reverse("admin_kanban")}?user={self.staff.id}'
@@ -98,6 +103,7 @@ class ProjectManagementOverviewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.staff.get_full_name())
         self.assertNotContains(response, self.outside_staff.get_full_name())
+        self.assertContains(response, "Gantt Chart")
 
     def test_each_person_row_contains_only_their_assigned_tasks(self):
         teammate = User.objects.create_user(

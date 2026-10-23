@@ -128,7 +128,7 @@
                             {% if user.role == 'admin' %}
                             <a href="{% url 'admin_my_projects' %}" class="nav-link"><i class="bi bi-folder-check"></i><span>My Projects</span></a>
                             {% endif %}
-                            {% if user.role == 'admin' or user.role == 'dean' %}
+                            {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' %}
                             <a href="{% url 'admin_ganttchart' %}" class="nav-link"><i class="bi bi-graph-up"></i><span>Gantt Chart</span></a>
                             {% endif %}
                         </div>

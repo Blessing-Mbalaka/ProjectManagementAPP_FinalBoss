@@ -2471,8 +2471,9 @@ def pm_overview(request):
         'assignments__team_member',
     ).distinct().order_by('name')
 
+    project_list = list(projects)
     projects_by_user = defaultdict(list)
-    for project in projects:
+    for project in project_list:
         assignee_ids = {
             assignment.team_member.user_id
             for assignment in project.assignments.all()
@@ -2511,8 +2512,44 @@ def pm_overview(request):
         }
         for person in people
     ]
+    preview_projects = sorted(
+        project_list,
+        key=lambda project: (
+            project.due_date is None,
+            project.due_date or timezone.localdate(),
+            project.name.lower(),
+        ),
+    )[:10]
+    gantt_preview = []
+    if preview_projects:
+        preview_dates = []
+        preview_rows = []
+        for project in preview_projects:
+            start_date = project.created_at.date()
+            end_date = max(start_date, project.due_date or (start_date + timedelta(days=30)))
+            tasks = list(project.tasks.all())
+            completed = sum(task.status == 'done' for task in tasks)
+            progress = int((completed / len(tasks)) * 100) if tasks else 0
+            preview_dates.extend([start_date, end_date])
+            preview_rows.append((project, start_date, end_date, progress))
+        range_start = min(preview_dates)
+        range_end = max(preview_dates)
+        range_days = max(1, (range_end - range_start).days)
+        for project, start_date, end_date, progress in preview_rows:
+            left = int(((start_date - range_start).days / range_days) * 100)
+            width = max(3, int(((end_date - start_date).days / range_days) * 100))
+            gantt_preview.append({
+                'project': project,
+                'start_date': start_date,
+                'end_date': end_date,
+                'progress': progress,
+                'left': min(left, 97),
+                'width': min(width, max(3, 100 - left)),
+            })
     return render(request, 'adminpanel/pm_overview.html', {
         'people_overview': people_overview,
+        'gantt_preview': gantt_preview,
+        'gantt_preview_total': len(project_list),
     })
 
 

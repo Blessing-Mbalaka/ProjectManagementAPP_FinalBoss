@@ -108,6 +108,74 @@
     min-width: 130px;
   }
 
+  .gantt-preview-card {
+    background: linear-gradient(135deg, #fff 0%, #fff8f3 100%);
+    border: 1px solid #eadfd8;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(44, 32, 24, 0.07);
+    margin-bottom: 22px;
+    overflow: hidden;
+  }
+
+  .gantt-preview-header {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 18px 20px 12px;
+  }
+
+  .gantt-preview-scroll {
+    max-height: 390px;
+    overflow: auto;
+    padding: 0 20px 18px;
+  }
+
+  .gantt-preview-row {
+    align-items: center;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(190px, 30%) minmax(420px, 1fr);
+    padding: 8px 0;
+  }
+
+  .gantt-preview-label {
+    min-width: 0;
+  }
+
+  .gantt-preview-label strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gantt-track {
+    background: repeating-linear-gradient(90deg, #f1ece8 0, #f1ece8 1px, transparent 1px, transparent 10%);
+    border: 1px solid #eee5df;
+    border-radius: 999px;
+    height: 30px;
+    min-width: 420px;
+    position: relative;
+  }
+
+  .gantt-bar {
+    align-items: center;
+    background: linear-gradient(90deg, #f26522, #6a1b9a);
+    border-radius: 999px;
+    color: #fff;
+    display: flex;
+    font-size: 0.72rem;
+    font-weight: 700;
+    height: 22px;
+    justify-content: center;
+    min-width: 32px;
+    overflow: hidden;
+    position: absolute;
+    top: 3px;
+    white-space: nowrap;
+  }
+
   @media (max-width: 768px) {
     .pm-overview-page {
       padding: 16px;
@@ -122,6 +190,33 @@
       <p class="text-muted mb-0">People, assigned projects, tasks, and Kanban access.</p>
     </div>
   </div>
+
+  <section class="gantt-preview-card" aria-labelledby="gantt-preview-heading">
+    <div class="gantt-preview-header">
+      <div>
+        <h2 class="h5 mb-1" id="gantt-preview-heading"><i class="bi bi-bar-chart-steps me-2"></i>Project timeline preview</h2>
+        <p class="text-muted small mb-0">Next {{ gantt_preview|length }} of {{ gantt_preview_total }} scoped projects. Open the full chart for task detail and filters.</p>
+      </div>
+      <a class="btn btn-sm btn-primary flex-shrink-0" href="{% url 'admin_ganttchart' %}">
+        <i class="bi bi-arrows-fullscreen me-1"></i>Open full Gantt
+      </a>
+    </div>
+    <div class="gantt-preview-scroll">
+      {% for item in gantt_preview %}
+        <div class="gantt-preview-row">
+          <div class="gantt-preview-label">
+            <strong title="{{ item.project.name }}">{{ item.project.name }}</strong>
+            <small class="text-muted">{{ item.project.get_project_type_display }} · {{ item.start_date|date:'d M Y' }} – {{ item.end_date|date:'d M Y' }}</small>
+          </div>
+          <div class="gantt-track" aria-label="{{ item.project.name }} from {{ item.start_date }} to {{ item.end_date }}">
+            <div class="gantt-bar" style="left: {{ item.left }}%; width: {{ item.width }}%;" title="{{ item.progress }}% complete">{{ item.progress }}%</div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="text-muted py-4 text-center">No project dates are available for the timeline.</div>
+      {% endfor %}
+    </div>
+  </section>
 
   <div class="table-responsive border rounded pm-overview-scroll">
     <table class="table table-hover pm-overview-table">
