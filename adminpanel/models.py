@@ -216,6 +216,14 @@ class FinancialProject(models.Model):
     contact_phone = models.CharField(max_length=50, blank=True)
     stage = models.CharField(max_length=20, choices=STAGE_CHOICES, default='lead', db_index=True)
     estimated_value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    actual_contract_value = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Confirmed awarded value. Kept separate from the pre-award estimate.",
+    )
+    contract_award_date = models.DateField(null=True, blank=True)
     bid_deadline = models.DateField(null=True, blank=True)
     bid_reference = models.CharField(max_length=100, blank=True)
     applied_date = models.DateField(null=True, blank=True, db_index=True)

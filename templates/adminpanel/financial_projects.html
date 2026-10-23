@@ -83,15 +83,23 @@
             <div class="bid-meta">
               <span><i class="bi bi-person me-1"></i>{{ item.owner.get_full_name|default:item.owner.username }}</span>
               {% if item.estimated_value %}<span><i class="bi bi-cash-stack me-1"></i>Estimated R {{ item.estimated_value|floatformat:2 }}</span>{% endif %}
+              {% if item.actual_contract_value is not None %}<span><i class="bi bi-patch-check me-1"></i>Contract R {{ item.actual_contract_value|floatformat:2 }}</span>{% endif %}
               {% if item.bid_deadline %}<span><i class="bi bi-calendar-event me-1"></i>{{ item.bid_deadline }}</span>{% endif %}
               {% if item.next_follow_up_date %}<span><i class="bi bi-bell me-1"></i>Follow up {{ item.next_follow_up_date }}</span>{% endif %}
               <span><i class="bi bi-chat-left-text me-1"></i>{{ item.project.engagement_logs.count }} engagement note{{ item.project.engagement_logs.count|pluralize }}</span>
             </div>
-            {% if item.cost_centre %}<div class="converted-pill"><i class="bi bi-check-circle-fill"></i>{{ item.cost_centre.code }} · {{ item.cost_centre.name }}</div>{% endif %}
+            {% if item.cost_centre %}
+              <div class="converted-pill"><i class="bi bi-check-circle-fill"></i>{{ item.cost_centre.code }} · {{ item.cost_centre.name }}</div>
+            {% else %}
+              <div class="small text-muted mt-2"><i class="bi bi-hourglass-split me-1"></i>Cost centre pending · {{ item.client_name }}</div>
+            {% endif %}
             <div class="bid-actions mt-3">
               <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#noteModal{{ item.id }}"><i class="bi bi-chat-plus"></i> Note</button>
               {% if item.stage == 'won' and not item.cost_centre and can_convert_financial_project %}
                 <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#convertModal{{ item.id }}"><i class="bi bi-building-add"></i> Add cost centre</button>
+              {% endif %}
+              {% if item.stage == 'won' and item.cost_centre and can_convert_financial_project %}
+                <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#contractModal{{ item.id }}"><i class="bi bi-cash-coin"></i> Contract details</button>
               {% endif %}
             </div>
           </article>
@@ -122,9 +130,26 @@
               <div class="modal-body">
                 <p class="text-muted">Client: <strong>{{ item.client_name }}</strong>. Earlier engagement notes will be linked automatically.</p>
                 <div class="mb-3"><label class="form-label">Official cost centre name</label><input name="name" class="form-control" required></div>
-                <div><label class="form-label">Official cost centre code</label><input name="code" class="form-control" required></div>
+                <div class="mb-3"><label class="form-label">Official cost centre code</label><input name="code" class="form-control" required></div>
+                <div class="mb-3"><label class="form-label">Confirmed contract value <span class="text-muted">(optional)</span></label><input name="actual_contract_value" type="number" min="0" step="0.01" class="form-control"><div class="form-text">Leave blank if Finance has not received the signed amount yet. The bid estimate will not be copied.</div></div>
+                <div><label class="form-label">Contract award date <span class="text-muted">(optional)</span></label><input name="contract_award_date" type="date" class="form-control"></div>
               </div>
               <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success" type="submit">Create and link</button></div>
+            </form></div>
+          </div>
+          {% endif %}
+
+          {% if item.stage == 'won' and item.cost_centre and can_convert_financial_project %}
+          <div class="modal fade" id="contractModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered"><form class="modal-content tracked-form" method="post" action="{% url 'update_financial_project_contract' item.id %}">
+              {% csrf_token %}
+              <div class="modal-header"><h5 class="modal-title">Confirmed contract details</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+              <div class="modal-body">
+                <p class="text-muted">{{ item.client_name }} · {{ item.cost_centre.code }} · {{ item.cost_centre.name }}</p>
+                <div class="mb-3"><label class="form-label">Confirmed contract value</label><input name="actual_contract_value" type="number" min="0" step="0.01" value="{% if item.actual_contract_value is not None %}{{ item.actual_contract_value }}{% endif %}" class="form-control"><div class="form-text">This is the awarded amount, kept separately from the earlier bid estimate.</div></div>
+                <div><label class="form-label">Contract award date</label><input name="contract_award_date" type="date" value="{{ item.contract_award_date|date:'Y-m-d' }}" class="form-control"></div>
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success" type="submit">Save contract details</button></div>
             </form></div>
           </div>
           {% endif %}

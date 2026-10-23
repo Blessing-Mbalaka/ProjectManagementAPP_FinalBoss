@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from adminpanel.models import ClockInRecord, ResearchCentre
 from manager.models import Book, Chapter
-from projects.models import Project, Task, WeeklyReport
+from projects.models import Assignment, Project, Task, TeamMember, WeeklyReport
 from projects.work_scope import manageable_projects_for, workable_tasks_for
 from users.roles import has_role
 
@@ -34,11 +34,23 @@ class RequestedRoleAndPrivacyTests(TestCase):
         Task.objects.create(project=self.project, title='Someone else', assigned_to=self.other_staff, created_by=self.manager)
         self.assertEqual(list(workable_tasks_for(self.staff)), [mine])
 
-    def test_centre_head_and_finance_manage_only_their_centre(self):
+    def test_centre_head_manages_centre_while_finance_needs_explicit_allocation(self):
         self.assertIn(self.project, manageable_projects_for(self.head))
         self.assertNotIn(self.other_project, manageable_projects_for(self.head))
-        self.assertIn(self.project, manageable_projects_for(self.finance))
+        self.assertNotIn(self.project, manageable_projects_for(self.finance))
         self.assertNotIn(self.other_project, manageable_projects_for(self.finance))
+
+        finance_member = TeamMember.objects.create(
+            user=self.finance,
+            full_name='Finance Admin',
+            role='Financial Admin',
+        )
+        Assignment.objects.create(
+            project=self.project,
+            team_member=finance_member,
+            responsibility='Client engagement',
+        )
+        self.assertIn(self.project, manageable_projects_for(self.finance))
 
     def test_manager_superuser_has_both_entitlements_without_multi_role_schema(self):
         self.assertTrue(has_role(self.thabile, 'manager'))

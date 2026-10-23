@@ -1208,6 +1208,18 @@ def convert_financial_project(request, project_id):
         messages.error(request, 'That cost centre name or code is already in use.')
         return redirect('financial_projects')
 
+    contract_value_text = request.POST.get('actual_contract_value', '').strip()
+    actual_contract_value = None
+    if contract_value_text:
+        try:
+            actual_contract_value = Decimal(contract_value_text)
+            if actual_contract_value < 0:
+                raise InvalidOperation
+        except (InvalidOperation, ValueError):
+            messages.error(request, 'The actual contract value must be zero or greater.')
+            return redirect('financial_projects')
+    contract_award_date = parse_date(request.POST.get('contract_award_date', ''))
+
     try:
         with transaction.atomic():
             cost_centre = CostCentre.objects.create(
@@ -1227,10 +1239,16 @@ def convert_financial_project(request, project_id):
                 contact_phone=record.contact_phone,
                 crm_notes=record.summary,
                 research_centre=record.research_centre,
-                moa_amount=record.estimated_value or Decimal('0.00'),
+                # The bid estimate is intentionally never treated as awarded income.
+                # The confirmed amount can be supplied now or safely added later.
+                moa_amount=actual_contract_value,
             )
             record.cost_centre = cost_centre
-            record.save(update_fields=['cost_centre', 'updated_at'])
+            record.actual_contract_value = actual_contract_value
+            record.contract_award_date = contract_award_date
+            record.save(update_fields=[
+                'cost_centre', 'actual_contract_value', 'contract_award_date', 'updated_at'
+            ])
             EngagementLog.objects.filter(project=record.project, cost_centre__isnull=True).update(
                 cost_centre=cost_centre,
                 client_name=record.client_name,
@@ -1241,6 +1259,39 @@ def convert_financial_project(request, project_id):
         return redirect('financial_projects')
 
     messages.success(request, 'Cost centre created and linked. All earlier client notes remain attached.')
+    return redirect('financial_projects')
+
+
+@login_required
+@require_POST
+def update_financial_project_contract(request, project_id):
+    if not can_manage_cost_centres(request.user):
+        return HttpResponseForbidden('You are not authorized to update contract details.')
+    record = get_object_or_404(financial_projects_for(request.user), id=project_id)
+    if record.stage != 'won':
+        messages.error(request, 'Contract details can be confirmed only after the bid is marked as won.')
+        return redirect('financial_projects')
+
+    value_text = request.POST.get('actual_contract_value', '').strip()
+    actual_contract_value = None
+    if value_text:
+        try:
+            actual_contract_value = Decimal(value_text)
+            if actual_contract_value < 0:
+                raise InvalidOperation
+        except (InvalidOperation, ValueError):
+            messages.error(request, 'The actual contract value must be zero or greater.')
+            return redirect('financial_projects')
+
+    with transaction.atomic():
+        record.actual_contract_value = actual_contract_value
+        record.contract_award_date = parse_date(request.POST.get('contract_award_date', ''))
+        record.save(update_fields=['actual_contract_value', 'contract_award_date', 'updated_at'])
+        if record.cost_centre_id:
+            record.cost_centre.moa_amount = actual_contract_value
+            record.cost_centre.save(update_fields=['moa_amount'])
+
+    messages.success(request, 'Confirmed contract details saved. The original bid estimate remains unchanged.')
     return redirect('financial_projects')
 
 @login_required

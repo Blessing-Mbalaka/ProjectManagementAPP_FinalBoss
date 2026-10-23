@@ -42,6 +42,7 @@ urlpatterns = [
     path('finance/projects/<int:project_id>/stage/', views.update_financial_project_stage, name='update_financial_project_stage'),
     path('finance/projects/<int:project_id>/notes/', views.add_financial_project_note, name='add_financial_project_note'),
     path('finance/projects/<int:project_id>/convert/', views.convert_financial_project, name='convert_financial_project'),
+    path('finance/projects/<int:project_id>/contract/', views.update_financial_project_contract, name='update_financial_project_contract'),
     path('finance-readonly/', views.finance_readonly, name='finance_readonly'),
     path('admin_kanban/', views.admin_kanban, name='admin_kanban'),
     path('pm-overview/', views.pm_overview, name='pm_overview'),

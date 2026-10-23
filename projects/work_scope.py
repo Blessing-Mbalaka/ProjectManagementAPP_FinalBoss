@@ -43,11 +43,13 @@ def manageable_projects_for(user, queryset=None):
     projects = queryset if queryset is not None else Project.objects.all()
     if has_role(user, "admin"):
         return projects
-    if has_role(user, "centrehead", "financialadmin"):
+    if has_role(user, "centrehead"):
         return scope_projects_for_user(projects, user)
-    if has_role(user, "manager"):
+    if has_role(user, "manager", "financialadmin"):
         return scope_projects_for_user(projects, user).filter(
-            Q(created_by=user) | Q(assigned_user=user)
+            Q(created_by=user)
+            | Q(assigned_user=user)
+            | Q(assignments__team_member__user=user)
         ).distinct()
     return projects.none()
 

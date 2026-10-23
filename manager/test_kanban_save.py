@@ -121,4 +121,6 @@ class ManagerKanbanSaveTests(TestCase):
         self.assertContains(response, "Saving…")
         self.assertContains(response, "kanbanToastContainer")
         self.assertContains(response, "Task saved successfully.")
+        self.assertContains(response, "clearOrphanedModalBackdrop")
+        self.assertContains(response, "modal-backdrop")
 

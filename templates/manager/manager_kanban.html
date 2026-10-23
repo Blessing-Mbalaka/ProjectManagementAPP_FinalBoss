@@ -273,6 +273,23 @@
         zone.appendChild(empty);
     }
 
+    function clearOrphanedModalBackdrop() {
+        // Bootstrap normally removes this after its fade transition. If the modal
+        // was updated asynchronously, ensure no stale backdrop can lock the page.
+        if (document.querySelector('.modal.show')) return;
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    }
+
+    function closeSavedModal(modalElement) {
+        if (!modalElement || !window.bootstrap) return;
+        modalElement.addEventListener('hidden.bs.modal', clearOrphanedModalBackdrop, { once: true });
+        bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+        window.setTimeout(clearOrphanedModalBackdrop, 450);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.draggable-task').forEach(task => {
             task.addEventListener('dragstart', (e) => {
@@ -364,9 +381,7 @@
                     }
 
                     const modalElement = form.closest('.modal');
-                    if (modalElement && window.bootstrap) {
-                        bootstrap.Modal.getOrCreateInstance(modalElement).hide();
-                    }
+                    closeSavedModal(modalElement);
                     showKanbanToast(result.message || 'Task saved successfully.');
                 } catch (error) {
                     showKanbanToast(error.message || 'Task could not be saved.', 'error');

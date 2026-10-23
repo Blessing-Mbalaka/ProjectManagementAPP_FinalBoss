@@ -136,7 +136,7 @@ def manager_engagements(request):
         cost_centres = cost_centres.filter(research_centre_id=request.user.research_centre_id)
 
     if request.method == 'POST':
-        form = EngagementLogForm(request.POST, user=request.user)
+        form = EngagementLogForm(request.POST, user=request.user, projects=project_scope)
         if form.is_valid():
             log = form.save(commit=False)
             if log.project_id not in set(project_scope.values_list('id', flat=True)):
@@ -167,7 +167,7 @@ def manager_engagements(request):
             initial['project'] = request.GET.get('project')
         if request.GET.get('cost_centre'):
             initial['cost_centre'] = request.GET.get('cost_centre')
-        form = EngagementLogForm(initial=initial, user=request.user)
+        form = EngagementLogForm(initial=initial, user=request.user, projects=project_scope)
 
     selected_cost_centre_id = request.POST.get('cost_centre') or request.GET.get('cost_centre')
     selected_project_id = request.POST.get('project') or request.GET.get('project')

@@ -1,5 +1,5 @@
 from django import forms
-from adminpanel.models import CostCentre, EngagementLog
+from adminpanel.models import EngagementLog, FinancialProject
 from .models import Book, Paper, Conference
 from projects.models import Project
 from users.models import CustomUser
@@ -100,7 +100,6 @@ class EngagementLogForm(forms.ModelForm):
         model = EngagementLog
         fields = [
             'project',
-            'cost_centre',
             'client_name',
             'entry_type',
             'contact_method',
@@ -112,8 +111,7 @@ class EngagementLogForm(forms.ModelForm):
         ]
         widgets = {
             'project': forms.Select(attrs={'class': 'form-select'}),
-            'cost_centre': forms.Select(attrs={'class': 'form-select'}),
-            'client_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Client name when no cost centre exists yet'}),
+            'client_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Only needed for a project without a client opportunity'}),
             'entry_type': forms.Select(attrs={'class': 'form-select'}),
             'contact_method': forms.Select(attrs={'class': 'form-select'}),
             'engagement_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -125,27 +123,41 @@ class EngagementLogForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
+        allowed_projects = kwargs.pop('projects', None)
         super().__init__(*args, **kwargs)
 
         projects = Project.objects.all().select_related('research_centre').order_by('-created_at', 'name')
-        cost_centres = CostCentre.objects.select_related('research_centre').order_by('name')
 
-        if user and getattr(user, 'research_centre_id', None):
+        if allowed_projects is not None:
+            projects = allowed_projects
+        elif user and getattr(user, 'research_centre_id', None):
             projects = projects.filter(research_centre_id=user.research_centre_id)
-            cost_centres = cost_centres.filter(research_centre_id=user.research_centre_id)
 
         self.fields['project'].queryset = projects
-        self.fields['cost_centre'].queryset = cost_centres
-        self.fields['cost_centre'].required = False
+        self.fields['project'].label = 'Client / opportunity'
+        self.fields['project'].help_text = 'Choose the client opportunity. A cost centre is linked automatically only after the bid is won and the official code is issued.'
+        self.fields['project'].label_from_instance = self._project_label
+        self.fields['client_name'].label = 'Client name (only if no opportunity exists)'
+
+    @staticmethod
+    def _project_label(project):
+        try:
+            financial = project.financial_project
+        except FinancialProject.DoesNotExist:
+            return project.name
+        return f'{financial.client_name} — {project.name} ({financial.get_stage_display()})'
 
     def clean(self):
         cleaned = super().clean()
-        cost_centre = cleaned.get('cost_centre')
+        project = cleaned.get('project')
         client_name = (cleaned.get('client_name') or '').strip()
-        if not cost_centre and not client_name:
-            self.add_error('client_name', 'Enter the client name when an official cost centre does not exist yet.')
-        if cost_centre and not client_name:
-            cleaned['client_name'] = (
-                cost_centre.client_name or cost_centre.company_name or cost_centre.name
-            )
+        financial = None
+        if project:
+            financial = FinancialProject.objects.select_related('cost_centre').filter(project=project).first()
+        if financial:
+            cleaned['client_name'] = financial.client_name
+            self.instance.client_name = financial.client_name
+            self.instance.cost_centre = financial.cost_centre
+        elif not client_name:
+            self.add_error('client_name', 'Enter the client name for a project that has no client opportunity.')
         return cleaned

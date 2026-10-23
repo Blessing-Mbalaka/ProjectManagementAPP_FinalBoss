@@ -135,7 +135,8 @@ class FinancialProjectWorkflowTests(TestCase):
         self.assertEqual(record.cost_centre.client_name, 'Example Client')
         self.assertEqual(record.cost_centre.company_name, 'Example Client Holdings (Pty) Ltd')
         self.assertEqual(record.cost_centre.contact_person_role, 'Procurement Director')
-        self.assertEqual(record.cost_centre.moa_amount, Decimal('250000.00'))
+        self.assertIsNone(record.cost_centre.moa_amount)
+        self.assertIsNone(record.actual_contract_value)
         self.assertEqual(EngagementLog.objects.get(project=record.project).cost_centre, record.cost_centre)
 
         duplicate = self.client.post(reverse('convert_financial_project', args=[record.id]), {
@@ -143,6 +144,53 @@ class FinancialProjectWorkflowTests(TestCase):
         })
         self.assertRedirects(duplicate, reverse('financial_projects'))
         self.assertEqual(CostCentre.objects.filter(client_name='Example Client').count(), 1)
+
+    def test_actual_contract_value_is_separate_and_can_be_added_after_conversion(self):
+        record = self.create_financial_project()
+        self.client.post(
+            reverse('update_financial_project_stage', args=[record.id]),
+            data=json.dumps({'stage': 'won'}), content_type='application/json',
+        )
+        self.client.post(reverse('convert_financial_project', args=[record.id]), {
+            'code': 'CC-2026-200', 'name': 'Confirmed Client Contract',
+        })
+
+        response = self.client.post(
+            reverse('update_financial_project_contract', args=[record.id]),
+            {
+                'actual_contract_value': '225000.00',
+                'contract_award_date': timezone.localdate().isoformat(),
+            },
+        )
+
+        self.assertRedirects(response, reverse('financial_projects'))
+        record.refresh_from_db()
+        record.cost_centre.refresh_from_db()
+        self.assertEqual(record.estimated_value, Decimal('250000.00'))
+        self.assertEqual(record.actual_contract_value, Decimal('225000.00'))
+        self.assertEqual(record.cost_centre.moa_amount, Decimal('225000.00'))
+
+    def test_engagement_workspace_derives_pending_client_without_cost_centre_input(self):
+        record = self.create_financial_project()
+
+        response = self.client.post(reverse('manager_engagements'), {
+            'project': record.project_id,
+            'client_name': '',
+            'entry_type': 'discussion',
+            'contact_method': 'email',
+            'engagement_date': timezone.localdate().isoformat(),
+            'subject': 'Pre-award discussion',
+            'notes': 'Client requested a revised timetable.',
+            'proposal_summary': '',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        note = EngagementLog.objects.get(project=record.project)
+        self.assertEqual(note.client_name, record.client_name)
+        self.assertIsNone(note.cost_centre)
+        page = self.client.get(reverse('manager_engagements'), {'project': record.project_id})
+        self.assertContains(page, 'Cost centre pending · Example Client')
+        self.assertNotContains(page, 'name="cost_centre"')
 
     def test_financial_admin_cannot_update_another_owners_task(self):
         other_project = Project.objects.create(
