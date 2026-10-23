@@ -1,0 +1,100 @@
+<style>
+  .operational-flow {
+    margin: 22px 0 28px;
+    padding: 22px;
+    background: linear-gradient(135deg, #fffaf5 0%, #ffffff 55%, #f8f4fb 100%);
+    border: 1px solid #eadfd7;
+    border-radius: 18px;
+    box-shadow: 0 12px 32px rgba(72, 36, 15, 0.07);
+  }
+  .operational-flow__header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; margin-bottom: 20px; }
+  .operational-flow__header h2 { margin: 0 0 4px; font-size: 1.25rem; color: #2f3542; }
+  .operational-flow__header p { margin: 0; color: #6b7280; }
+  .operational-flow__legend { white-space: nowrap; background: #fff; border: 1px solid #eadfd7; border-radius: 999px; padding: 7px 12px; color: #6d2a70; font-weight: 600; font-size: .82rem; }
+  .operational-flow__steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 28px; }
+  .operational-flow__step { position: relative; min-height: 150px; padding: 17px; background: #fff; border: 1px solid #e8e2de; border-radius: 15px; }
+  .operational-flow__step:nth-child(5) { grid-column: 4; }
+  .operational-flow__step:nth-child(6) { grid-column: 3; }
+  .operational-flow__step:nth-child(7) { grid-column: 2; }
+  .operational-flow__step::after { content: "→"; position: absolute; right: -22px; top: 50%; transform: translateY(-50%); color: #f0642b; font-size: 1.35rem; font-weight: 700; }
+  .operational-flow__step:nth-child(4)::after { content: "↓"; right: 50%; top: auto; bottom: -23px; transform: translateX(50%); }
+  .operational-flow__step:nth-child(5)::after,
+  .operational-flow__step:nth-child(6)::after { content: "←"; right: auto; left: -22px; }
+  .operational-flow__step:nth-child(7)::after { display: none; }
+  .operational-flow__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .operational-flow__number { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #f0642b; color: #fff; font-weight: 700; }
+  .operational-flow__state { padding: 4px 9px; border-radius: 999px; background: #f6eef7; color: #6d2a70; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+  .operational-flow__step h3 { font-size: 1rem; margin: 0 0 7px; color: #293241; }
+  .operational-flow__step p { margin: 0; color: #667085; font-size: .87rem; line-height: 1.45; }
+  .operational-flow__decision { margin-top: 9px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: .76rem; }
+  .operational-flow__decision span { padding: 5px 7px; border-radius: 7px; text-align: center; font-weight: 600; }
+  .operational-flow__lost { background: #f3f4f6; color: #596273; }
+  .operational-flow__won { background: #eaf7ef; color: #217645; }
+  .operational-flow__rule { margin-top: 18px; padding-top: 15px; border-top: 1px solid #eadfd7; color: #4b5563; font-size: .87rem; }
+  .operational-flow__rule strong { color: #6d2a70; }
+  @media (max-width: 1050px) {
+    .operational-flow__steps { grid-template-columns: 1fr; gap: 28px; }
+    .operational-flow__step:nth-child(5), .operational-flow__step:nth-child(6), .operational-flow__step:nth-child(7) { grid-column: auto; }
+    .operational-flow__step::after,
+    .operational-flow__step:nth-child(4)::after,
+    .operational-flow__step:nth-child(5)::after,
+    .operational-flow__step:nth-child(6)::after { content: "↓"; display: block; left: 50%; right: auto; top: auto; bottom: -24px; transform: translateX(-50%); }
+    .operational-flow__step:nth-child(7)::after { display: none; }
+  }
+  @media (max-width: 600px) {
+    .operational-flow { padding: 16px; }
+    .operational-flow__header { display: block; }
+    .operational-flow__legend { display: inline-block; margin-top: 12px; white-space: normal; }
+  }
+</style>
+
+<section class="operational-flow" aria-labelledby="operationalFlowTitle">
+  <div class="operational-flow__header">
+    <div>
+      <h2 id="operationalFlowTitle"><i class="bi bi-diagram-3 me-2"></i>How to use the client-to-cost-centre workflow</h2>
+      <p>A visual guide for Financial Admin, Centre Heads and Finance.</p>
+    </div>
+    <div class="operational-flow__legend"><i class="bi bi-shield-check me-1"></i>No placeholder cost centres</div>
+  </div>
+
+  <ol class="operational-flow__steps">
+    <li class="operational-flow__step">
+      <div class="operational-flow__top"><span class="operational-flow__number">1</span><span class="operational-flow__state">Lead</span></div>
+      <h3>Add the client opportunity</h3>
+      <p>Capture the client, contact person and bid or opportunity title. The Financial Admin becomes its owner.</p>
+    </li>
+    <li class="operational-flow__step">
+      <div class="operational-flow__top"><span class="operational-flow__number">2</span><span class="operational-flow__state">Engage</span></div>
+      <h3>Log every engagement</h3>
+      <p>Record calls, meetings, minutes and follow-up dates against the client opportunity—not a cost centre.</p>
+    </li>
+    <li class="operational-flow__step">
+      <div class="operational-flow__top"><span class="operational-flow__number">3</span><span class="operational-flow__state">Bid</span></div>
+      <h3>Prepare and submit</h3>
+      <p>Track the bid reference, deadline, application date and estimated value. The estimate is not treated as income.</p>
+    </li>
+    <li class="operational-flow__step">
+      <div class="operational-flow__top"><span class="operational-flow__number">4</span><span class="operational-flow__state">Decision</span></div>
+      <h3>Record the outcome</h3>
+      <p>Update the pipeline when the client responds.</p>
+      <div class="operational-flow__decision"><span class="operational-flow__lost">Lost → close</span><span class="operational-flow__won">Won → continue</span></div>
+    </li>
+    <li class="operational-flow__step">
+      <div class="operational-flow__top"><span class="operational-flow__number">5</span><span class="operational-flow__state">Pending</span></div>
+      <h3>Wait for official details</h3>
+      <p>The won bid remains “cost centre pending” until UJ issues the official cost-centre name and code.</p>
+    </li>
+    <li class="operational-flow__step">
+      <div class="operational-flow__top"><span class="operational-flow__number">6</span><span class="operational-flow__state">Activate</span></div>
+      <h3>Create the real cost centre</h3>
+      <p>Enter the official name and code. All earlier client engagement notes link automatically.</p>
+    </li>
+    <li class="operational-flow__step">
+      <div class="operational-flow__top"><span class="operational-flow__number">7</span><span class="operational-flow__state">Finance</span></div>
+      <h3>Confirm contract and monitor</h3>
+      <p>Add the actual contract amount when received, then manage payments, budgets and expenditure in Finance.</p>
+    </li>
+  </ol>
+
+  <div class="operational-flow__rule"><strong>Core rule:</strong> Client history starts immediately. A cost centre begins only after a win and official UJ allocation.</div>
+</section>

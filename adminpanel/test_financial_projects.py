@@ -192,6 +192,20 @@ class FinancialProjectWorkflowTests(TestCase):
         self.assertContains(page, 'Cost centre pending · Example Client')
         self.assertNotContains(page, 'name="cost_centre"')
 
+    def test_operational_workflow_diagram_is_visible_on_pipeline_and_notes_pages(self):
+        self.create_financial_project()
+
+        pipeline = self.client.get(reverse('financial_projects'))
+        notes = self.client.get(reverse('manager_engagements'))
+
+        for response in (pipeline, notes):
+            self.assertContains(response, 'How to use the client-to-cost-centre workflow')
+            self.assertContains(response, 'No placeholder cost centres')
+            self.assertContains(response, 'Add the client opportunity')
+            self.assertContains(response, 'Log every engagement')
+            self.assertContains(response, 'Wait for official details')
+            self.assertContains(response, 'Confirm contract and monitor')
+
     def test_financial_admin_cannot_update_another_owners_task(self):
         other_project = Project.objects.create(
             name='Another Financial Owner Project', created_by=self.other_finance_user,

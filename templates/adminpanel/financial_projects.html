@@ -72,6 +72,8 @@
     <div><strong>No placeholder cost centres.</strong><br><span class="text-muted">Moving a bid to “Won” makes it ready for conversion. The official finance record is created only when the real cost-centre name and code are supplied.</span></div>
   </div>
 
+  {% include 'adminpanel/partials/financial_workflow_diagram.html' %}
+
   <section class="bid-board" aria-label="Client bid pipeline">
     {% for column in financial_project_columns %}
       <div class="bid-column" data-stage="{{ column.key }}">
