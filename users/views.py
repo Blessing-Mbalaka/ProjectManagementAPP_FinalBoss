@@ -11,6 +11,7 @@ from projects.models import StudentProfile
 from django.conf import settings
 from django.http import HttpResponseForbidden
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from adminpanel.models import Notification, SecurityEvent
 from adminpanel.security_service import device_label, masked_ip, record_failed_login, record_login
@@ -46,6 +47,14 @@ def register_view(request):
 
 
 def login_view(request):
+    requested_next = request.POST.get('next') or request.GET.get('next')
+    if requested_next and url_has_allowed_host_and_scheme(
+        requested_next,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        request.session['post_login_redirect'] = requested_next
+
     form = CustomLoginForm(data=request.POST or None)
     if form.is_valid():
         user = form.get_user()
@@ -53,6 +62,10 @@ def login_view(request):
         security_event = record_login(request, user)
         if security_event.is_suspicious:
             return redirect('security_event_review', event_id=security_event.id)
+
+        safe_destination = request.session.pop('post_login_redirect', None)
+        if safe_destination:
+            return redirect(safe_destination)
 
         # Redirect based on user role
         return redirect(_role_home_name(user))
@@ -95,7 +108,14 @@ def security_event_review(request, event_id):
             event.save(update_fields=['status', 'reviewed_at'])
             request.session.pop('pending_security_event_id', None)
             messages.success(request, 'Thank you. This activity is now confirmed as yours.')
-            return redirect(_role_home_name(request.user))
+            safe_destination = request.session.pop('post_login_redirect', None)
+            if safe_destination and url_has_allowed_host_and_scheme(
+                safe_destination,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                return redirect(safe_destination)
+            return redirect('security_center')
         if action == 'secure':
             request.session['security_password_event_id'] = event.id
             return redirect('security_password_change')

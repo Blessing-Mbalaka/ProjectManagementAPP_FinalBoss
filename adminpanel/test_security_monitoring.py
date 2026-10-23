@@ -68,6 +68,41 @@ class SecurityMonitoringTests(TestCase):
         SECURITY_SUSPICIOUS_LOGIN_START_HOUR=0,
         SECURITY_SUSPICIOUS_LOGIN_END_HOUR=0,
     )
+    def test_centre_head_confirmation_returns_to_requested_security_log(self):
+        security_log_url = reverse('security_event_audit')
+        login_url = f"{reverse('login')}?next={security_log_url}"
+
+        login_page = self.client.get(login_url)
+        self.assertContains(login_page, f'name="next" value="{security_log_url}"')
+
+        login_response = self.client.post(reverse('login'), {
+            'username': self.head.username,
+            'password': 'pass',
+            'next': security_log_url,
+        })
+        event = SecurityEvent.objects.get(user=self.head, event_type='login')
+        self.assertRedirects(
+            login_response,
+            reverse('security_event_review', args=[event.id]),
+            fetch_redirect_response=False,
+        )
+
+        confirmation = self.client.post(
+            reverse('security_event_review', args=[event.id]),
+            {'action': 'confirm'},
+            follow=True,
+        )
+
+        event.refresh_from_db()
+        self.assertEqual(event.status, 'confirmed')
+        self.assertEqual(confirmation.status_code, 200)
+        self.assertEqual(confirmation.redirect_chain[-1][0], security_log_url)
+        self.assertContains(confirmation, 'Security Alerts')
+
+    @override_settings(
+        SECURITY_SUSPICIOUS_LOGIN_START_HOUR=0,
+        SECURITY_SUSPICIOUS_LOGIN_END_HOUR=0,
+    )
     def test_user_can_change_password_from_security_alert(self):
         self.client.post(reverse('login'), {
             'username': self.staff.username,

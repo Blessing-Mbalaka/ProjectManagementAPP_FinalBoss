@@ -165,6 +165,7 @@
     <section class="container">
       <form method="POST" action="{% url 'login' %}">
         {% csrf_token %}
+        {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}" />{% endif %}
         <h1>Sign in</h1>
         <p class="subtitle">Welcome back. Please use your credentials.</p>
 
