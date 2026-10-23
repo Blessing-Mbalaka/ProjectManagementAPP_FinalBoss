@@ -263,6 +263,15 @@ def manager_gantt_all_data(request):
 
 TASK_TYPES = ['UX/UI', 'Architecture', 'Frontend', 'Backend', 'Testing', 'Deployment', 'Paper', 'Book', 'Other']
 
+
+def _kanban_projects_for(user):
+    """Projects that can be selected from the user's editable Kanban."""
+    scoped_projects = scope_projects_for_user(Project.objects.all(), user)
+    assigned_project_ids = assigned_projects_for(user, scoped_projects).values('id')
+    return scoped_projects.filter(
+        Q(id__in=assigned_project_ids) | Q(created_by=user)
+    ).distinct()
+
 @login_required
 def manager_kanban(request):
     status_labels = {
@@ -291,10 +300,7 @@ def manager_kanban(request):
         tasks_by_status[task.status].append(task)
 
     # Match the staff Kanban assignment behavior while retaining manager-owned projects.
-    assigned_project_ids = assigned_projects_for(request.user, scoped_projects).values('id')
-    projects = scoped_projects.filter(
-        Q(id__in=assigned_project_ids) | Q(id__in=managed_projects.values('id'))
-    ).distinct()
+    projects = _kanban_projects_for(request.user)
 
 
     context = {
@@ -628,18 +634,73 @@ def add_task(request, project_id):
   
 
 @login_required
+@require_POST
 def edit_task(request, task_id):
     task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
+    wants_json = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-    if request.method == 'POST':
-        task.title = request.POST.get('title')
-        task.priority = request.POST.get('priority')
-        task.due_date = request.POST.get('due_date') or None
-        task.task_type = request.POST.get('task_type')
-        project_id = request.POST.get('project')
-        task.project = Project.objects.filter(id=project_id).first() if project_id else None
-        task.save()
+    title = (request.POST.get('title') or '').strip()
+    status = request.POST.get('status')
+    priority = request.POST.get('priority') or None
+    task_type = request.POST.get('task_type') or None
+    due_date = request.POST.get('due_date') or None
+    project_id = request.POST.get('project')
+
+    errors = []
+    if not title:
+        errors.append('Task title is required.')
+    if status not in dict(Task.STATUS_CHOICES):
+        errors.append('Choose a valid task status.')
+    if priority and priority not in dict(Task.PRIORITY_CHOICES):
+        errors.append('Choose a valid priority.')
+    if task_type and task_type not in dict(Task.PROJECT_PHASES):
+        errors.append('Choose a valid task type.')
+    parsed_due_date = None
+    if due_date:
+        try:
+            parsed_due_date = datetime.strptime(due_date, '%Y-%m-%d').date()
+        except ValueError:
+            errors.append('Choose a valid due date.')
+
+    project = None
+    if project_id:
+        project = _kanban_projects_for(request.user).filter(id=project_id).first()
+        if project is None:
+            errors.append('You cannot move this task to that project.')
+
+    if errors:
+        if wants_json:
+            return JsonResponse({'success': False, 'error': ' '.join(errors)}, status=400)
+        for error in errors:
+            messages.error(request, error)
         return redirect('manager_kanban')
+
+    task.title = title
+    task.status = status
+    task.priority = priority
+    task.due_date = parsed_due_date
+    task.task_type = task_type
+    task.project = project
+    task.save()
+
+    if wants_json:
+        return JsonResponse({
+            'success': True,
+            'message': 'Task saved successfully.',
+            'task': {
+                'id': task.id,
+                'title': task.title,
+                'status': task.status,
+                'progress': task.progress,
+                'project_name': task.project.name if task.project else '',
+                'task_type': task.task_type or '',
+                'priority': task.priority or '',
+                'due_date': task.due_date.isoformat() if task.due_date else '',
+            },
+        })
+
+    messages.success(request, 'Task saved successfully.')
+    return redirect('manager_kanban')
 
 @login_required
 @require_POST
@@ -654,7 +715,11 @@ def update_task_status(request, task_id):
             return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
         task.status = new_status
         task.save(update_fields=['status', 'progress'])
-        return JsonResponse({'success': True})
+        return JsonResponse({
+            'success': True,
+            'message': 'Task status saved successfully.',
+            'progress': task.progress,
+        })
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'error': 'Invalid JSON payload'}, status=400)
 

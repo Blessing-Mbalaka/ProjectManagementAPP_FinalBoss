@@ -105,7 +105,39 @@
     font-size: 0.75rem !important;
     padding: 5px 10px !important;
 }
+
+.kanban-toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 2100;
+    width: min(360px, calc(100vw - 2rem));
+}
+
+.kanban-toast {
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.65rem;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+    animation: kanbanToastIn 180ms ease-out;
+}
+
+.kanban-toast-success { background: #198754; }
+.kanban-toast-error { background: #b02a37; }
+
+@keyframes kanbanToastIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.task-saving {
+    pointer-events: none;
+    opacity: 0.62;
+}
 </style>
+
+<div id="kanbanToastContainer" class="kanban-toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <div class="welcome-box">
     <h3>{{ kanban_title|default:'Project Manager Kanban' }}</h3>
@@ -146,26 +178,26 @@
                             {% endif %}" 
                             draggable="true" data-task-id="{{ task.id }}">
                             <div>
-                                <div class="task-card-title">{{ task.title }}</div>
+                                <div class="task-card-title" data-task-field="title">{{ task.title }}</div>
                                 
                                 {% if task.project %}
                                 <div class="task-section">
                                     <span class="task-section-label">Project</span>
-                                    <span class="task-section-value badge-inline" style="background-color: #e3f2fd; color: #1976d2;">{{ task.project.name }}</span>
+                                    <span class="task-section-value badge-inline" data-task-field="project" style="background-color: #e3f2fd; color: #1976d2;">{{ task.project.name }}</span>
                                 </div>
                                 {% endif %}
 
                                 {% if task.task_type %}
                                 <div class="task-section">
                                     <span class="task-section-label">Type</span>
-                                    <span class="task-section-value">{{ task.task_type }}</span>
+                                    <span class="task-section-value" data-task-field="task-type">{{ task.task_type }}</span>
                                 </div>
                                 {% endif %}
 
                                 {% if task.priority %}
                                 <div class="task-section">
                                     <span class="task-section-label">Priority</span>
-                                    <span class="task-section-value badge-inline" 
+                                    <span class="task-section-value badge-inline" data-task-field="priority"
                                         style="{% if task.priority == 'High' %}background-color: #ffebee; color: #c62828;{% elif task.priority == 'Medium' %}background-color: #fff9c4; color: #f57f17;{% else %}background-color: #e8f5e9; color: #388e3c;{% endif %}">
                                         {{ task.priority }}</span>
                                 </div>
@@ -174,16 +206,14 @@
                                 {% if task.due_date %}
                                 <div class="task-section">
                                     <span class="task-section-label">Due Date</span>
-                                    <span class="task-section-value{% if task.due_date|stringformat:'s' < today %} badge-inline" style="background-color: #ffebee; color: #c62828;">Overdue: {% endif %}{{ task.due_date }}</span>
+                                    <span class="task-section-value{% if task.due_date|stringformat:'s' < today %} badge-inline{% endif %}" {% if task.due_date|stringformat:'s' < today %}style="background-color: #ffebee; color: #c62828;"{% endif %} data-task-field="due-date">{% if task.due_date|stringformat:'s' < today %}Overdue: {% endif %}{{ task.due_date }}</span>
                                 </div>
                                 {% endif %}
 
-                                {% if task.progress %}
                                 <div class="task-section">
                                     <span class="task-section-label">Progress</span>
-                                    <span class="task-section-value">{{ task.progress }}%</span>
+                                    <span class="task-section-value" data-task-field="progress">{{ task.progress }}%</span>
                                 </div>
-                                {% endif %}
 
                                 <div class="task-actions">
                                     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editTaskModal{{ task.id }}">Edit</button>
@@ -196,7 +226,7 @@
                         </li>
                         {% include 'manager/partials/edit_task_modal.html' with task=task task_types=task_types projects=projects %}
                     {% empty %}
-                        <li class="list-group-item text-muted">No tasks in {{ status_labels|get:column }}.</li>
+                        <li class="list-group-item text-muted" data-empty-state>No tasks in {{ status_labels|get:column }}.</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -206,6 +236,42 @@
 
 <script>
     let draggedTaskId = null;
+
+    function showKanbanToast(message, type = 'success') {
+        const container = document.getElementById('kanbanToastContainer');
+        const toast = document.createElement('div');
+        toast.className = `kanban-toast kanban-toast-${type}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.textContent = message;
+        container.appendChild(toast);
+        window.setTimeout(() => toast.remove(), 3200);
+    }
+
+    function setButtonSaving(button, saving, savingLabel = 'Saving…') {
+        if (!button) return;
+        if (saving) {
+            button.dataset.originalHtml = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>${savingLabel}`;
+        } else {
+            button.disabled = false;
+            button.innerHTML = button.dataset.originalHtml || button.innerHTML;
+        }
+    }
+
+    function removeEmptyState(zone) {
+        const emptyState = zone && zone.querySelector('[data-empty-state]');
+        if (emptyState) emptyState.remove();
+    }
+
+    function ensureEmptyState(zone) {
+        if (!zone || zone.querySelector('.draggable-task') || zone.querySelector('[data-empty-state]')) return;
+        const empty = document.createElement('li');
+        empty.className = 'list-group-item text-muted';
+        empty.dataset.emptyState = '';
+        empty.textContent = 'No tasks in this column.';
+        zone.appendChild(empty);
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.draggable-task').forEach(task => {
@@ -217,31 +283,97 @@
 
         document.querySelectorAll('.drop-zone').forEach(zone => {
             zone.addEventListener('dragover', (e) => e.preventDefault());
-            zone.addEventListener('drop', (e) => {
+            zone.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 const newStatus = zone.dataset.status;
                 const taskElement = document.querySelector(`[data-task-id="${draggedTaskId}"]`);
                 if (!draggedTaskId || !taskElement) return;
-                taskElement.classList.add('opacity-50');
+                const originalZone = taskElement.closest('.drop-zone');
+                if (originalZone === zone) return;
+                taskElement.classList.add('task-saving');
+                removeEmptyState(zone);
+                zone.appendChild(taskElement);
+                ensureEmptyState(originalZone);
 
-                fetch(`/manager/update-task-status/${draggedTaskId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ status: newStatus })
-                }).then(async response => ({ok: response.ok, data: await response.json()}))
-                  .then(result => {
-                      if (!result.ok || !result.data.success) throw new Error(result.data.error || 'Failed to update task.');
-                      zone.appendChild(taskElement);
-                      taskElement.classList.remove('opacity-50');
-                      const notice = document.createElement('div');
-                      notice.className = 'alert alert-success position-fixed top-0 end-0 m-3 shadow';
-                      notice.style.zIndex = '2000'; notice.textContent = 'Task saved';
-                      document.body.appendChild(notice); setTimeout(() => notice.remove(), 1800);
-                  })
-                  .catch(error => { taskElement.classList.remove('opacity-50'); alert(error.message); });
+                try {
+                    const response = await fetch(`/manager/update-task-status/${draggedTaskId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.error || 'Failed to update task.');
+                    const progress = taskElement.querySelector('[data-task-field="progress"]');
+                    if (progress) progress.textContent = `${result.progress ?? ''}%`;
+                    showKanbanToast('Task status saved successfully.');
+                } catch (error) {
+                    removeEmptyState(originalZone);
+                    originalZone.appendChild(taskElement);
+                    ensureEmptyState(zone);
+                    showKanbanToast(error.message || 'Task could not be saved.', 'error');
+                } finally {
+                    taskElement.classList.remove('task-saving');
+                    draggedTaskId = null;
+                }
+            });
+        });
+
+        document.querySelectorAll('.kanban-edit-form').forEach(form => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const button = form.querySelector('[type="submit"]');
+                const taskId = form.dataset.taskId;
+                const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+                setButtonSaving(button, true);
+                if (taskElement) taskElement.classList.add('task-saving');
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: new FormData(form),
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.error || 'Task could not be saved.');
+
+                    if (taskElement) {
+                        const title = taskElement.querySelector('[data-task-field="title"]');
+                        const project = taskElement.querySelector('[data-task-field="project"]');
+                        const taskType = taskElement.querySelector('[data-task-field="task-type"]');
+                        const priority = taskElement.querySelector('[data-task-field="priority"]');
+                        const dueDate = taskElement.querySelector('[data-task-field="due-date"]');
+                        const progress = taskElement.querySelector('[data-task-field="progress"]');
+                        if (title) title.textContent = result.task.title;
+                        if (project) project.textContent = result.task.project_name;
+                        if (taskType) taskType.textContent = result.task.task_type;
+                        if (priority) priority.textContent = result.task.priority;
+                        if (dueDate) dueDate.textContent = result.task.due_date;
+                        if (progress) progress.textContent = `${result.task.progress}%`;
+
+                        const targetZone = document.querySelector(`.drop-zone[data-status="${result.task.status}"]`);
+                        const sourceZone = taskElement.closest('.drop-zone');
+                        if (targetZone && sourceZone !== targetZone) {
+                            removeEmptyState(targetZone);
+                            targetZone.appendChild(taskElement);
+                            ensureEmptyState(sourceZone);
+                        }
+                    }
+
+                    const modalElement = form.closest('.modal');
+                    if (modalElement && window.bootstrap) {
+                        bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+                    }
+                    showKanbanToast(result.message || 'Task saved successfully.');
+                } catch (error) {
+                    showKanbanToast(error.message || 'Task could not be saved.', 'error');
+                } finally {
+                    setButtonSaving(button, false);
+                    if (taskElement) taskElement.classList.remove('task-saving');
+                }
             });
         });
     });

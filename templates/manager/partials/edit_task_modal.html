@@ -1,7 +1,7 @@
 <div class="modal fade" id="editTaskModal{{ task.id }}" tabindex="-1" aria-labelledby="editTaskModalLabel{{ task.id }}" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="POST" action="{% url 'edit_task' task.id %}">
+      <form method="POST" action="{% url 'edit_task' task.id %}" class="kanban-edit-form" data-task-id="{{ task.id }}">
         {% csrf_token %}
         <div class="modal-header">
           <h5 class="modal-title" id="editTaskModalLabel{{ task.id }}">Edit Task</h5>
