@@ -79,6 +79,8 @@ class ProjectManagementOverviewTests(TestCase):
         self.assertContains(response, "Project Management Overview")
         self.assertContains(response, "Amina Ndlovu")
         self.assertContains(response, self.project.name)
+        self.assertContains(response, "Project type")
+        self.assertContains(response, self.project.get_project_type_display())
         self.assertContains(response, self.parent_task.title)
         self.assertContains(response, self.subtask.title)
         full_kanban_url = f'{reverse("admin_kanban")}?user={self.staff.id}'

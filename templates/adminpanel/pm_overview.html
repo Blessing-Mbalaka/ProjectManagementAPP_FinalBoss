@@ -130,6 +130,7 @@
           <th scope="col">Person</th>
           <th scope="col">Role</th>
           <th scope="col">Project</th>
+          <th scope="col">Project type</th>
           <th scope="col">Tasks and subtasks</th>
           <th scope="col">Progress</th>
           <th scope="col" class="text-end">Kanban</th>
@@ -151,6 +152,9 @@
                   {% if project_entry.created_unassigned %}
                     <span class="badge text-bg-warning ms-1">Created, not assigned</span>
                   {% endif %}
+                </td>
+                <td>
+                  <span class="badge text-bg-secondary">{{ project_entry.project.get_project_type_display }}</span>
                 </td>
                 <td>
                   {% if project_entry.tasks %}
@@ -196,7 +200,7 @@
                 <small class="text-muted">{{ person_entry.user.username }}</small>
               </td>
               <td>{{ person_entry.user.get_role_display }}</td>
-              <td colspan="3"><span class="text-muted">No projects assigned</span></td>
+              <td colspan="4"><span class="text-muted">No projects assigned</span></td>
               <td class="text-end">
                 <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_kanban' %}?user={{ person_entry.user.id }}">
                   <i class="bi bi-kanban me-1"></i>View Kanban
@@ -206,7 +210,7 @@
           {% endif %}
         {% empty %}
           <tr>
-            <td colspan="6" class="py-5 text-center text-muted">No people are available in your scope.</td>
+            <td colspan="7" class="py-5 text-center text-muted">No people are available in your scope.</td>
           </tr>
         {% endfor %}
       </tbody>
