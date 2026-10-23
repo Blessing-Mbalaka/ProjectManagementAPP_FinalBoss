@@ -27,7 +27,7 @@ from django.shortcuts import render
 from adminpanel.models import CostCentre, EngagementLog, Notification
 from adminpanel.notification_service import visible_notifications_for
 from projects.scope import scope_books_for_user, scope_chapters_for_user, scope_outputs_for_user, scope_projects_for_user
-from projects.work_scope import assigned_projects_for, manageable_projects_for, workable_tasks_for
+from projects.work_scope import assigned_projects_for, can_update_task, manageable_projects_for, workable_tasks_for
 from users.roles import can_manage_client_engagements, can_manage_projects, can_manage_publications, has_role
 from projects.assignment_notifications import notify_project_assignment
 from manager.publication_projects import sync_publication_project
@@ -143,10 +143,16 @@ def manager_engagements(request):
                 form.add_error('project', 'Please choose one of the projects already assigned to you for this research centre.')
             else:
                 log.entered_by = request.user
-                log.research_centre = log.cost_centre.research_centre or getattr(request.user, 'research_centre', None)
+                log.research_centre = (
+                    log.cost_centre.research_centre
+                    if log.cost_centre else log.project.research_centre
+                ) or getattr(request.user, 'research_centre', None)
                 log.save()
                 messages.success(request, 'Engagement history saved and pushed into the CRM view.')
-                return redirect(f"{reverse('manager_engagements')}?cost_centre={log.cost_centre_id}&project={log.project_id}")
+                query = f"project={log.project_id}"
+                if log.cost_centre_id:
+                    query = f"cost_centre={log.cost_centre_id}&{query}"
+                return redirect(f"{reverse('manager_engagements')}?{query}")
     else:
         initial = {}
         if request.GET.get('project'):
@@ -291,8 +297,27 @@ def manager_kanban(request):
         'task_types': TASK_TYPES,
         'projects': projects,
         'today': now().date(),
+        'kanban_title': (
+            'My Financial Projects Kanban'
+            if getattr(request, '_financial_board', False)
+            else 'Project Manager Kanban'
+        ),
+        'kanban_intro': (
+            'Update the client bids and other project tasks assigned to you.'
+            if getattr(request, '_financial_board', False)
+            else 'Track and manage tasks for your assigned projects.'
+        ),
     }
     return render(request, 'manager/manager_kanban.html', context)
+
+
+@login_required
+def financial_kanban(request):
+    if not has_role(request.user, 'financialadmin'):
+        return HttpResponseForbidden('This Kanban is reserved for Financial Admin project work.')
+
+    request._financial_board = True
+    return manager_kanban(request)
 
     # tasks = Task.objects.filter(created_by=request.user)
     # tasks_by_status = defaultdict(list)
@@ -493,7 +518,12 @@ def remove_assignment(request, assignment_id):
 def add_task(request, project_id):
     if not can_manage_projects(request.user):
         return HttpResponseForbidden('You are not authorized to manage project tasks.')
-    project = get_object_or_404(manageable_projects_for(request.user), id=project_id)
+    allowed_projects = manageable_projects_for(request.user)
+    if has_role(request.user, 'financialadmin') and not has_role(request.user, 'admin'):
+        allowed_projects = allowed_projects.filter(
+            Q(assigned_user=request.user) | Q(created_by=request.user)
+        )
+    project = get_object_or_404(allowed_projects.distinct(), id=project_id)
     if request.method == 'POST':
         form = TaskForm(request.POST, project=project)
         if form.is_valid():
@@ -591,7 +621,7 @@ def add_task(request, project_id):
 
 @login_required
 def edit_task(request, task_id):
-    task = get_object_or_404(Task, id=task_id)
+    task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
 
     if request.method == 'POST':
         task.title = request.POST.get('title')
@@ -607,10 +637,9 @@ def edit_task(request, task_id):
 @require_POST
 def update_task_status(request, task_id):
     try:
-        task = get_object_or_404(
-            Task.objects.filter(project__in=manageable_projects_for(request.user)),
-            id=task_id,
-        )
+        task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
+        if not can_update_task(request.user, task):
+            return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
         data = json.loads(request.body)
         new_status = data.get('status')
         if new_status not in dict(Task.STATUS_CHOICES):
@@ -624,7 +653,7 @@ def update_task_status(request, task_id):
 
 @login_required
 def manager_delete_task(request, task_id):
-    task = get_object_or_404(Task.objects.filter(project__in=manageable_projects_for(request.user)), id=task_id)
+    task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
     
     if request.method == 'POST':
         task.delete()

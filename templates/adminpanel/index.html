@@ -127,6 +127,9 @@
                             {% if user.role == 'admin' or user.role == 'centrehead' %}
                             <a href="{% url 'assign_projects' %}" class="nav-link"><i class="bi bi-folder-plus"></i><span>Manage &amp; Load Projects</span></a>
                             {% endif %}
+                            {% if user.role == 'admin' or user.role == 'centrehead' %}
+                            <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>
+                            {% endif %}
                             <a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a>
                             {% if user.role == 'admin' %}
                             <a href="{% url 'admin_my_projects' %}" class="nav-link"><i class="bi bi-folder-check"></i><span>My Projects</span></a>
@@ -180,6 +183,19 @@
                 </li>
                 {% endif %}
                 {% if user.role == 'financialadmin' %}
+                <li>
+                    <details class="sidebar-dropdown" open>
+                        <summary class="nav-link sidebar-dropdown-toggle">
+                            <i class="bi bi-tools"></i><span>PM Tools</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i>
+                        </summary>
+                        <div class="sidebar-submenu">
+                            <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>
+                            <a href="{% url 'financial_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>My Project Kanban</span></a>
+                            <a href="{% url 'assign_projects' %}" class="nav-link"><i class="bi bi-folder-plus"></i><span>Manage &amp; Load Projects</span></a>
+                            <a href="{% url 'manager_engagements' %}" class="nav-link"><i class="bi bi-chat-square-text"></i><span>Engagement Notes</span></a>
+                        </div>
+                    </details>
+                </li>
                 <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
                 {% elif user.role == 'dean' %}
                 {% else %}

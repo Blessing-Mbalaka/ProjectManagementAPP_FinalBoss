@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db import connection
+from django.db import IntegrityError, connection, transaction
 from django.urls import reverse
 
 #Here  is the Default Django User_ROLE_VALIDATION.
@@ -10,7 +10,7 @@ from projects.work_scope import manageable_projects_for
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
 from manager.models import Book, Chapter
-from .models import CostCentre, Expenditure, ResearchCentre, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord
+from .models import CostCentre, EngagementLog, Expenditure, FinancialProject, ResearchCentre, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord
 from .audit_service import (
     log_cost_centre_creation, log_cost_centre_edit, log_cost_centre_deletion,
     log_expenditure_creation, log_expenditure_edit, log_expenditure_deletion,
@@ -24,7 +24,7 @@ from .media_service import MediaService
 import io
 from projects.models import Project, Submission, StudentProfile, Meeting, ChatMessage, Task, Assignment
 from django.contrib.auth import get_user_model
-from .forms import SupervisorFeedbackForm, NotificationForm, ProjectForm
+from .forms import FinancialProjectForm, SupervisorFeedbackForm, NotificationForm, ProjectForm
 from projects.forms import ChatForm
 from django.http import JsonResponse, HttpResponseBadRequest
 from decimal import Decimal, InvalidOperation
@@ -951,6 +951,224 @@ def update_task_progress(request, task_id):
         return JsonResponse({"success": True})
     except (KeyError, TypeError, ValueError):
         return JsonResponse({"error": "Invalid progress"}, status=400)
+
+
+FINANCIAL_PROJECT_ROLES = ('admin', 'centrehead', 'financialadmin')
+
+
+def financial_projects_for(user):
+    queryset = FinancialProject.objects.select_related(
+        'project', 'owner', 'research_centre', 'cost_centre'
+    ).prefetch_related('project__tasks', 'project__engagement_logs')
+    if has_role(user, 'admin') and not get_user_research_centre_id(user):
+        return queryset
+    centre_id = get_user_research_centre_id(user)
+    if not centre_id:
+        return queryset.none()
+    queryset = queryset.filter(research_centre_id=centre_id)
+    if has_role(user, 'financialadmin') and not has_role(user, 'admin', 'centrehead'):
+        queryset = queryset.filter(owner=user)
+    return queryset
+
+
+def sync_financial_project_task(financial_project):
+    status_map = {
+        'lead': 'todo',
+        'qualifying': 'in_progress',
+        'proposal': 'in_progress',
+        'submitted': 'review',
+        'negotiation': 'review',
+        'won': 'done',
+        'lost': 'done',
+    }
+    project_status_map = {
+        'lead': 'planning',
+        'qualifying': 'in-progress',
+        'proposal': 'in-progress',
+        'submitted': 'in-progress',
+        'negotiation': 'in-progress',
+        'won': 'completed',
+        'lost': 'on-hold',
+    }
+    task = financial_project.project.tasks.order_by('created_at').first()
+    if task:
+        task.status = status_map[financial_project.stage]
+        task.save(update_fields=['status', 'progress'])
+    financial_project.project.status = project_status_map[financial_project.stage]
+    financial_project.project.save(update_fields=['status'])
+
+
+@login_required
+def financial_projects(request):
+    if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
+        return HttpResponseForbidden('You are not authorized to view financial projects.')
+    records = financial_projects_for(request.user)
+    grouped = {key: [] for key, _ in FinancialProject.STAGE_CHOICES}
+    for record in records:
+        grouped[record.stage].append(record)
+    counts = {key: len(value) for key, value in grouped.items()}
+    columns = [
+        {'key': key, 'label': label, 'records': grouped[key], 'count': counts[key]}
+        for key, label in FinancialProject.STAGE_CHOICES
+    ]
+    return render(request, 'adminpanel/financial_projects.html', {
+        'financial_project_form': FinancialProjectForm(),
+        'financial_project_columns': columns,
+        'financial_project_counts': counts,
+        'financial_project_total': sum(counts.values()),
+        'financial_project_won': counts.get('won', 0),
+        'financial_project_converted': records.filter(cost_centre__isnull=False).count(),
+        'can_convert_financial_project': can_manage_cost_centres(request.user),
+    })
+
+
+@login_required
+@require_POST
+def add_financial_project(request):
+    if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
+        return HttpResponseForbidden('You are not authorized to create financial projects.')
+    if not getattr(request.user, 'research_centre_id', None):
+        messages.error(request, 'Your account must be assigned to a research centre before creating a bid.')
+        return redirect('financial_projects')
+
+    form = FinancialProjectForm(request.POST)
+    if not form.is_valid():
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                messages.error(request, error)
+        return redirect('financial_projects')
+
+    with transaction.atomic():
+        project = Project.objects.create(
+            name=form.cleaned_data['project_name'],
+            description=form.cleaned_data.get('summary', ''),
+            project_type='financial',
+            status='planning',
+            created_by=request.user,
+            assigned_user=request.user,
+            research_centre=request.user.research_centre,
+            due_date=form.cleaned_data.get('bid_deadline'),
+        )
+        record = form.save(commit=False)
+        record.project = project
+        record.owner = request.user
+        record.research_centre = request.user.research_centre
+        record.save()
+        Task.objects.create(
+            project=project,
+            assigned_to=request.user,
+            created_by=request.user,
+            title=f"Bid follow-up: {record.client_name}",
+            status='todo',
+            task_type='Other',
+            priority='High',
+            due_date=record.bid_deadline,
+            comments=record.summary,
+        )
+    messages.success(request, 'Financial project created, assigned to you, and added to your Kanban.')
+    return redirect('financial_projects')
+
+
+@login_required
+@require_POST
+def update_financial_project_stage(request, project_id):
+    if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
+    record = get_object_or_404(financial_projects_for(request.user), id=project_id)
+    try:
+        payload = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+    stage = payload.get('stage')
+    if stage not in dict(FinancialProject.STAGE_CHOICES):
+        return JsonResponse({'success': False, 'error': 'Invalid bid stage'}, status=400)
+    record.stage = stage
+    record.save(update_fields=['stage', 'updated_at'])
+    sync_financial_project_task(record)
+    return JsonResponse({
+        'success': True,
+        'stage': stage,
+        'message': 'Bid stage and monitoring Kanban updated.',
+    })
+
+
+@login_required
+@require_POST
+def add_financial_project_note(request, project_id):
+    if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
+        return HttpResponseForbidden('You are not authorized to add engagement notes.')
+    record = get_object_or_404(financial_projects_for(request.user), id=project_id)
+    notes = request.POST.get('notes', '').strip()
+    if not notes:
+        messages.error(request, 'Engagement notes cannot be empty.')
+        return redirect('financial_projects')
+    entry_type = request.POST.get('entry_type', 'discussion')
+    if entry_type not in dict(EngagementLog.ENTRY_TYPE_CHOICES):
+        entry_type = 'discussion'
+    EngagementLog.objects.create(
+        project=record.project,
+        cost_centre=record.cost_centre,
+        client_name=record.client_name,
+        research_centre=record.research_centre,
+        entered_by=request.user,
+        entry_type=entry_type,
+        subject=request.POST.get('subject', '').strip(),
+        engagement_date=parse_date(request.POST.get('engagement_date', '')) or timezone.localdate(),
+        notes=notes,
+        proposal_summary=request.POST.get('proposal_summary', '').strip(),
+    )
+    messages.success(request, 'Client engagement note saved to the project and CRM history.')
+    return redirect('financial_projects')
+
+
+@login_required
+@require_POST
+def convert_financial_project(request, project_id):
+    if not can_manage_cost_centres(request.user):
+        return HttpResponseForbidden('You are not authorized to create cost centres.')
+    record = get_object_or_404(financial_projects_for(request.user), id=project_id)
+    if record.stage != 'won':
+        messages.error(request, 'Mark the bid as won before creating its cost centre.')
+        return redirect('financial_projects')
+    if record.cost_centre_id:
+        messages.info(request, 'This financial project already has a cost centre.')
+        return redirect('financial_projects')
+
+    code = request.POST.get('code', '').strip()
+    name = request.POST.get('name', '').strip()
+    if not code or not name:
+        messages.error(request, 'The official cost centre name and code are both required.')
+        return redirect('financial_projects')
+    if CostCentre.objects.filter(Q(code__iexact=code) | Q(name__iexact=name)).exists():
+        messages.error(request, 'That cost centre name or code is already in use.')
+        return redirect('financial_projects')
+
+    try:
+        with transaction.atomic():
+            cost_centre = CostCentre.objects.create(
+                code=code,
+                name=name,
+                client_name=record.client_name,
+                contact_person_name=record.contact_name,
+                contact_email=record.contact_email,
+                contact_phone=record.contact_phone,
+                crm_notes=record.summary,
+                research_centre=record.research_centre,
+                moa_amount=record.estimated_value or Decimal('0.00'),
+            )
+            record.cost_centre = cost_centre
+            record.save(update_fields=['cost_centre', 'updated_at'])
+            EngagementLog.objects.filter(project=record.project, cost_centre__isnull=True).update(
+                cost_centre=cost_centre,
+                client_name=record.client_name,
+            )
+            log_cost_centre_creation(cost_centre, request.user)
+    except IntegrityError:
+        messages.error(request, 'The cost centre could not be created because its name or code already exists.')
+        return redirect('financial_projects')
+
+    messages.success(request, 'Cost centre created and linked. All earlier client notes remain attached.')
+    return redirect('financial_projects')
 
 @login_required
 @login_required

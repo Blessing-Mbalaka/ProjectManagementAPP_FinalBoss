@@ -1,6 +1,7 @@
 """Seed a disposable, file-backed SQLite environment for UI and load testing."""
 
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from django.conf import settings
@@ -10,7 +11,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from adminpanel.models import ResearchCentre
+from adminpanel.models import EngagementLog, FinancialProject, ResearchCentre
 from manager.models import Book, Chapter
 from projects.models import Assignment, Project, Task, TeamMember
 
@@ -157,6 +158,69 @@ class Command(BaseCommand):
                     'created_by': users['demo-pm'],
                     'status': 'in_progress',
                     'due_date': book_project.due_date - timedelta(days=14),
+                },
+            )
+
+        # Financial Admin pipeline examples: these are normal assigned projects,
+        # so the same records are visible on the personal and monitoring Kanbans.
+        bid_specs = (
+            ('lead', 'Community Skills Partnership', 'Ubuntu Learning Foundation', Decimal('180000.00'), 30),
+            ('submitted', 'Executive Programme Tender', 'Example Enterprise', Decimal('420000.00'), 18),
+            ('won', 'Digital Capability Programme', 'Demo Client Holdings', Decimal('275000.00'), 45),
+        )
+        for stage, title, client_name, value, days in bid_specs:
+            bid_project, _ = Project.objects.update_or_create(
+                import_key=f'codex-test:financial:{stage}',
+                defaults={
+                    'name': title,
+                    'description': f'Disposable {stage} client-bid demonstration.',
+                    'project_type': 'financial',
+                    'status': 'completed' if stage == 'won' else ('in-progress' if stage != 'lead' else 'planning'),
+                    'created_by': users['demo-finance'],
+                    'assigned_user': users['demo-finance'],
+                    'research_centre': centre,
+                    'due_date': today + timedelta(days=days),
+                },
+            )
+            financial_project, _ = FinancialProject.objects.update_or_create(
+                project=bid_project,
+                defaults={
+                    'owner': users['demo-finance'],
+                    'research_centre': centre,
+                    'client_name': client_name,
+                    'contact_name': 'Demo Client Contact',
+                    'contact_email': 'client@example.invalid',
+                    'stage': stage,
+                    'estimated_value': value,
+                    'bid_deadline': bid_project.due_date,
+                    'summary': 'Safe dummy record for exercising the financial bid workflow.',
+                },
+            )
+            Task.objects.update_or_create(
+                project=bid_project,
+                import_key='financial-bid-follow-up',
+                defaults={
+                    'title': f'Bid follow-up: {client_name}',
+                    'assigned_to': users['demo-finance'],
+                    'created_by': users['demo-finance'],
+                    'status': {'lead': 'todo', 'submitted': 'review', 'won': 'done'}[stage],
+                    'task_type': 'Other',
+                    'priority': 'High',
+                    'due_date': bid_project.due_date,
+                },
+            )
+            EngagementLog.objects.update_or_create(
+                project=bid_project,
+                subject='Initial client engagement',
+                defaults={
+                    'cost_centre': financial_project.cost_centre,
+                    'client_name': client_name,
+                    'research_centre': centre,
+                    'entered_by': users['demo-finance'],
+                    'entry_type': 'discussion',
+                    'engagement_date': today,
+                    'notes': 'Discussed client requirements and agreed the next follow-up action.',
+                    'proposal_summary': financial_project.summary,
                 },
             )
 

@@ -2,7 +2,7 @@
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}Manager Kanban{% endblock %}
+{% block title %}{{ kanban_title|default:'Manager Kanban' }}{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/staff.css' %}">
@@ -108,8 +108,8 @@
 </style>
 
 <div class="welcome-box">
-    <h3>Project Manager Kanban!</h3>
-    <p>Track and manage tasks for your projects with ease.</p>
+    <h3>{{ kanban_title|default:'Project Manager Kanban' }}</h3>
+    <p>{{ kanban_intro|default:'Track and manage tasks for your assigned projects.' }}</p>
     <div class="progress mt-2" style="width: 75%; height: 10px;">
         <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 75%"></div>
     </div>

@@ -83,7 +83,7 @@
                 <div class="d-flex justify-content-between align-items-start gap-3">
                   <div>
                     <h6>{{ log.project.name }}</h6>
-                    <small>{{ log.cost_centre.client_name|default:log.cost_centre.company_name|default:log.cost_centre.name }}</small>
+                    <small>{{ log.client_label|default:"Client not specified" }}{% if not log.cost_centre %} · awaiting cost centre{% endif %}</small>
                   </div>
                   <span class="badge text-bg-light">{{ log.get_entry_type_display }}</span>
                 </div>

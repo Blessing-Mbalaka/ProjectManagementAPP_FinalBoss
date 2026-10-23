@@ -1,5 +1,5 @@
 from django import forms
-from .models import SupervisorFeedback, Notification
+from .models import FinancialProject, SupervisorFeedback, Notification
 from projects.models import Project
 from django.conf import settings
 from django.utils import timezone
@@ -93,3 +93,38 @@ class ProjectForm(forms.ModelForm):
         if not name or not name.strip():
             raise forms.ValidationError("Project name is required.")
         return cleaned
+
+
+class FinancialProjectForm(forms.ModelForm):
+    project_name = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Bid or opportunity title'}),
+    )
+
+    class Meta:
+        model = FinancialProject
+        fields = [
+            'client_name', 'contact_name', 'contact_email', 'contact_phone',
+            'estimated_value', 'bid_deadline', 'summary',
+        ]
+        widgets = {
+            'client_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Client or organisation'}),
+            'contact_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'contact_email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'contact_phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'estimated_value': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.01'}),
+            'bid_deadline': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'summary': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Scope, client need, and next action'}),
+        }
+
+    def clean_project_name(self):
+        project_name = self.cleaned_data['project_name'].strip()
+        if Project.objects.filter(name__iexact=project_name).exists():
+            raise forms.ValidationError('A project with this name already exists.')
+        return project_name
+
+    def clean_estimated_value(self):
+        value = self.cleaned_data.get('estimated_value')
+        if value is not None and value < 0:
+            raise forms.ValidationError('Estimated value cannot be negative.')
+        return value

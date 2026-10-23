@@ -14,6 +14,7 @@ urlpatterns = [
     path('manager_elearning/', views.elearning_page, name='manager_elearning'),
     path('manager_templates/', views.templates_page, name='manager_templates'),
     path('manager_kanban/', views.manager_kanban, name='manager_kanban'),
+    path('financial-kanban/', views.financial_kanban, name='financial_kanban'),
     path('add-task/<int:project_id>/', views.add_task, name='manager_create_task'),
     path('add-task/<int:project_id>', views.add_task, name='add_task'),
     path('edit-task/<int:task_id>/', views.edit_task, name='edit_task'),

@@ -9,6 +9,7 @@ class Project(models.Model):
         ('book', 'Book Project'),
         ('paper', 'Paper'),
         ('conference', 'Conference'),
+        ('financial', 'Financial / Client Bid'),
     )
    
     STATUS_CHOICES = (

@@ -116,8 +116,15 @@ class EngagementLog(models.Model):
     )
     cost_centre = models.ForeignKey(
         CostCentre,
-        on_delete=models.CASCADE,
-        related_name='engagement_logs'
+        on_delete=models.SET_NULL,
+        related_name='engagement_logs',
+        null=True,
+        blank=True,
+    )
+    client_name = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Client name used before an official cost centre is issued.",
     )
     research_centre = models.ForeignKey(
         ResearchCentre,
@@ -155,7 +162,64 @@ class EngagementLog(models.Model):
 
     @property
     def client_label(self):
-        return self.cost_centre.client_name or self.cost_centre.company_name or self.cost_centre.name
+        if self.cost_centre:
+            return self.cost_centre.client_name or self.cost_centre.company_name or self.cost_centre.name
+        return self.client_name
+
+
+class FinancialProject(models.Model):
+    STAGE_CHOICES = [
+        ('lead', 'New Lead'),
+        ('qualifying', 'Qualifying'),
+        ('proposal', 'Proposal in Preparation'),
+        ('submitted', 'Bid Submitted'),
+        ('negotiation', 'Negotiation'),
+        ('won', 'Won - Awaiting Cost Centre'),
+        ('lost', 'Lost / Closed'),
+    ]
+
+    project = models.OneToOneField(
+        'projects.Project',
+        on_delete=models.CASCADE,
+        related_name='financial_project',
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='financial_projects',
+    )
+    research_centre = models.ForeignKey(
+        ResearchCentre,
+        on_delete=models.PROTECT,
+        related_name='financial_projects',
+    )
+    client_name = models.CharField(max_length=150)
+    contact_name = models.CharField(max_length=150, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=50, blank=True)
+    stage = models.CharField(max_length=20, choices=STAGE_CHOICES, default='lead', db_index=True)
+    estimated_value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    bid_deadline = models.DateField(null=True, blank=True)
+    summary = models.TextField(blank=True)
+    cost_centre = models.OneToOneField(
+        CostCentre,
+        on_delete=models.SET_NULL,
+        related_name='source_financial_project',
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-created_at']
+        indexes = [
+            models.Index(fields=['owner', 'stage'], name='admin_fin_owner_stage_idx'),
+            models.Index(fields=['research_centre', 'stage'], name='admin_fin_centre_stage_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.client_name} - {self.project.name}"
 
 
 class CostCentrePayment(models.Model):

@@ -101,6 +101,7 @@ class EngagementLogForm(forms.ModelForm):
         fields = [
             'project',
             'cost_centre',
+            'client_name',
             'entry_type',
             'engagement_date',
             'subject',
@@ -110,6 +111,7 @@ class EngagementLogForm(forms.ModelForm):
         widgets = {
             'project': forms.Select(attrs={'class': 'form-select'}),
             'cost_centre': forms.Select(attrs={'class': 'form-select'}),
+            'client_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Client name when no cost centre exists yet'}),
             'entry_type': forms.Select(attrs={'class': 'form-select'}),
             'engagement_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'subject': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optional topic or meeting title'}),
@@ -130,3 +132,16 @@ class EngagementLogForm(forms.ModelForm):
 
         self.fields['project'].queryset = projects
         self.fields['cost_centre'].queryset = cost_centres
+        self.fields['cost_centre'].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        cost_centre = cleaned.get('cost_centre')
+        client_name = (cleaned.get('client_name') or '').strip()
+        if not cost_centre and not client_name:
+            self.add_error('client_name', 'Enter the client name when an official cost centre does not exist yet.')
+        if cost_centre and not client_name:
+            cleaned['client_name'] = (
+                cost_centre.client_name or cost_centre.company_name or cost_centre.name
+            )
+        return cleaned
