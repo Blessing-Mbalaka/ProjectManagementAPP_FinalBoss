@@ -3181,11 +3181,11 @@ def admin_required(view_func):
 
 @admin_required
 def admin_user_kanban(request, user_id):
-    from projects.work_scope import inspectable_users_for, workable_tasks_for
+    from projects.work_scope import inspectable_users_for, personal_tasks_for
 
     user = get_object_or_404(inspectable_users_for(request.user), id=user_id)
 
-    tasks = workable_tasks_for(user).select_related(
+    tasks = personal_tasks_for(user).select_related(
         'project', 'project__assigned_user', 'project__created_by', 'project__research_centre'
     ).prefetch_related(
         'project__assignments__team_member__user'

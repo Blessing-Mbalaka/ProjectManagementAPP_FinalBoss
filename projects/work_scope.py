@@ -13,15 +13,23 @@ def assigned_projects_for(user, queryset=None):
     ).distinct()
 
 
+def personal_tasks_for(user, queryset=None):
+    """Tasks explicitly assigned to one person, regardless of elevated roles."""
+    tasks = queryset if queryset is not None else Task.objects.all()
+    if not getattr(user, "is_authenticated", False):
+        return tasks.none()
+    return tasks.filter(assigned_to=user).distinct()
+
+
 def workable_tasks_for(user, queryset=None):
     tasks = queryset if queryset is not None else Task.objects.all()
     if not getattr(user, "is_authenticated", False):
         return tasks.none()
 
-    # Staff and authors see only work explicitly assigned to or created by them.
+    # Staff and authors see only work explicitly assigned to them.
     # Project-level visibility must never reveal another person's task list.
     if not has_role(user, "admin", "centrehead", "manager", "financialadmin"):
-        return tasks.filter(Q(assigned_to=user) | Q(created_by=user)).distinct()
+        return personal_tasks_for(user, tasks)
 
     assigned_projects = assigned_projects_for(user)
     return tasks.filter(

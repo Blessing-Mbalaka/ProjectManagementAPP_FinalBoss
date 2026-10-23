@@ -37,6 +37,7 @@ class AdminKanbanWorkflowTests(TestCase):
             priority="High",
             status="todo",
             due_date=timezone.localdate() - timedelta(days=1),
+            assigned_to=self.admin,
             created_by=self.other_admin,
             comments="Initial comment",
         )
@@ -45,6 +46,18 @@ class AdminKanbanWorkflowTests(TestCase):
             project=self.other_project, title="Private task", created_by=self.other_admin
         )
         self.client.force_login(self.admin)
+
+    def test_personal_board_does_not_expand_admin_project_permissions(self):
+        unassigned_tracker = Task.objects.create(
+            project=self.project,
+            title="Manager-only project tracker",
+            created_by=self.admin,
+        )
+
+        response = self.client.get(reverse("admin_user_kanban", args=[self.admin.id]))
+
+        self.assertContains(response, self.task.title)
+        self.assertNotContains(response, unassigned_tracker.title)
 
     def test_admin_my_projects_shows_assigned_project_and_not_unrelated_project(self):
         response = self.client.get(reverse("admin_my_projects"))
