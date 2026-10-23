@@ -6,7 +6,7 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 
 from .models import ClockInRecord, Notification, NotificationReceipt, AuditLog
@@ -70,7 +70,9 @@ class ClockInRecordModelTests(TestCase):
         
     def test_get_today_total_hours(self):
         """Test calculating today's total hours"""
-        now = timezone.now()
+        now = timezone.make_aware(
+            datetime.combine(timezone.localdate(), datetime.min.time()) + timedelta(hours=9)
+        )
         ClockInRecord.objects.create(
             employee=self.user,
             clock_in_time=now,

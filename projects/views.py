@@ -1,10 +1,10 @@
 # projects/views.py
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import DailyTask, StudentProfile, Submission, Notification, Meeting, ChatMessage, Project, Assignment, TeamMember, Task
+from .models import DailyTask, StudentProfile, Submission, Notification, Meeting, ChatMessage, Project, Assignment, TeamMember, Task, WeeklyReport
 from users.models import CustomUser
-from .forms import DailyTaskForm, StudentProfileForm, SubmissionForm, FeedbackReplyForm, MeetingForm, ChatForm, ProjectForm, AssignmentForm
+from .forms import DailyTaskForm, StudentProfileForm, SubmissionForm, FeedbackReplyForm, MeetingForm, ChatForm, ProjectForm, AssignmentForm, WeeklyReportForm
 from django.contrib.auth.decorators import login_required, user_passes_test
-from datetime import date
+from datetime import date, timedelta
 from django.utils.timezone import now
 from django.contrib import messages
 from django.urls import reverse
@@ -23,7 +23,8 @@ from adminpanel.models import Notification
 from adminpanel.media_service import MediaService
 from adminpanel.notification_service import unread_count_for, visible_notifications_for
 from .scope import scope_projects_for_user
-from .work_scope import assigned_projects_for, workable_tasks_for
+from .work_scope import assigned_projects_for, workable_tasks_for, manageable_projects_for
+from users.roles import has_role
 from .daily_work import complete_daily_work, reopen_daily_work
 
 
@@ -55,6 +56,54 @@ def dashboard(request):
         'daily_tasks': tasks,
         'my_notifications': my_notifications,  # <-- ensure this is passed
         'selected_date': selected_date,
+    })
+
+
+@login_required
+def weekly_reports(request):
+    can_review = has_role(request.user, 'admin', 'centrehead', 'manager')
+    visible_projects = manageable_projects_for(request.user)
+
+    if request.method == 'POST':
+        form = WeeklyReportForm(request.POST, request.FILES, user=request.user)
+        if form.is_valid():
+            cleaned = form.cleaned_data
+            defaults = {
+                'summary': cleaned['summary'],
+                'project_type': cleaned['project'].project_type,
+            }
+            if cleaned.get('attachment'):
+                defaults['attachment'] = cleaned['attachment']
+            WeeklyReport.objects.update_or_create(
+                submitted_by=request.user,
+                project=cleaned['project'],
+                week_start=cleaned['week_start'],
+                defaults=defaults,
+            )
+            messages.success(request, 'Weekly report saved successfully.')
+            return redirect('weekly_reports')
+    else:
+        form = WeeklyReportForm(user=request.user, initial={
+            'week_start': timezone.localdate() - timedelta(days=timezone.localdate().weekday()),
+        })
+
+    reports = WeeklyReport.objects.select_related('submitted_by', 'project')
+    if can_review:
+        reports = reports.filter(project__in=visible_projects)
+    else:
+        reports = reports.filter(submitted_by=request.user)
+
+    report_rows = []
+    for report in reports[:200]:
+        team_tasks = report.project.tasks.select_related('assigned_to').order_by('status', 'title')
+        if not can_review:
+            team_tasks = team_tasks.filter(assigned_to=request.user)
+        report_rows.append({'report': report, 'team_tasks': team_tasks})
+
+    return render(request, 'projects/weekly_reports.html', {
+        'form': form,
+        'report_rows': report_rows,
+        'can_review_reports': can_review,
     })
 
 
@@ -138,7 +187,6 @@ def edit_task(request, task_id):
 
     return redirect('staff_kanban')
 
-@csrf_exempt
 @require_POST
 @login_required
 def update_task_status(request, task_id):

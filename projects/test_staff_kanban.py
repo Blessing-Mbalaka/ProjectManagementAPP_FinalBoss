@@ -298,8 +298,8 @@ class StaffKanbanTaskGroupingTests(TestCase):
         self.assertEqual(grouped_tasks['review'].count(), 1)
         self.assertEqual(grouped_tasks['done'].count(), 1)
 
-    def test_project_assignee_sees_the_full_assigned_project_task_pool(self):
-        """Project assignees work from the project's complete task pool."""
+    def test_project_assignee_does_not_see_another_persons_task(self):
+        """Project membership must not expose another person's task."""
         other_staff = User.objects.create_user(
             username='staff2',
             password='testpass123'
@@ -323,4 +323,5 @@ class StaffKanbanTaskGroupingTests(TestCase):
             grouped_tasks['done']
         )
         
-        self.assertEqual(all_tasks.count(), 5)
+        self.assertEqual(all_tasks.count(), 4)
+        self.assertFalse(all_tasks.filter(title='Other Staff Task').exists())

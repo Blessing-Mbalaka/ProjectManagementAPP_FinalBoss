@@ -3,6 +3,8 @@ from django.db import connection
 
 #Here  is the Default Django User_ROLE_VALIDATION.
 from django.contrib.auth.decorators import login_required, user_passes_test
+from users.roles import can_manage_projects, has_role
+from projects.work_scope import manageable_projects_for
 
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
@@ -241,15 +243,15 @@ CRM_ROLES = ['dean', 'centrehead']
 
 
 def is_admin(user):
-    return user.is_authenticated and user.role == 'admin'
+    return has_role(user, 'admin')
 
 
 def is_admin_or_dean(user):
-    return user.is_authenticated and user.role in ADMIN_VIEW_ROLES
+    return has_role(user, *ADMIN_VIEW_ROLES)
 
 
 def can_view_admin_kanban(user):
-    return user.is_authenticated and user.role in ADMIN_VIEW_ROLES
+    return has_role(user, *ADMIN_VIEW_ROLES)
 
 
 def can_edit_finance(user):
@@ -426,13 +428,28 @@ def app_kanban(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.role in ['admin', 'dean', 'manager'])
+@user_passes_test(lambda u: has_role(u, 'admin', 'dean', 'centrehead', 'manager'))
 def admin_ganttchart(request):
-    projects = Project.objects.select_related('assigned_user', 'created_by').prefetch_related('tasks__assigned_to', 'tasks__subtasks')
+    base_projects = Project.objects.select_related('assigned_user', 'created_by').prefetch_related('tasks__assigned_to', 'tasks__subtasks')
+    projects = base_projects if has_role(request.user, 'admin', 'dean') else manageable_projects_for(request.user, base_projects)
     timeline_items = []
+    detail_mode = request.GET.get('detail') == 'tasks'
 
     for project in projects:
         project_tasks = list(project.tasks.all())
+        if not detail_mode:
+            start_date = timezone.localdate(project.created_at) if project.created_at else timezone.localdate()
+            task_dates = [task.due_date for task in project_tasks if task.due_date]
+            end_date = max(task_dates) if task_dates else (project.due_date or start_date + timedelta(days=3))
+            owner = project.assigned_user or project.created_by
+            timeline_items.append({
+                'id': f'project-{project.id}', 'name': project.name, 'project': project.name,
+                'owner': owner.get_full_name() or owner.username if owner else 'Unassigned',
+                'ownerId': owner.id if owner else '', 'status': project.get_status_display(),
+                'progress': round(sum(task.progress for task in project_tasks) / len(project_tasks)) if project_tasks else 0,
+                'startDate': start_date, 'endDate': end_date if end_date >= start_date else start_date,
+            })
+            continue
         if not project_tasks:
             start_date = timezone.localdate(project.created_at) if project.created_at else timezone.localdate()
             end_date = project.due_date or start_date + timedelta(days=3)
@@ -495,7 +512,8 @@ def admin_ganttchart(request):
 
     return render(request, 'adminpanel/admin_ganttchart.html', {
         'projects': projects,
-        'is_gantt_readonly': request.user.role == 'dean',
+        'is_gantt_readonly': True,
+        'gantt_detail_mode': detail_mode,
         'gantt_tasks_json': json.dumps(gantt_tasks),
         'gantt_staff_users': staff_users,
     })
@@ -773,7 +791,7 @@ def edit_user(request, user_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.role == 'admin')
+@user_passes_test(can_manage_projects)
 def assign_project(request):
     """Assign an existing project to a staff member"""
     if request.method == 'POST':
@@ -782,10 +800,12 @@ def assign_project(request):
         description = request.POST.get('description', '')
         
         # Validate project exists
-        project = get_object_or_404(Project, id=project_id)
+        project = get_object_or_404(manageable_projects_for(request.user), id=project_id)
         
         # Validate user exists
         assigned_user = get_object_or_404(get_user_model(), id=assigned_user_id)
+        if not has_role(request.user, 'admin') and assigned_user.research_centre_id != request.user.research_centre_id:
+            return HttpResponseForbidden('You can only allocate users in your research centre.')
         
         # Update project assignment and description
         project.assigned_user = assigned_user
@@ -805,8 +825,10 @@ def assign_project(request):
         return redirect('overview')
     
     # GET request - provide list of projects and users
-    projects = Project.objects.all().order_by('-created_at')
+    projects = manageable_projects_for(request.user).order_by('-created_at')
     users = get_user_model().objects.filter(is_active=True).order_by('first_name', 'last_name')
+    if not has_role(request.user, 'admin'):
+        users = users.filter(research_centre_id=request.user.research_centre_id)
     
     return render(request, 'adminpanel/overview.html', {
         'projects': projects,
@@ -815,7 +837,10 @@ def assign_project(request):
     
 @login_required
 def gantt_data_api(request):
-    projects = Project.objects.prefetch_related('tasks').all()
+    if has_role(request.user, 'admin', 'dean'):
+        projects = Project.objects.prefetch_related('tasks').all()
+    else:
+        projects = manageable_projects_for(request.user, Project.objects.prefetch_related('tasks'))
     data = []
 
     for project in projects:
@@ -834,22 +859,25 @@ def gantt_data_api(request):
 
 @login_required
 def project_task_detail(request, project_name):
-    project = get_object_or_404(Project, name=project_name)
+    if has_role(request.user, 'admin', 'dean'):
+        visible_projects = Project.objects.all()
+    else:
+        visible_projects = manageable_projects_for(request.user)
+    project = get_object_or_404(visible_projects, name=project_name)
     tasks = Task.objects.filter(project=project)
     return render(request, 'adminpanel/project_tasks.html', {'project': project, 'tasks': tasks})
 
-@csrf_exempt
+@login_required
+@require_POST
 def update_task_progress(request, task_id):
-    if request.method == "POST":
+    task = get_object_or_404(Task.objects.filter(project__in=manageable_projects_for(request.user)), id=task_id)
+    try:
         data = json.loads(request.body)
-        try:
-            task = Task.objects.get(id=task_id)
-            task.progress = min(max(int(data["progress"]), 0), 100)
-            task.save()
-            return JsonResponse({"success": True})
-        except Task.DoesNotExist:
-            return JsonResponse({"error": "Task not found"}, status=404)
-    return JsonResponse({"error": "Invalid request"}, status=400)
+        task.progress = min(max(int(data["progress"]), 0), 100)
+        task.save(update_fields=['progress'])
+        return JsonResponse({"success": True})
+    except (KeyError, TypeError, ValueError):
+        return JsonResponse({"error": "Invalid progress"}, status=400)
 
 @login_required
 @login_required
@@ -3204,7 +3232,7 @@ from .models import Notification
 from users.models import CustomUser  # adjust if your user model is elsewhere
 
 def is_admin(user):
-    return getattr(user, 'role', '') == 'admin'
+    return has_role(user, 'admin')
 
 @login_required
 @user_passes_test(is_admin)
@@ -3353,7 +3381,7 @@ def load_students_csv(request):
 # ============================================================================
 
 @login_required
-@user_passes_test(lambda u: u.role == 'admin')
+@user_passes_test(can_manage_projects)
 def create_project(request):
     """Create a new project via AJAX or form submission"""
     if request.method == 'POST':
@@ -3381,10 +3409,10 @@ def create_project(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.role == 'admin')
+@user_passes_test(can_manage_projects)
 def update_project(request, project_id):
     """Update an existing project"""
-    project = get_object_or_404(Project, id=project_id)
+    project = get_object_or_404(manageable_projects_for(request.user), id=project_id)
     
     if request.method == 'POST':
         form = ProjectForm(request.POST, instance=project)
@@ -3407,10 +3435,10 @@ def update_project(request, project_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.role == 'admin')
+@user_passes_test(can_manage_projects)
 def delete_project(request, project_id):
     """Delete a project"""
-    project = get_object_or_404(Project, id=project_id)
+    project = get_object_or_404(manageable_projects_for(request.user), id=project_id)
     project_name = project.name
     
     if request.method == 'POST':
@@ -3434,15 +3462,15 @@ def delete_project(request, project_id):
 
 
 @login_required
-@user_passes_test(lambda u: u.role == 'admin')
+@user_passes_test(can_manage_projects)
 def get_projects_json(request):
     """Get all projects as JSON for dropdown population"""
-    projects = Project.objects.all().values('id', 'name', 'description', 'project_type', 'status', 'due_date').order_by('-created_at')
+    projects = manageable_projects_for(request.user).values('id', 'name', 'description', 'project_type', 'status', 'due_date').order_by('-created_at')
     return JsonResponse({'projects': list(projects)})
 
 
 @login_required
-@user_passes_test(lambda u: u.role == 'admin')
+@user_passes_test(lambda u: has_role(u, 'admin', 'centrehead'))
 @csrf_exempt
 def user_activity_api(request):
     """API endpoint for user activity data (clock-in, tasks, etc.)"""
@@ -3460,27 +3488,16 @@ def user_activity_api(request):
         days = int(date_range) if date_range.isdigit() else 30
         start_date = today - timedelta(days=days)
     
-    # DEBUG: Log filter parameters
-    print(f"\n🔍 [user_activity_api] Filtering:")
-    print(f"   Today: {today}")
-    print(f"   Date range: {date_range} days")
-    print(f"   Start date: {start_date}")
-    print(f"   Employee ID: {employee_id or 'All'}")
-    
     # Filter clock records
-    clock_records = ClockInRecord.objects.all()
-    print(f"   Total records before filter: {clock_records.count()}")
-    
+    clock_records = ClockInRecord.objects.select_related('employee')
+    if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin'):
+        clock_records = clock_records.filter(employee__research_centre_id=request.user.research_centre_id)
     if employee_id:
         clock_records = clock_records.filter(employee_id=employee_id)
     if start_date:
         clock_records = clock_records.filter(clock_in_time__date__gte=start_date)
     
-    filtered_count = clock_records.count()
-    print(f"   Records after date filter: {filtered_count}")
-    
     clock_records = clock_records.order_by('-clock_in_time')[:100]
-    print(f"   Records for processing: {len(clock_records)} (limited to 100)")
     
     # Calculate metrics
     total_hours = Decimal('0.00')
@@ -3508,6 +3525,8 @@ def user_activity_api(request):
     
     # Get task progress
     tasks = Task.objects.all()
+    if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin'):
+        tasks = tasks.filter(assigned_to__research_centre_id=request.user.research_centre_id)
     if employee_id:
         tasks = tasks.filter(assigned_to_id=employee_id)
     
@@ -3571,7 +3590,11 @@ def user_activity_api(request):
             'clock_in': timezone.localtime(record.clock_in_time).strftime('%H:%M:%S'),
             'clock_out': timezone.localtime(record.clock_out_time).strftime('%H:%M:%S') if record.clock_out_time else '--',
             'duration': record.duration_display,
-            'status': record.status
+            'status': record.status,
+            'location': record.location_label or (
+                f'{record.latitude}, {record.longitude}' if record.location_consent_at else 'Not shared'
+            ),
+            'last_login': timezone.localtime(record.employee.last_login).strftime('%Y-%m-%d %H:%M') if record.employee.last_login else 'Never',
         })
     
     # Heatmap data (hours by day and hour)

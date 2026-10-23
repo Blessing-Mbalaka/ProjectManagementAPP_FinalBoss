@@ -268,3 +268,36 @@ class ProgressUpdate(models.Model):
     file = models.FileField(upload_to='uploads/')
     comments = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class WeeklyReport(models.Model):
+    """A staff member's persisted weekly project update."""
+
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='weekly_reports',
+    )
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='weekly_reports')
+    week_start = models.DateField(db_index=True)
+    project_type = models.CharField(max_length=20, choices=Project.PROJECT_TYPES)
+    summary = models.TextField()
+    attachment = models.FileField(upload_to='weekly_reports/', blank=True, null=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['submitted_by', 'project', 'week_start'],
+                name='unique_weekly_report_per_person_project_week',
+            )
+        ]
+        ordering = ['-week_start', '-updated_at']
+
+    def save(self, *args, **kwargs):
+        self.project_type = self.project.project_type
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.submitted_by} - {self.project} - {self.week_start}'

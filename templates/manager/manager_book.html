@@ -417,6 +417,9 @@
                             <button class="btn btn-primary ms-2" id="addChapterBtn">
                                 <i class="bi bi-plus-circle"></i> Add Chapter
                             </button>
+                            <button class="btn btn-outline-primary ms-2" id="bulkChapterBtn">
+                                <i class="bi bi-people"></i> Bulk Assign
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -641,7 +644,7 @@
                                 <input type="text" class="form-control" id="chapterTitle" required>
                             </div>
                             <div class="mb-3">
-                                <label for="chapterAuthor" class="form-label">Author</label>
+                                <label for="chapterAuthor" class="form-label">Responsible author username</label>
                                 <input type="text" class="form-control" id="chapterAuthor" required>
                             </div>
                             <div class="mb-3">
@@ -665,6 +668,18 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="modal fade" id="bulkChapterModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Bulk assign book chapters</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <p class="text-muted">Enter one chapter per line: <code>number | title | username | status</code>. Status may be Draft, In Progress, In Review, or Completed.</p>
+                    <textarea class="form-control" id="bulkChapterRows" rows="10" placeholder="1 | Introduction | raksha | Draft&#10;2 | Methods | prof | In Progress"></textarea>
+                    <div class="alert alert-danger d-none mt-3" id="bulkChapterError"></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="saveBulkChapters">Save assignments</button></div>
+            </div></div>
         </div>
 
         <!-- Comments Modal -->
@@ -970,7 +985,8 @@ function deleteChapter(chapterId, bookId) {
     if (!confirm("Are you sure you want to delete this chapter?")) return;
 
     fetch(`/manager/delete-chapter/${chapterId}/`, {
-        method: "POST"
+        method: "POST",
+        headers: {"X-CSRFToken": getCSRFToken()}
     })
     .then(res => res.json())
     .then(res => {
@@ -1055,6 +1071,43 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch(err => alert("Request failed: " + err.message));
         });
     }
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    const openButton = document.getElementById('bulkChapterBtn');
+    const saveButton = document.getElementById('saveBulkChapters');
+    const errorBox = document.getElementById('bulkChapterError');
+    if (!openButton || !saveButton) return;
+    openButton.addEventListener('click', function () {
+        if (!currentBookId) { alert('Please select a book first.'); return; }
+        errorBox.classList.add('d-none');
+        new bootstrap.Modal(document.getElementById('bulkChapterModal')).show();
+    });
+    saveButton.addEventListener('click', async function () {
+        const lines = document.getElementById('bulkChapterRows').value.split(/\r?\n/).filter(line => line.trim());
+        const chapters = [];
+        for (const line of lines) {
+            const parts = line.split('|').map(value => value.trim());
+            if (parts.length < 4 || !/^\d+$/.test(parts[0])) {
+                errorBox.textContent = `Invalid row: ${line}`; errorBox.classList.remove('d-none'); return;
+            }
+            chapters.push({chapter_number: Number(parts[0]), title: parts[1], assigned_author_username: parts[2], status: parts[3]});
+        }
+        if (!chapters.length) { errorBox.textContent = 'Add at least one chapter row.'; errorBox.classList.remove('d-none'); return; }
+        const oldText = saveButton.textContent; saveButton.disabled = true; saveButton.textContent = 'Saving…';
+        try {
+            const response = await fetch(`/manager/books/${currentBookId}/chapters/bulk-assign/`, {
+                method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken()}, body: JSON.stringify({chapters})
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || 'Unable to save chapter assignments.');
+            bootstrap.Modal.getInstance(document.getElementById('bulkChapterModal')).hide();
+            loadChapters(currentBookId);
+            alert(`${result.saved} chapter assignment(s) saved.`);
+        } catch (error) {
+            errorBox.textContent = error.message; errorBox.classList.remove('d-none');
+        } finally { saveButton.disabled = false; saveButton.textContent = oldText; }
+    });
 });
 
 

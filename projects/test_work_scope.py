@@ -50,14 +50,14 @@ class WorkScopeTests(TestCase):
         self.direct_task = Task.objects.create(title="Direct task", assigned_to=self.member, created_by=self.owner)
         self.unrelated_task = Task.objects.create(title="Unrelated", assigned_to=self.unrelated, created_by=self.owner)
 
-    def test_direct_project_assignee_sees_project_tasks_without_direct_task_assignment(self):
+    def test_direct_project_assignee_does_not_inherit_other_peoples_tasks(self):
         self.assertIn(self.project, assigned_projects_for(self.direct))
-        self.assertIn(self.project_task, workable_tasks_for(self.direct))
-        self.assertTrue(can_update_task(self.direct, self.project_task))
+        self.assertNotIn(self.project_task, workable_tasks_for(self.direct))
+        self.assertFalse(can_update_task(self.direct, self.project_task))
 
     def test_team_member_and_direct_task_assignee_receive_only_authorized_work(self):
         visible = set(workable_tasks_for(self.member))
-        self.assertEqual(visible, {self.project_task, self.direct_task})
+        self.assertEqual(visible, {self.direct_task})
         self.assertNotIn(self.unrelated_task, visible)
 
     def test_admin_can_have_assigned_projects_without_institutional_scope_leaking_other_tasks(self):

@@ -23,7 +23,7 @@ class DailyWorkTests(TestCase):
             name="Assigned project", created_by=self.owner, assigned_user=self.staff
         )
         self.task = Task.objects.create(
-            project=self.project, title="Assigned task", created_by=self.owner, status="todo"
+            project=self.project, title="Assigned task", assigned_to=self.staff, created_by=self.owner, status="todo"
         )
         self.other_task = Task.objects.create(title="Other task", assigned_to=self.other, created_by=self.owner)
         self.today = timezone.localdate()

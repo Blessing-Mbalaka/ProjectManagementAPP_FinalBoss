@@ -518,6 +518,11 @@ class ClockInRecord(models.Model):
     clock_out_time = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='clocked_in')
     notes = models.TextField(blank=True)
+    location_label = models.CharField(max_length=255, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_accuracy_m = models.PositiveIntegerField(null=True, blank=True)
+    location_consent_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         ordering = ['-clock_in_time']

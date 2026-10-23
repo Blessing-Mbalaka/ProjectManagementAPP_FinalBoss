@@ -712,6 +712,8 @@
             const refreshReadonlyKanban = document.getElementById('refreshReadonlyKanban');
 
             if (readonlyKanbanUserSelect && readonlyKanbanBoardArea) {
+                let boardRequest = null;
+                let boardRequestSequence = 0;
                 const loadReadonlyBoard = function() {
                     const userId = readonlyKanbanUserSelect.value;
                     if (!userId) {
@@ -723,15 +725,21 @@
                     if (refreshReadonlyKanban) refreshReadonlyKanban.disabled = false;
                     readonlyKanbanBoardArea.innerHTML = '<p class="text-muted mb-0">Loading task board...</p>';
                     const url = "{% url 'admin_user_kanban' 0 %}".replace('/0/', `/${userId}/`);
-                    fetch(url)
+                    if (boardRequest) boardRequest.abort();
+                    boardRequest = new AbortController();
+                    const sequence = ++boardRequestSequence;
+                    fetch(url, {signal: boardRequest.signal, headers: {'X-Requested-With': 'XMLHttpRequest'}})
                         .then(response => {
                             if (!response.ok) throw new Error(`Board request failed: ${response.status}`);
                             return response.text();
                         })
                         .then(html => {
-                            readonlyKanbanBoardArea.innerHTML = html;
+                            if (sequence === boardRequestSequence && readonlyKanbanUserSelect.value === userId) {
+                                readonlyKanbanBoardArea.innerHTML = html;
+                            }
                         })
-                        .catch(() => {
+                        .catch(error => {
+                            if (error.name === 'AbortError') return;
                             readonlyKanbanBoardArea.innerHTML = '<div class="alert alert-danger mb-0">Unable to load this task board.</div>';
                         });
                 };

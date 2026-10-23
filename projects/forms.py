@@ -1,6 +1,6 @@
 # projects/forms.py
 from django import forms
-from .models import DailyTask, StudentProfile, Submission, FeedbackReply, Meeting, ChatMessage, Project, Assignment, TeamMember, Task
+from .models import DailyTask, StudentProfile, Submission, FeedbackReply, Meeting, ChatMessage, Project, Assignment, TeamMember, Task, WeeklyReport
 from django.contrib.auth import get_user_model 
 
 # forms.py
@@ -30,6 +30,35 @@ class DailyTaskForm(forms.ModelForm):
         widgets = {
             'task': forms.Select(attrs={'class': 'form-select'}),
             'work_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+
+class WeeklyReportForm(forms.ModelForm):
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from projects.work_scope import assigned_projects_for, manageable_projects_for
+
+        if user is None:
+            self.fields['project'].queryset = Project.objects.none()
+        else:
+            manageable = manageable_projects_for(user)
+            assigned = assigned_projects_for(user)
+            self.fields['project'].queryset = (manageable | assigned).distinct().order_by('name')
+
+    def clean_week_start(self):
+        value = self.cleaned_data['week_start']
+        if value.weekday() != 0:
+            raise forms.ValidationError('Choose the Monday that starts the reporting week.')
+        return value
+
+    class Meta:
+        model = WeeklyReport
+        fields = ['project', 'week_start', 'summary', 'attachment']
+        widgets = {
+            'project': forms.Select(attrs={'class': 'form-select'}),
+            'week_start': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'summary': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'attachment': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
 

@@ -145,12 +145,14 @@
                     <th>Clock In</th>
                     <th>Clock Out</th>
                     <th>Duration</th>
+                    <th>Location</th>
+                    <th>Last login</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody id="recentRecordsBody">
                 <tr>
-                    <td colspan="6" class="text-center text-muted">
+                    <td colspan="8" class="text-center text-muted">
                         <small>No clock records found</small>
                     </td>
                 </tr>
@@ -405,7 +407,7 @@
         tbody.innerHTML = '';
 
         if (recentRecords.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No records found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No records found</td></tr>';
             return;
         }
 
@@ -421,6 +423,8 @@
                     <td><small>${record.clock_in}</small></td>
                     <td><small>${record.clock_out || '--'}</small></td>
                     <td><strong>${record.duration}</strong></td>
+                    <td><small>${record.location || 'Not shared'}</small></td>
+                    <td><small>${record.last_login || 'Never'}</small></td>
                     <td>${statusBadge}</td>
                 </tr>
             `;

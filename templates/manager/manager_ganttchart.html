@@ -34,13 +34,15 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4>All Projects Timeline Overview</h4>
         <div class="view-buttons">
+            <a class="btn btn-sm btn-outline-secondary" href="?">Projects</a>
+            <a class="btn btn-sm btn-outline-secondary" href="?detail=tasks">Tasks</a>
             <button class="btn btn-sm btn-outline-primary" onclick="changeView('Day')">Day</button>
             <button class="btn btn-sm btn-outline-primary" onclick="changeView('Week')">Week</button>
             <button class="btn btn-sm btn-outline-primary" onclick="changeView('Month')">Month</button>
         </div>
     </div>
 
-    <div id="gantt" class="mt-4"></div>
+    <div id="gantt" class="mt-4"><div class="placeholder-glow p-4"><span class="placeholder col-8"></span><span class="placeholder col-5 mt-3"></span><p class="text-muted mt-3">Loading timeline…</p></div></div>
 </div>
 
 <!-- ✅ JS -->
@@ -48,13 +50,17 @@
 
 <script>
 let gantt;
+function escapeTimelineText(value) {
+    const node = document.createElement('div');
+    node.textContent = value == null ? '' : String(value);
+    return node.innerHTML;
+}
 
 function loadGantt(view = 'Day') {
-    fetch(`/manager/gantt/data/all/`)
-        .then(response => response.json())
+    const detail = new URLSearchParams(window.location.search).get('detail');
+    fetch(`/manager/gantt/data/all/${detail === 'tasks' ? '?detail=tasks' : ''}`)
+        .then(response => { if (!response.ok) throw new Error(`Timeline request failed (${response.status})`); return response.json(); })
         .then(tasks => {
-            console.log("Loaded Tasks: ", tasks);
-
             if (!tasks.length) {
                 document.getElementById('gantt').innerHTML = "<p class='text-muted'>No tasks to display.</p>";
                 return;
@@ -71,16 +77,17 @@ function loadGantt(view = 'Day') {
                 custom_popup_html: function(task) {
                     return `
                         <div class="details-container">
-                            <h5>${task.name}</h5>
-                            <p>Start: ${task.start}</p>
-                            <p>End: ${task.end}</p>
-                            <p>Progress: ${task.progress}%</p>
+                            <h5>${escapeTimelineText(task.name)}</h5>
+                            <p>Start: ${escapeTimelineText(task.start)}</p>
+                            <p>End: ${escapeTimelineText(task.end)}</p>
+                            <p>Progress: ${escapeTimelineText(task.progress)}%</p>
                         </div>`;
                 }
             });
         })
         .catch(error => {
             console.error("Error loading Gantt data:", error);
+            document.getElementById('gantt').innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
         });
 }
 

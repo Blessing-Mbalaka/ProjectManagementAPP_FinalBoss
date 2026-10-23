@@ -1,4 +1,5 @@
 from django.db.models import Q
+from users.roles import has_role
 
 
 INSTITUTIONAL_ROLES = {'admin', 'dean'}
@@ -24,7 +25,7 @@ def project_centre_q(user_or_centre):
 
 
 def scope_projects_for_user(queryset, user):
-    if getattr(user, 'role', None) in INSTITUTIONAL_ROLES:
+    if has_role(user, *INSTITUTIONAL_ROLES):
         return queryset
     if not user_centre_id(user):
         return queryset.none()
@@ -46,7 +47,7 @@ def output_centre_q(user_or_centre):
 
 
 def scope_outputs_for_user(queryset, user):
-    if getattr(user, 'role', None) in INSTITUTIONAL_ROLES:
+    if has_role(user, *INSTITUTIONAL_ROLES):
         return queryset
     if not user_centre_id(user):
         return queryset.none()
@@ -54,9 +55,21 @@ def scope_outputs_for_user(queryset, user):
 
 
 def scope_books_for_user(queryset, user):
-    if getattr(user, 'role', None) in INSTITUTIONAL_ROLES:
+    if has_role(user, *INSTITUTIONAL_ROLES):
         return queryset
     centre_id = user_centre_id(user)
     if not centre_id:
         return queryset.none()
     return queryset.filter(created_by__research_centre_id=centre_id).distinct()
+
+
+def scope_chapters_for_user(queryset, user):
+    """Managers inspect centre books; authors receive only their chapters."""
+    if has_role(user, 'admin'):
+        return queryset
+    if has_role(user, 'centrehead', 'manager'):
+        centre_id = user_centre_id(user)
+        if not centre_id:
+            return queryset.none()
+        return queryset.filter(book__created_by__research_centre_id=centre_id).distinct()
+    return queryset.filter(assigned_author=user)

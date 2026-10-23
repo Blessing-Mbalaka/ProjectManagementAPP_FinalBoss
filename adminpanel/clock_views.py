@@ -3,9 +3,13 @@ from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
+from decimal import Decimal, InvalidOperation
+import json
 from .models import ClockInRecord
 
 @login_required
+@require_POST
 def clock_in(request):
     """Record employee clock in"""
     # Check if already clocked in
@@ -18,8 +22,35 @@ def clock_in(request):
             'clocked_in': True
         })
     
-    # Create new clock in record
-    record = ClockInRecord.objects.create(employee=request.user, clock_in_time=timezone.now())
+    try:
+        payload = json.loads(request.body or b'{}') if request.content_type == 'application/json' else request.POST
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid location payload'}, status=400)
+
+    consent = str(payload.get('location_consent', '')).lower() in {'1', 'true', 'yes', 'on'}
+    location_data = {}
+    if consent:
+        try:
+            latitude = Decimal(str(payload.get('latitude')))
+            longitude = Decimal(str(payload.get('longitude')))
+            if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+                raise ValueError
+            accuracy = payload.get('accuracy')
+            location_data = {
+                'latitude': latitude,
+                'longitude': longitude,
+                'location_accuracy_m': max(0, int(float(accuracy))) if accuracy not in (None, '') else None,
+                'location_label': str(payload.get('location_label', ''))[:255],
+                'location_consent_at': timezone.now(),
+            }
+        except (InvalidOperation, TypeError, ValueError):
+            return JsonResponse({'success': False, 'message': 'Invalid location coordinates'}, status=400)
+
+    record = ClockInRecord.objects.create(
+        employee=request.user,
+        clock_in_time=timezone.now(),
+        **location_data,
+    )
     
     return JsonResponse({
         'success': True,
@@ -29,6 +60,7 @@ def clock_in(request):
     })
 
 @login_required
+@require_POST
 def clock_out(request):
     """Record employee clock out"""
     current = ClockInRecord.get_current_session(request.user)
@@ -77,7 +109,10 @@ def clock_history(request):
             'clock_in': timezone.localtime(record.clock_in_time).strftime('%H:%M:%S'),
             'clock_out': timezone.localtime(record.clock_out_time).strftime('%H:%M:%S') if record.clock_out_time else '--',
             'duration': record.duration_display,
-            'notes': record.notes
+            'notes': record.notes,
+            'location': record.location_label or (
+                f'{record.latitude}, {record.longitude}' if record.location_consent_at else ''
+            )
         })
     
     return JsonResponse({'history': history})

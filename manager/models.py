@@ -218,6 +218,14 @@ class Chapter(models.Model):
     chapter_number = models.PositiveIntegerField()
     title = models.CharField(max_length=255)
     author = models.CharField(max_length=255)
+    assigned_author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='assigned_book_chapters',
+        null=True,
+        blank=True,
+        help_text='System user responsible for this chapter.',
+    )
     editor = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Draft')
     last_updated = models.DateTimeField(auto_now=True)

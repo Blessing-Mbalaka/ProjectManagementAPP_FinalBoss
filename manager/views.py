@@ -26,8 +26,9 @@ from django.utils import timezone
 from django.shortcuts import render
 from adminpanel.models import CostCentre, EngagementLog, Notification
 from adminpanel.notification_service import visible_notifications_for
-from projects.scope import scope_books_for_user, scope_outputs_for_user, scope_projects_for_user
-from projects.work_scope import assigned_projects_for, workable_tasks_for
+from projects.scope import scope_books_for_user, scope_chapters_for_user, scope_outputs_for_user, scope_projects_for_user
+from projects.work_scope import assigned_projects_for, manageable_projects_for, workable_tasks_for
+from users.roles import can_manage_client_engagements, can_manage_projects, can_manage_publications, has_role
 from projects.assignment_notifications import notify_project_assignment
 from manager.publication_projects import sync_publication_project
 from projects.workbook_import.application import WorkbookImportError, apply_workbook_preview
@@ -37,11 +38,11 @@ from projects.workbook_import.workbook import XLSX_MIME, build_template_workbook
 
 User = get_user_model()
 
-PROJECT_WORKBOOK_ROLES = {'manager', 'centrehead', 'dean', 'admin'}
+PROJECT_WORKBOOK_ROLES = {'manager', 'centrehead', 'dean', 'admin', 'financialadmin'}
 
 
 def _can_use_project_workbooks(user):
-    return bool(user.is_active and user.role in PROJECT_WORKBOOK_ROLES)
+    return bool(user.is_active and has_role(user, *PROJECT_WORKBOOK_ROLES))
 
 
 @login_required
@@ -123,12 +124,12 @@ def manager_dashboard(request):
 
 @login_required
 def manager_engagements(request):
-    project_scope = scope_projects_for_user(
-        Project.objects.filter(
-            Q(created_by=request.user) | Q(assigned_user=request.user)
-        ).select_related('research_centre', 'assigned_user', 'created_by'),
+    if not can_manage_client_engagements(request.user):
+        return HttpResponseForbidden('You are not authorized to manage client engagement notes.')
+    project_scope = manageable_projects_for(
         request.user,
-    ).distinct()
+        Project.objects.select_related('research_centre', 'assigned_user', 'created_by'),
+    )
     cost_centres = CostCentre.objects.select_related('research_centre').order_by('name')
 
     if getattr(request.user, 'research_centre_id', None):
@@ -207,23 +208,32 @@ def app_kanban(request):
 
 @login_required
 def manager_ganttchart(request):
-    projects = scope_projects_for_user(Project.objects.filter(
-        Q(created_by=request.user) | Q(assigned_user=request.user)
-    ), request.user).distinct()
+    projects = manageable_projects_for(request.user)
 
     return render(request, 'manager/manager_ganttchart.html', {'projects': projects})
 
 
 @login_required
 def manager_gantt_all_data(request):
-    projects = scope_projects_for_user(Project.objects.filter(
-        Q(created_by=request.user) | Q(assigned_user=request.user)
-    ), request.user).distinct()
+    projects = manageable_projects_for(request.user).prefetch_related('tasks__parent_task')
 
     data = []
+    detail_mode = request.GET.get('detail') == 'tasks'
 
     for project in projects:
-        for task in project.tasks.all():
+        project_tasks = list(project.tasks.all())
+        if not detail_mode:
+            start = timezone.localdate(project.created_at) if project.created_at else timezone.localdate()
+            task_due_dates = [task.due_date for task in project_tasks if task.due_date]
+            end = max(task_due_dates) if task_due_dates else (project.due_date or start)
+            data.append({
+                'id': f'P{project.id}', 'name': project.name,
+                'start': start.isoformat(), 'end': max(start, end).isoformat(),
+                'progress': round(sum(task.progress for task in project_tasks) / len(project_tasks)) if project_tasks else 0,
+                'dependencies': None, 'custom_class': f'project-{project.id}',
+            })
+            continue
+        for task in project_tasks:
             data.append({
                 "id": f"T{task.id}",
                 "name": f"{project.name}: {task.title}",
@@ -303,13 +313,13 @@ def manager_kanban(request):
 
 @login_required
 def assign_projects_view(request):
+    if not can_manage_projects(request.user):
+        return HttpResponseForbidden('You are not authorized to manage projects.')
     User = get_user_model()  # define User
     project_id = request.GET.get('project_id')
 
     # Projects where the current user is creator or (acting) manager
-    projects = scope_projects_for_user(Project.objects.filter(
-        Q(created_by=request.user) | Q(assigned_user=request.user)
-    ), request.user).distinct()
+    projects = manageable_projects_for(request.user)
 
     selected_project = None
     assignments = None
@@ -330,11 +340,7 @@ def assign_projects_view(request):
         )
 
     if project_id:
-        selected_project = get_object_or_404(
-            scope_projects_for_user(Project.objects.all(), request.user),
-            Q(created_by=request.user) | Q(assigned_user=request.user),
-            id=project_id,
-        )
+        selected_project = get_object_or_404(projects, id=project_id)
 
         # Prefetch to avoid N+1 when listing assignments
         assignments = selected_project.assignments.select_related("team_member__user")
@@ -363,12 +369,14 @@ def assign_projects_view(request):
 
 @login_required
 def create_project(request):
+    if not can_manage_projects(request.user):
+        return HttpResponseForbidden('You are not authorized to create projects.')
     if request.method == 'POST':
         form = ProjectForm(request.POST)
         if form.is_valid():
             project = form.save(commit=False)
             project.created_by = request.user
-            if request.user.role == 'manager':
+            if has_role(request.user, 'manager') and not has_role(request.user, 'admin', 'centrehead', 'financialadmin'):
                 project.assigned_user = request.user
             project.research_centre = getattr(request.user, 'research_centre', None)
             project.save()
@@ -380,12 +388,9 @@ def create_project(request):
 
 @login_required
 def assign_team_member(request, project_id):
-    project = get_object_or_404(
-        scope_projects_for_user(Project.objects.filter(
-            models.Q(created_by=request.user) | models.Q(assigned_user=request.user),
-            id=project_id
-        ), request.user)
-    )
+    if not can_manage_projects(request.user):
+        return HttpResponseForbidden('You are not authorized to allocate projects.')
+    project = get_object_or_404(manageable_projects_for(request.user), id=project_id)
     
     if request.method == 'POST':
         form = AssignmentForm(request.POST, project=project, user=request.user)
@@ -551,33 +556,28 @@ def edit_task(request, task_id):
         task.save()
         return redirect('manager_kanban')
 
-@csrf_exempt
 @login_required
+@require_POST
 def update_task_status(request, task_id):
-    if request.method == 'POST':
-        try:
-            task = get_object_or_404(Task, id=task_id)
-            data = json.loads(request.body)
-            new_status = data.get('status')
-
-            if new_status in ['todo', 'in_progress', 'review', 'done']:
-                task.status = new_status
-                task.save()
-                return JsonResponse({'success': True})
-            else:
-                return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+    try:
+        task = get_object_or_404(
+            Task.objects.filter(project__in=manageable_projects_for(request.user)),
+            id=task_id,
+        )
+        data = json.loads(request.body)
+        new_status = data.get('status')
+        if new_status not in dict(Task.STATUS_CHOICES):
+            return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
+        task.status = new_status
+        task.save(update_fields=['status', 'progress'])
+        return JsonResponse({'success': True})
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON payload'}, status=400)
 
 
 @login_required
 def manager_delete_task(request, task_id):
-    task = get_object_or_404(
-        Task,
-        Q(created_by=request.user) | Q(project__assigned_user=request.user),
-        id=task_id
-    )
+    task = get_object_or_404(Task.objects.filter(project__in=manageable_projects_for(request.user)), id=task_id)
     
     if request.method == 'POST':
         task.delete()
@@ -729,6 +729,8 @@ def delete_template(request, pk):
 
 @login_required
 def manager_journal(request):
+    if not can_manage_publications(request.user):
+        return HttpResponseForbidden('You are not authorized to manage publications.')
     papers = scope_outputs_for_user(Paper.objects.all(), request.user)
     internal_papers = papers.filter(internal_external='internal')
     external_papers = papers.filter(internal_external='external')
@@ -740,6 +742,8 @@ def manager_journal(request):
 
 @login_required
 def add_paper(request):
+    if not can_manage_publications(request.user):
+        return HttpResponseForbidden('You are not authorized to upload publications.')
     if request.method == 'POST':
         print("POST DATA:", request.POST.dict())  
 
@@ -782,6 +786,8 @@ def add_paper(request):
     
 @login_required
 def upload_excel_papers(request):
+    if not can_manage_publications(request.user):
+        return HttpResponseForbidden('You are not authorized to import publications.')
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
         df = pd.read_excel(excel_file)
@@ -806,6 +812,8 @@ def upload_excel_papers(request):
 
 @login_required
 def edit_paper(request, paper_id):
+    if not can_manage_publications(request.user):
+        return HttpResponseForbidden('You are not authorized to edit publications.')
     paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
     if request.method == 'POST':
         paper.title = request.POST.get('paperTitle')
@@ -826,6 +834,8 @@ def edit_paper(request, paper_id):
 @require_POST
 @login_required
 def delete_paper(request, paper_id):
+    if not can_manage_publications(request.user):
+        return HttpResponseForbidden('You are not authorized to delete publications.')
     paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
     paper.delete()
     messages.success(request, "Paper deleted.")
@@ -835,6 +845,8 @@ def delete_paper(request, paper_id):
 @login_required
 def edit_paper_ajax(request, paper_id):
     """Handle paper edit via Django form with validation"""
+    if not can_manage_publications(request.user):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     try:
         paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
         
@@ -958,7 +970,7 @@ def delete_book(request, book_id):
 @login_required
 def get_chapters(request, book_id):
     book = get_object_or_404(scope_books_for_user(Book.objects.all(), request.user), id=book_id)
-    chapters = Chapter.objects.filter(book=book).order_by("chapter_number")
+    chapters = scope_chapters_for_user(Chapter.objects.filter(book=book), request.user).select_related('assigned_author').order_by("chapter_number")
     chapter_list = [
         {
             "id": c.id,
@@ -966,6 +978,8 @@ def get_chapters(request, book_id):
             "chapter_number": c.chapter_number,
             "title": c.title,
             "author": c.author,
+            "assigned_author_id": c.assigned_author_id,
+            "assigned_author": (c.assigned_author.get_full_name() or c.assigned_author.username) if c.assigned_author else c.author,
             "editor": c.editor,
             "status": c.status,
             "last_updated": c.last_updated.strftime("%Y-%m-%d %H:%M")
@@ -973,17 +987,22 @@ def get_chapters(request, book_id):
     ]
     return JsonResponse({"chapters": chapter_list})
 
-@csrf_exempt
 @login_required
+@require_POST
 def add_chapter(request, book_id):
+    if not has_role(request.user, 'admin', 'centrehead', 'manager'):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == "POST":
         data = json.loads(request.body)
         book = scope_books_for_user(Book.objects.all(), request.user).get(id=book_id)
+        author_lookup = {'id': data.get('assigned_author_id')} if data.get('assigned_author_id') else {'username__iexact': str(data.get('author', '')).strip()}
+        assigned_author = get_object_or_404(User, is_active=True, **author_lookup)
         chapter = Chapter.objects.create(
             book=book,
             chapter_number=data["chapter_number"],
             title=data["title"],
-            author=data["author"],
+            author=assigned_author.get_full_name() or assigned_author.username,
+            assigned_author=assigned_author,
             editor=data.get("editor", ""),
             status=data["status"]
         )
@@ -992,16 +1011,21 @@ def add_chapter(request, book_id):
         return JsonResponse({"success": True, "id": chapter.id})
     return JsonResponse({"success": False, "error": "Invalid request method"})
 
-@csrf_exempt
 @login_required
+@require_POST
 def edit_chapter(request, chapter_id):
+    if not has_role(request.user, 'admin', 'centrehead', 'manager'):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == "POST":
         data = json.loads(request.body)
         try:
             chapter = Chapter.objects.get(id=chapter_id, book__in=scope_books_for_user(Book.objects.all(), request.user))
             chapter.chapter_number = data["chapter_number"]
             chapter.title = data["title"]
-            chapter.author = data["author"]
+            author_lookup = {'id': data.get('assigned_author_id')} if data.get('assigned_author_id') else {'username__iexact': str(data.get('author', '')).strip()}
+            assigned_author = get_object_or_404(User, is_active=True, **author_lookup)
+            chapter.assigned_author = assigned_author
+            chapter.author = assigned_author.get_full_name() or assigned_author.username
             chapter.editor = data.get("editor", "")
             chapter.status = data["status"]
             chapter.save()
@@ -1010,13 +1034,62 @@ def edit_chapter(request, chapter_id):
             return JsonResponse({"success": False, "error": "Chapter not found"})
     return JsonResponse({"success": False, "error": "Invalid request method"})
 
-@csrf_exempt
 @login_required
+@require_POST
 def delete_chapter(request, chapter_id):
+    if not has_role(request.user, 'admin', 'centrehead', 'manager'):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == "POST":
         Chapter.objects.filter(id=chapter_id, book__in=scope_books_for_user(Book.objects.all(), request.user)).delete()
         return JsonResponse({"success": True})
     return JsonResponse({"success": False, "error": "Invalid request"})
+
+
+@require_POST
+@login_required
+def bulk_assign_chapters(request, book_id):
+    """Create/update chapter assignments in one atomic, validated request."""
+    if not has_role(request.user, 'admin', 'centrehead', 'manager'):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
+    book = get_object_or_404(scope_books_for_user(Book.objects.all(), request.user), id=book_id)
+    try:
+        rows = json.loads(request.body).get('chapters', [])
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid JSON payload'}, status=400)
+    if not isinstance(rows, list) or not rows:
+        return JsonResponse({'success': False, 'error': 'Provide at least one chapter'}, status=400)
+
+    validated_rows = []
+    valid_statuses = dict(Chapter.STATUS_CHOICES)
+    for row in rows:
+        if not str(row.get('chapter_number', '')).isdigit() or not str(row.get('title', '')).strip():
+            return JsonResponse({'success': False, 'error': 'Each chapter needs a number and title'}, status=400)
+        author_lookup = {'id': row.get('assigned_author_id')} if row.get('assigned_author_id') else {'username__iexact': str(row.get('assigned_author_username', '')).strip()}
+        author = get_object_or_404(User, is_active=True, **author_lookup)
+        if book.created_by_id and book.created_by.research_centre_id and author.research_centre_id != book.created_by.research_centre_id:
+            return JsonResponse({'success': False, 'error': 'Authors must belong to the book research centre'}, status=400)
+        status = row.get('status', 'Draft')
+        if status not in valid_statuses:
+            return JsonResponse({'success': False, 'error': f'Invalid chapter status: {status}'}, status=400)
+        validated_rows.append((row, author, status))
+
+    from django.db import transaction
+    saved = []
+    with transaction.atomic():
+        for row, author, status in validated_rows:
+            chapter, _created = Chapter.objects.update_or_create(
+                book=book,
+                chapter_number=row.get('chapter_number'),
+                defaults={
+                    'title': str(row.get('title', '')).strip(),
+                    'assigned_author': author,
+                    'author': author.get_full_name() or author.username,
+                    'editor': str(row.get('editor', '')).strip(),
+                    'status': status,
+                },
+            )
+            saved.append(chapter.id)
+    return JsonResponse({'success': True, 'saved': len(saved), 'chapter_ids': saved})
 
 
 @login_required

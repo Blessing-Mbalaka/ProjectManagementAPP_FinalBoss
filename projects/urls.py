@@ -9,6 +9,7 @@ urlpatterns = [
     path('staff_kanban/', views.staff_kanban, name='staff_kanban'),
     path('projects_review/', views.projects_review, name='projects_review'),
     path('ganttchart/', views.ganttchart, name='ganttchart'),
+    path('weekly-reports/', views.weekly_reports, name='weekly_reports'),
     path('daily-task/<int:task_id>/complete/', views.complete_daily_task, name='daily_task_complete'),
     path('daily-task/<int:task_id>/reopen/', views.reopen_daily_task, name='daily_task_reopen'),
     path('daily-task/<int:task_id>/delete/', views.delete_daily_task, name='daily_task_delete'),

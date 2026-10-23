@@ -126,6 +126,9 @@
             zone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 const newStatus = zone.dataset.status;
+                const taskElement = document.querySelector(`[data-task-id="${draggedTaskId}"]`);
+                if (!draggedTaskId || !taskElement) return;
+                taskElement.classList.add('opacity-50');
 
                 fetch(`/projects/update-task-status/${draggedTaskId}/`, {
                     method: 'POST',
@@ -134,13 +137,17 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ status: newStatus })
-                }).then(response => {
-                    if (response.ok) {
-                        location.reload();
-                    } else {
-                        alert('Failed to update task.');
-                    }
-                });
+                }).then(async response => ({ok: response.ok, data: await response.json()}))
+                  .then(result => {
+                      if (!result.ok || !result.data.success) throw new Error(result.data.error || 'Failed to update task.');
+                      zone.appendChild(taskElement);
+                      taskElement.classList.remove('opacity-50');
+                      const notice = document.createElement('div');
+                      notice.className = 'alert alert-success position-fixed top-0 end-0 m-3 shadow';
+                      notice.style.zIndex = '2000'; notice.textContent = 'Task saved';
+                      document.body.appendChild(notice); setTimeout(() => notice.remove(), 1800);
+                  })
+                  .catch(error => { taskElement.classList.remove('opacity-50'); alert(error.message); });
             });
         });
     });

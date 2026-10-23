@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Weekly project reports{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div><h1 class="h3 mb-1">Weekly project reports</h1><p class="text-muted mb-0">Project type and assigned task progress are included automatically.</p></div>
+  </div>
+  {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+  <div class="card shadow-sm mb-4"><div class="card-body">
+    <h2 class="h5">Submit or update this week</h2>
+    <form method="post" enctype="multipart/form-data" data-save-form>
+      {% csrf_token %}
+      <div class="row g-3"><div class="col-md-6">{{ form.project.label_tag }}{{ form.project }}{{ form.project.errors }}</div><div class="col-md-3">{{ form.week_start.label_tag }}{{ form.week_start }}{{ form.week_start.errors }}</div><div class="col-md-3">{{ form.attachment.label_tag }}{{ form.attachment }}{{ form.attachment.errors }}</div><div class="col-12">{{ form.summary.label_tag }}{{ form.summary }}{{ form.summary.errors }}</div></div>
+      <button class="btn btn-primary mt-3" type="submit" data-save-button>Save weekly report</button>
+      <span class="ms-2 text-muted d-none" data-save-indicator>Saving…</span>
+    </form>
+  </div></div>
+  {% for row in report_rows %}
+  <article class="card shadow-sm mb-3"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between"><h2 class="h5">{{ row.report.project.name }}</h2><span class="badge bg-secondary">{{ row.report.get_project_type_display }}</span></div>
+    <p class="small text-muted">Week of {{ row.report.week_start }} · {{ row.report.submitted_by.get_full_name|default:row.report.submitted_by.username }}</p>
+    <p>{{ row.report.summary }}</p>
+    {% if row.report.attachment %}<a href="{{ row.report.attachment.url }}">Download report attachment</a>{% endif %}
+    <div class="table-responsive mt-3"><table class="table table-sm align-middle"><thead><tr><th>Task</th>{% if can_review_reports %}<th>Person</th>{% endif %}<th>Status</th><th>Due</th></tr></thead><tbody>
+      {% for task in row.team_tasks %}<tr><td>{{ task.title }}</td>{% if can_review_reports %}<td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>{% endif %}<td>{{ task.get_status_display }}</td><td>{{ task.due_date|default:'—' }}</td></tr>{% empty %}<tr><td colspan="4" class="text-muted">No visible tasks for this report.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div></article>
+  {% empty %}<div class="alert alert-light border">No weekly reports yet.</div>{% endfor %}
+</div>
+<script>document.querySelectorAll('[data-save-form]').forEach(function(form){form.addEventListener('submit',function(){var b=form.querySelector('[data-save-button]'),i=form.querySelector('[data-save-indicator]');if(b){b.disabled=true;b.textContent='Saving…'}if(i)i.classList.remove('d-none')})});</script>
+{% endblock %}

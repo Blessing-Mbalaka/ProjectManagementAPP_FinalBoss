@@ -26,7 +26,8 @@
         </div>
         
         <div class="clock-menu-actions">
-            <button id="clockInBtn" class="btn btn-sm btn-success d-none w-100 mb-2" onclick="clockIn(); toggleClockMenu();">
+            <label class="small d-flex gap-2 mb-2"><input id="clockLocationConsent" type="checkbox"> Share my current location for this clock-in</label>
+            <button id="clockInBtn" class="btn btn-sm btn-success d-none w-100 mb-2" onclick="clockIn();">
                 <i class="bi bi-play-circle"></i> Clock In
             </button>
             <button id="clockOutBtn" class="btn btn-sm btn-danger d-none w-100" onclick="clockOut(); toggleClockMenu();">
@@ -212,20 +213,41 @@ function updateClockStatus() {
 }
 
 function clockIn() {
+    const consent = document.getElementById('clockLocationConsent')?.checked;
+    if (consent && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => submitClockIn({
+                location_consent: true,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+            }),
+            () => showNotification('Location was not shared. Untick location sharing to clock in without it.', 'warning'),
+            {enableHighAccuracy: false, timeout: 10000, maximumAge: 60000}
+        );
+        return;
+    }
+    submitClockIn({location_consent: false});
+}
+
+function submitClockIn(payload) {
     fetch('/adminpanel/clock-in/', { 
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
-        }
+        },
+        body: JSON.stringify(payload)
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateClockStatus();
-                showNotification('Clocked in!', 'success');
-            }
-        });
+        .then(async response => ({ok: response.ok, data: await response.json()}))
+        .then(result => {
+            const data = result.data;
+            if (!result.ok || !data.success) throw new Error(data.message || 'Clock-in failed');
+            updateClockStatus();
+            toggleClockMenu();
+            showNotification('Clocked in!', 'success');
+        })
+        .catch(error => showNotification(error.message, 'danger'));
 }
 
 function clockOut() {
@@ -236,13 +258,14 @@ function clockOut() {
             'X-CSRFToken': getCookie('csrftoken')
         }
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateClockStatus();
-                showNotification('Clocked out!', 'success');
-            }
-        });
+        .then(async response => ({ok: response.ok, data: await response.json()}))
+        .then(result => {
+            if (!result.ok || !result.data.success) throw new Error(result.data.message || 'Clock-out failed');
+            updateClockStatus();
+            toggleClockMenu();
+            showNotification('Clocked out!', 'success');
+        })
+        .catch(error => showNotification(error.message, 'danger'));
 }
 
 function getCookie(name) {
