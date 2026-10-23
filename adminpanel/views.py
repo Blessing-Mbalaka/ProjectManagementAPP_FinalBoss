@@ -1023,6 +1023,36 @@ def financial_projects(request):
 
 
 @login_required
+def applied_bids(request):
+    if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
+        return HttpResponseForbidden('You are not authorized to view applied bids.')
+    today = timezone.localdate()
+    records = financial_projects_for(request.user).filter(
+        Q(applied_date__isnull=False) | Q(stage__in=['submitted', 'negotiation', 'won', 'lost'])
+    ).order_by('next_follow_up_date', '-applied_date', '-updated_at')
+    rows = list(records)
+    for record in rows:
+        record.follow_up_overdue = bool(
+            record.next_follow_up_date
+            and record.next_follow_up_date < today
+            and record.stage in ['submitted', 'negotiation']
+        )
+    return render(request, 'adminpanel/applied_bids.html', {
+        'applied_bids': rows,
+        'today': today,
+        'overdue_followups': records.filter(
+            next_follow_up_date__lt=today,
+            stage__in=['submitted', 'negotiation'],
+        ).count(),
+        'upcoming_followups': records.filter(
+            next_follow_up_date__gte=today,
+            stage__in=['submitted', 'negotiation'],
+        ).count(),
+        'awaiting_outcome': records.filter(stage__in=['submitted', 'negotiation']).count(),
+    })
+
+
+@login_required
 @require_POST
 def add_financial_project(request):
     if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
@@ -1039,11 +1069,12 @@ def add_financial_project(request):
         return redirect('financial_projects')
 
     with transaction.atomic():
+        starting_stage = 'submitted' if form.cleaned_data.get('applied_date') else 'lead'
         project = Project.objects.create(
             name=form.cleaned_data['project_name'],
             description=form.cleaned_data.get('summary', ''),
             project_type='financial',
-            status='planning',
+            status='in-progress' if starting_stage == 'submitted' else 'planning',
             created_by=request.user,
             assigned_user=request.user,
             research_centre=request.user.research_centre,
@@ -1053,18 +1084,33 @@ def add_financial_project(request):
         record.project = project
         record.owner = request.user
         record.research_centre = request.user.research_centre
+        record.stage = starting_stage
         record.save()
         Task.objects.create(
             project=project,
             assigned_to=request.user,
             created_by=request.user,
             title=f"Bid follow-up: {record.client_name}",
-            status='todo',
+            status='review' if starting_stage == 'submitted' else 'todo',
             task_type='Other',
             priority='High',
-            due_date=record.bid_deadline,
+            due_date=record.next_follow_up_date or record.bid_deadline,
             comments=record.summary,
         )
+        if form.cleaned_data.get('initial_engagement_minutes'):
+            EngagementLog.objects.create(
+                project=project,
+                client_name=record.client_name,
+                research_centre=record.research_centre,
+                entered_by=request.user,
+                entry_type='meeting_minutes',
+                contact_method=form.cleaned_data.get('initial_contact_method') or 'email',
+                engagement_date=form.cleaned_data.get('initial_engagement_date') or timezone.localdate(),
+                next_follow_up_date=record.next_follow_up_date,
+                subject='Initial prospect engagement',
+                notes=form.cleaned_data['initial_engagement_minutes'],
+                proposal_summary=record.summary,
+            )
     messages.success(request, 'Financial project created, assigned to you, and added to your Kanban.')
     return redirect('financial_projects')
 
@@ -1083,7 +1129,11 @@ def update_financial_project_stage(request, project_id):
     if stage not in dict(FinancialProject.STAGE_CHOICES):
         return JsonResponse({'success': False, 'error': 'Invalid bid stage'}, status=400)
     record.stage = stage
-    record.save(update_fields=['stage', 'updated_at'])
+    update_fields = ['stage', 'updated_at']
+    if stage in ['submitted', 'negotiation', 'won', 'lost'] and not record.applied_date:
+        record.applied_date = timezone.localdate()
+        update_fields.append('applied_date')
+    record.save(update_fields=update_fields)
     sync_financial_project_task(record)
     return JsonResponse({
         'success': True,
@@ -1098,27 +1148,42 @@ def add_financial_project_note(request, project_id):
     if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
         return HttpResponseForbidden('You are not authorized to add engagement notes.')
     record = get_object_or_404(financial_projects_for(request.user), id=project_id)
+    return_to = 'applied_bids' if request.POST.get('return_to') == 'applied_bids' else 'financial_projects'
     notes = request.POST.get('notes', '').strip()
     if not notes:
         messages.error(request, 'Engagement notes cannot be empty.')
-        return redirect('financial_projects')
+        return redirect(return_to)
     entry_type = request.POST.get('entry_type', 'discussion')
     if entry_type not in dict(EngagementLog.ENTRY_TYPE_CHOICES):
         entry_type = 'discussion'
-    EngagementLog.objects.create(
-        project=record.project,
-        cost_centre=record.cost_centre,
-        client_name=record.client_name,
-        research_centre=record.research_centre,
-        entered_by=request.user,
-        entry_type=entry_type,
-        subject=request.POST.get('subject', '').strip(),
-        engagement_date=parse_date(request.POST.get('engagement_date', '')) or timezone.localdate(),
-        notes=notes,
-        proposal_summary=request.POST.get('proposal_summary', '').strip(),
-    )
+    contact_method = request.POST.get('contact_method', 'email')
+    if contact_method not in dict(EngagementLog.CONTACT_METHOD_CHOICES):
+        contact_method = 'other'
+    next_follow_up_date = parse_date(request.POST.get('next_follow_up_date', ''))
+    with transaction.atomic():
+        EngagementLog.objects.create(
+            project=record.project,
+            cost_centre=record.cost_centre,
+            client_name=record.client_name,
+            research_centre=record.research_centre,
+            entered_by=request.user,
+            entry_type=entry_type,
+            contact_method=contact_method,
+            subject=request.POST.get('subject', '').strip(),
+            engagement_date=parse_date(request.POST.get('engagement_date', '')) or timezone.localdate(),
+            next_follow_up_date=next_follow_up_date,
+            notes=notes,
+            proposal_summary=request.POST.get('proposal_summary', '').strip(),
+        )
+        if next_follow_up_date:
+            record.next_follow_up_date = next_follow_up_date
+            record.save(update_fields=['next_follow_up_date', 'updated_at'])
+            task = record.project.tasks.order_by('created_at').first()
+            if task:
+                task.due_date = next_follow_up_date
+                task.save(update_fields=['due_date'])
     messages.success(request, 'Client engagement note saved to the project and CRM history.')
-    return redirect('financial_projects')
+    return redirect(return_to)
 
 
 @login_required
@@ -1149,7 +1214,15 @@ def convert_financial_project(request, project_id):
                 code=code,
                 name=name,
                 client_name=record.client_name,
+                company_name=record.company_name,
+                company_registration_number=record.company_registration_number,
+                industry=record.industry,
+                company_website=record.company_website,
+                company_email=record.company_email,
+                company_phone=record.company_phone,
+                company_address=record.company_address,
                 contact_person_name=record.contact_name,
+                contact_person_role=record.contact_role,
                 contact_email=record.contact_email,
                 contact_phone=record.contact_phone,
                 crm_notes=record.summary,

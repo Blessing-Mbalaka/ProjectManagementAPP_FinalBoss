@@ -94,7 +94,8 @@
                 {% if log.proposal_summary %}
                   <div class="small"><strong>Proposal logged:</strong> {{ log.proposal_summary|linebreaksbr }}</div>
                 {% endif %}
-                <small>{{ log.engagement_date }} | {{ log.research_centre.name|default:"No centre" }} | {{ log.entered_by.get_full_name|default:log.entered_by.username }}</small>
+                <small>{{ log.engagement_date }} | {{ log.get_contact_method_display }} | {{ log.research_centre.name|default:"No centre" }} | {{ log.entered_by.get_full_name|default:log.entered_by.username }}</small>
+                {% if log.next_follow_up_date %}<div class="small text-primary mt-1"><strong>Next follow-up:</strong> {{ log.next_follow_up_date }}</div>{% endif %}
               </div>
             {% empty %}
               <p class="text-muted mb-0">No engagement records yet.</p>
@@ -113,7 +114,7 @@
                 <div class="d-flex justify-content-between align-items-start gap-3">
                   <div>
                     <h6 class="mb-1">{{ log.research_centre.name|default:"No centre" }}</h6>
-                    <small>{{ log.project.name }} | {{ log.engagement_date }}</small>
+                    <small>{{ log.project.name }} | {{ log.engagement_date }} | {{ log.get_contact_method_display }}</small>
                   </div>
                   <span class="badge text-bg-light">{{ log.get_entry_type_display }}</span>
                 </div>

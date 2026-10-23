@@ -37,6 +37,7 @@ urlpatterns = [
     path('crm/<str:tab>/', views.crm, name='crm_tab'),
     path('finance/', views.finance, name='finance'),
     path('finance/projects/', views.financial_projects, name='financial_projects'),
+    path('finance/applied-bids/', views.applied_bids, name='applied_bids'),
     path('finance/projects/add/', views.add_financial_project, name='add_financial_project'),
     path('finance/projects/<int:project_id>/stage/', views.update_financial_project_stage, name='update_financial_project_stage'),
     path('finance/projects/<int:project_id>/notes/', views.add_financial_project_note, name='add_financial_project_note'),

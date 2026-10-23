@@ -24,7 +24,7 @@ from django.views.decorators.http import require_POST
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from django.shortcuts import render
-from adminpanel.models import CostCentre, EngagementLog, Notification
+from adminpanel.models import CostCentre, EngagementLog, FinancialProject, Notification
 from adminpanel.notification_service import visible_notifications_for
 from projects.scope import scope_books_for_user, scope_chapters_for_user, scope_outputs_for_user, scope_projects_for_user
 from projects.work_scope import assigned_projects_for, can_update_task, manageable_projects_for, workable_tasks_for
@@ -148,6 +148,14 @@ def manager_engagements(request):
                     if log.cost_centre else log.project.research_centre
                 ) or getattr(request.user, 'research_centre', None)
                 log.save()
+                if log.next_follow_up_date:
+                    FinancialProject.objects.filter(project=log.project).update(
+                        next_follow_up_date=log.next_follow_up_date,
+                    )
+                    follow_up_task = log.project.tasks.order_by('created_at').first()
+                    if follow_up_task:
+                        follow_up_task.due_date = log.next_follow_up_date
+                        follow_up_task.save(update_fields=['due_date'])
                 messages.success(request, 'Engagement history saved and pushed into the CRM view.')
                 query = f"project={log.project_id}"
                 if log.cost_centre_id:

@@ -1,5 +1,5 @@
 from django import forms
-from .models import FinancialProject, SupervisorFeedback, Notification
+from .models import EngagementLog, FinancialProject, SupervisorFeedback, Notification
 from projects.models import Project
 from django.conf import settings
 from django.utils import timezone
@@ -100,20 +100,47 @@ class FinancialProjectForm(forms.ModelForm):
         max_length=255,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Bid or opportunity title'}),
     )
+    initial_engagement_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+    )
+    initial_contact_method = forms.ChoiceField(
+        required=False,
+        choices=EngagementLog.CONTACT_METHOD_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    initial_engagement_minutes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'What was discussed and agreed?'}),
+    )
 
     class Meta:
         model = FinancialProject
         fields = [
-            'client_name', 'contact_name', 'contact_email', 'contact_phone',
-            'estimated_value', 'bid_deadline', 'summary',
+            'client_name', 'company_name', 'company_registration_number', 'industry',
+            'company_website', 'company_email', 'company_phone', 'company_address',
+            'contact_name', 'contact_role', 'contact_email', 'contact_phone',
+            'estimated_value', 'bid_reference', 'bid_deadline', 'applied_date',
+            'next_follow_up_date', 'summary',
         ]
         widgets = {
-            'client_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Client or organisation'}),
+            'client_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Trading or familiar company name'}),
+            'company_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Registered company name (optional)'}),
+            'company_registration_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'industry': forms.TextInput(attrs={'class': 'form-control'}),
+            'company_website': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://'}),
+            'company_email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'company_phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'company_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'contact_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'contact_role': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Role or position'}),
             'contact_email': forms.EmailInput(attrs={'class': 'form-control'}),
             'contact_phone': forms.TextInput(attrs={'class': 'form-control'}),
             'estimated_value': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.01'}),
+            'bid_reference': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tender/RFQ reference'}),
             'bid_deadline': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'applied_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'next_follow_up_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'summary': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Scope, client need, and next action'}),
         }
 
@@ -128,3 +155,11 @@ class FinancialProjectForm(forms.ModelForm):
         if value is not None and value < 0:
             raise forms.ValidationError('Estimated value cannot be negative.')
         return value
+
+    def clean(self):
+        cleaned = super().clean()
+        if not (cleaned.get('contact_email') or '').strip() and not (cleaned.get('contact_phone') or '').strip():
+            message = 'Add at least one contact method: email address or phone number.'
+            self.add_error('contact_email', message)
+            self.add_error('contact_phone', message)
+        return cleaned

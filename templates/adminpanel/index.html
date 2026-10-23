@@ -129,6 +129,7 @@
                             {% endif %}
                             {% if user.role == 'admin' or user.role == 'centrehead' %}
                             <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>
+                            <a href="{% url 'applied_bids' %}" class="nav-link"><i class="bi bi-send-check"></i><span>Applied Bids</span></a>
                             {% endif %}
                             <a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a>
                             {% if user.role == 'admin' %}
@@ -190,6 +191,7 @@
                         </summary>
                         <div class="sidebar-submenu">
                             <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>
+                            <a href="{% url 'applied_bids' %}" class="nav-link"><i class="bi bi-send-check"></i><span>Applied Bids</span></a>
                             <a href="{% url 'financial_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>My Project Kanban</span></a>
                             <a href="{% url 'assign_projects' %}" class="nav-link"><i class="bi bi-folder-plus"></i><span>Manage &amp; Load Projects</span></a>
                             <a href="{% url 'manager_engagements' %}" class="nav-link"><i class="bi bi-chat-square-text"></i><span>Engagement Notes</span></a>

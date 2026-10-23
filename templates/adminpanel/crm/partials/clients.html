@@ -1,7 +1,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h5 class="mb-1">Clients</h5>
-    <div class="text-muted small">Cost centres are used as client/stakeholder records for this CRM view.</div>
+    <div class="text-muted small">Prospects appear from the first financial-project contact and become clients when an official cost centre is created.</div>
   </div>
 </div>
 
@@ -23,7 +23,7 @@
     <tbody>
       {% for client in clients %}
       <tr>
-        <td><strong>{{ client.name }}</strong></td>
+        <td><strong>{{ client.name }}</strong><div><span class="badge {% if client.record_type == 'Prospect' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ client.record_type }}</span>{% if client.stage %} <span class="small text-muted">{{ client.stage }}</span>{% endif %}</div></td>
         <td>
           {{ client.company_name|default:"Not captured" }}
           {% if client.industry %}
@@ -119,6 +119,12 @@
               <dd class="col-sm-7">{{ client.sector }}</dd>
               <dt class="col-sm-5">Visibility</dt>
               <dd class="col-sm-7">{{ client.visibility }}</dd>
+              {% if client.record_type == 'Prospect' %}
+              <dt class="col-sm-5">Applied Date</dt>
+              <dd class="col-sm-7">{{ client.applied_date|default:"Not applied yet" }}</dd>
+              <dt class="col-sm-5">Next Follow-up</dt>
+              <dd class="col-sm-7">{{ client.next_follow_up_date|default:"Not scheduled" }}</dd>
+              {% endif %}
               <dt class="col-sm-5">Notes</dt>
               <dd class="col-sm-7">{{ client.crm_notes|linebreaksbr|default:"Not captured" }}</dd>
             </dl>

@@ -27,13 +27,24 @@ class FinancialProjectWorkflowTests(TestCase):
         self.external_finance_user = User.objects.create_user(
             username='finance-external', password='pass', role='financialadmin', research_centre=self.other_centre
         )
+        self.centre_head = User.objects.create_user(
+            username='finance-centre-head', password='pass', role='centrehead', research_centre=self.centre
+        )
         self.client.force_login(self.finance_user)
 
     def create_financial_project(self):
         response = self.client.post(reverse('add_financial_project'), {
             'project_name': 'Digital Training Bid',
             'client_name': 'Example Client',
+            'company_name': 'Example Client Holdings (Pty) Ltd',
+            'company_registration_number': '2026/123456/07',
+            'industry': 'Education',
+            'company_website': 'https://example.com',
+            'company_email': 'info@example.com',
+            'company_phone': '0115550199',
+            'company_address': '1 Example Street',
             'contact_name': 'Client Contact',
+            'contact_role': 'Procurement Director',
             'contact_email': 'client@example.com',
             'contact_phone': '0115550100',
             'estimated_value': '250000.00',
@@ -122,6 +133,8 @@ class FinancialProjectWorkflowTests(TestCase):
         record.refresh_from_db()
         self.assertIsNotNone(record.cost_centre_id)
         self.assertEqual(record.cost_centre.client_name, 'Example Client')
+        self.assertEqual(record.cost_centre.company_name, 'Example Client Holdings (Pty) Ltd')
+        self.assertEqual(record.cost_centre.contact_person_role, 'Procurement Director')
         self.assertEqual(record.cost_centre.moa_amount, Decimal('250000.00'))
         self.assertEqual(EngagementLog.objects.get(project=record.project).cost_centre, record.cost_centre)
 
@@ -149,3 +162,39 @@ class FinancialProjectWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 404)
         other_task.refresh_from_db()
         self.assertEqual(other_task.status, 'todo')
+
+    def test_applied_bid_page_tracks_follow_up_and_updates_task_due_date(self):
+        record = self.create_financial_project()
+        self.client.post(
+            reverse('update_financial_project_stage', args=[record.id]),
+            data=json.dumps({'stage': 'submitted'}), content_type='application/json',
+        )
+        follow_up = timezone.localdate() + timedelta(days=5)
+
+        response = self.client.post(reverse('add_financial_project_note', args=[record.id]), {
+            'entry_type': 'meeting_minutes',
+            'contact_method': 'phone',
+            'engagement_date': timezone.localdate().isoformat(),
+            'next_follow_up_date': follow_up.isoformat(),
+            'notes': 'Client asked us to follow up after committee review.',
+        })
+
+        self.assertRedirects(response, reverse('financial_projects'))
+        record.refresh_from_db()
+        self.assertEqual(record.next_follow_up_date, follow_up)
+        self.assertEqual(record.project.tasks.get().due_date, follow_up)
+        page = self.client.get(reverse('applied_bids'))
+        self.assertContains(page, record.project.name)
+        self.assertIn(record, page.context['applied_bids'])
+        self.assertContains(page, 'Log follow-up')
+
+    def test_pre_award_company_appears_as_crm_prospect(self):
+        record = self.create_financial_project()
+        self.client.force_login(self.centre_head)
+
+        response = self.client.get(reverse('crm_tab', args=['clients']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, record.client_name)
+        self.assertContains(response, 'Prospect')
+        self.assertContains(response, 'Example Client Holdings (Pty) Ltd')

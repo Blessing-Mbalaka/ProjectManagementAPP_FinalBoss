@@ -108,6 +108,13 @@ class EngagementLog(models.Model):
         ('discussion', 'Discussion'),
         ('comment', 'Comment'),
     ]
+    CONTACT_METHOD_CHOICES = [
+        ('email', 'Email'),
+        ('phone', 'Phone Call'),
+        ('meeting', 'In-person Meeting'),
+        ('virtual', 'Virtual Meeting'),
+        ('other', 'Other'),
+    ]
 
     project = models.ForeignKey(
         'projects.Project',
@@ -139,8 +146,10 @@ class EngagementLog(models.Model):
         related_name='engagement_logs'
     )
     entry_type = models.CharField(max_length=30, choices=ENTRY_TYPE_CHOICES, default='discussion')
+    contact_method = models.CharField(max_length=20, choices=CONTACT_METHOD_CHOICES, default='email')
     subject = models.CharField(max_length=255, blank=True)
     engagement_date = models.DateField(default=timezone.localdate)
+    next_follow_up_date = models.DateField(null=True, blank=True)
     notes = models.TextField(help_text="Meeting minutes, engagement notes, or discussion summary.")
     proposal_summary = models.TextField(
         blank=True,
@@ -194,12 +203,23 @@ class FinancialProject(models.Model):
         related_name='financial_projects',
     )
     client_name = models.CharField(max_length=150)
+    company_name = models.CharField(max_length=200, blank=True)
+    company_registration_number = models.CharField(max_length=80, blank=True)
+    industry = models.CharField(max_length=120, blank=True)
+    company_website = models.URLField(blank=True)
+    company_email = models.EmailField(blank=True)
+    company_phone = models.CharField(max_length=50, blank=True)
+    company_address = models.TextField(blank=True)
     contact_name = models.CharField(max_length=150, blank=True)
+    contact_role = models.CharField(max_length=120, blank=True)
     contact_email = models.EmailField(blank=True)
     contact_phone = models.CharField(max_length=50, blank=True)
     stage = models.CharField(max_length=20, choices=STAGE_CHOICES, default='lead', db_index=True)
     estimated_value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     bid_deadline = models.DateField(null=True, blank=True)
+    bid_reference = models.CharField(max_length=100, blank=True)
+    applied_date = models.DateField(null=True, blank=True, db_index=True)
+    next_follow_up_date = models.DateField(null=True, blank=True, db_index=True)
     summary = models.TextField(blank=True)
     cost_centre = models.OneToOneField(
         CostCentre,

@@ -12,7 +12,7 @@ from projects.models import Project
 from projects.scope import output_centre_q, project_centre_q
 from users.models import CustomUser
 
-from .models import CostCentre, EngagementLog, Expenditure, ResearchCentre
+from .models import CostCentre, EngagementLog, Expenditure, FinancialProject, ResearchCentre
 
 
 CRM_TABS = [
@@ -78,7 +78,7 @@ def get_scope(request):
 
     cost_centres = CostCentre.objects.select_related('research_centre').all().order_by('name')
     users = CustomUser.objects.select_related('research_centre').filter(is_active=True).order_by('first_name', 'last_name', 'username')
-    projects = Project.objects.select_related('assigned_user', 'created_by', 'research_centre').prefetch_related('tasks', 'assignments__team_member__user').all().order_by('-created_at')
+    projects = Project.objects.select_related('assigned_user', 'created_by', 'research_centre', 'financial_project').prefetch_related('tasks', 'assignments__team_member__user').all().order_by('-created_at')
     papers = Paper.objects.select_related('lead_author_user', 'created_by').prefetch_related('co_authors_users').all().order_by('-updated_at')
     conferences = Conference.objects.select_related('lead_author_user', 'created_by').prefetch_related('co_authors_users').all().order_by('-updated_at')
     books = Book.objects.prefetch_related('chapters').select_related('created_by').all().order_by('-created_at')
@@ -145,7 +145,8 @@ def build_clients(cost_centres, users):
         total_revenue += received
         total_spent += spent
         clients.append({
-            'id': cost_centre.id,
+            'id': f'client-{cost_centre.id}',
+            'record_type': 'Client',
             'code': cost_centre.code,
             'name': cost_centre.client_name or cost_centre.company_name or cost_centre.name,
             'cost_centre_name': cost_centre.name,
@@ -180,6 +181,47 @@ def build_clients(cost_centres, users):
     return clients, total_revenue, total_spent
 
 
+def build_prospects(projects):
+    prospects = []
+    records = FinancialProject.objects.select_related(
+        'project', 'owner', 'research_centre'
+    ).filter(project__in=projects, cost_centre__isnull=True)
+    for record in records:
+        prospects.append({
+            'id': f'prospect-{record.id}',
+            'record_type': 'Prospect',
+            'code': record.bid_reference or 'Prospect',
+            'name': record.client_name,
+            'cost_centre_name': 'Awaiting bid outcome',
+            'company_name': record.company_name,
+            'company_registration_number': record.company_registration_number,
+            'vat_number': '',
+            'industry': record.industry,
+            'company_website': record.company_website,
+            'company_email': record.company_email,
+            'company_phone': record.company_phone,
+            'company_address': record.company_address,
+            'contact_person_name': record.contact_name,
+            'contact_person_role': record.contact_role,
+            'contact_email': record.contact_email,
+            'contact_phone': record.contact_phone,
+            'crm_notes': record.summary,
+            'phase_due_dates': [],
+            'sector': record.research_centre.name,
+            'ownership': record.research_centre.name,
+            'lead': record.owner,
+            'total_received': Decimal('0.00'),
+            'total_spent': Decimal('0.00'),
+            'estimated_profit': Decimal('0.00'),
+            'pipeline_value': safe_decimal(record.estimated_value),
+            'visibility': 'Institutional',
+            'stage': record.get_stage_display(),
+            'applied_date': record.applied_date,
+            'next_follow_up_date': record.next_follow_up_date,
+        })
+    return prospects
+
+
 def build_engagements(projects, engagement_logs):
     today = timezone.now().date()
     logs_by_project = defaultdict(list)
@@ -192,13 +234,18 @@ def build_engagements(projects, engagement_logs):
 
     engagements = []
     for project in projects:
+        financial_record = getattr(project, 'financial_project', None)
         tasks = list(project.tasks.all())
         project_logs = sorted(logs_by_project.get(project.id, []), key=lambda item: (item.engagement_date, item.created_at), reverse=True)
         latest_log = project_logs[0] if project_logs else None
         latest_task = max((task.created_at for task in tasks), default=project.created_at)
         last_contact = latest_log.created_at if latest_log else latest_task
-        stage = {'planning': 'Prospect', 'on-hold': 'On hold', 'completed': 'Completed'}.get(project.status, 'Active')
-        client_name = latest_log.client_label if latest_log else project_centre_name(project)
+        stage = (
+            financial_record.get_stage_display()
+            if financial_record
+            else {'planning': 'Prospect', 'on-hold': 'On hold', 'completed': 'Completed'}.get(project.status, 'Active')
+        )
+        client_name = latest_log.client_label if latest_log else (financial_record.client_name if financial_record else project_centre_name(project))
         client_history = logs_by_client.get(normalize_client_label(client_name), [])
         previously_approached_by = sorted({
             log.research_centre.name
@@ -218,7 +265,9 @@ def build_engagements(projects, engagement_logs):
             {
                 'centre': log.research_centre.name if log.research_centre else 'No centre',
                 'entry_type': log.get_entry_type_display(),
+                'contact_method': log.get_contact_method_display(),
                 'engagement_date': log.engagement_date,
+                'next_follow_up_date': log.next_follow_up_date,
                 'notes': log.notes,
                 'entered_by': log.entered_by.get_full_name() or log.entered_by.username,
             }
@@ -232,7 +281,7 @@ def build_engagements(projects, engagement_logs):
             'stage': stage,
             'status': project.status,
             'lead': project.assigned_user or project.created_by,
-            'due_date': project.due_date,
+            'due_date': (financial_record.next_follow_up_date or financial_record.bid_deadline) if financial_record else project.due_date,
             'last_contact': last_contact,
             'progress': project_progress(project),
             'team_count': project.assignments.count(),
@@ -246,6 +295,7 @@ def build_engagements(projects, engagement_logs):
             'has_previous_approach': len(previously_approached_by) > 1 or len(client_history) > 1,
             'latest_proposal_summary': latest_log.proposal_summary if latest_log else '',
             'latest_entry_type': latest_log.get_entry_type_display() if latest_log else '',
+            'next_follow_up_date': financial_record.next_follow_up_date if financial_record else None,
         })
     return engagements
 
@@ -399,6 +449,7 @@ def build_context(request, active_tab):
     conferences = list(scope['conferences'])
     books = list(scope['books'])
     clients, total_revenue, total_spent = build_clients(cost_centres, users)
+    clients.extend(build_prospects(projects))
     engagements = build_engagements(projects, engagement_logs)
 
     centres = []

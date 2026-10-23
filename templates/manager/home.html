@@ -46,6 +46,7 @@
       <li><a href="{% url 'manager_dashboard' %}" class="nav-link {% if current_url == 'manager_dashboard' %}active{% endif %}"><i class="bi bi-house"></i> <span>Home</span></a></li>
       {% if user.role == 'financialadmin' %}
       <li><a href="{% url 'financial_projects' %}" class="nav-link {% if current_url == 'financial_projects' %}active{% endif %}"><i class="bi bi-briefcase"></i> <span>Financial Projects</span></a></li>
+      <li><a href="{% url 'applied_bids' %}" class="nav-link {% if current_url == 'applied_bids' %}active{% endif %}"><i class="bi bi-send-check"></i> <span>Applied Bids</span></a></li>
       <li><a href="{% url 'financial_kanban' %}" class="nav-link {% if current_url == 'financial_kanban' %}active{% endif %}"><i class="bi bi-kanban"></i> <span>My Project Kanban</span></a></li>
       {% else %}
       <li><a href="{% url 'manager_kanban' %}" class="nav-link {% if current_url == 'manager_kanban' %}active{% endif %}"><i class="bi bi-kanban"></i> <span>Kanban Board</span></a></li>

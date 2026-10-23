@@ -1,0 +1,63 @@
+{% extends 'adminpanel/index.html' %}
+
+{% block title %}Applied Bids{% endblock %}
+
+{% block content %}
+<style>
+  .bids-page{padding:28px;background:#f7f8fc;min-height:100vh;color:#283346}.bids-head{display:flex;justify-content:space-between;align-items:center;gap:18px;background:linear-gradient(125deg,#4f1458,#78156c 58%,#ff5a1f);color:#fff;border-radius:22px;padding:24px 28px;box-shadow:0 18px 42px rgba(80,20,88,.18)}
+  .bids-head h1{font-size:clamp(1.55rem,2.5vw,2.25rem);font-weight:800;margin:0 0 6px}.bids-head p{margin:0;opacity:.9}.bids-head .btn{border-radius:999px;font-weight:700}.bid-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:20px 0}.bid-metric{background:#fff;border:1px solid #ece6ee;border-radius:18px;padding:18px 20px}.bid-metric strong{display:block;color:#611666;font-size:1.75rem}.bid-table-card{background:#fff;border:1px solid #e6e3e8;border-radius:20px;padding:18px;box-shadow:0 10px 28px rgba(31,37,48,.06)}
+  .follow-overdue{color:#b42318;font-weight:800}.follow-upcoming{color:#19683b;font-weight:700}.stage-badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#f3e9f4;color:#651568;font-size:.76rem;font-weight:800}.contact-stack{font-size:.82rem;color:#667085}.modal-content{border:0;border-radius:18px;overflow:hidden}.modal-header{background:#5d1765;color:#fff}.modal-header .btn-close{filter:invert(1)}
+  @media(max-width:800px){.bids-page{padding:15px}.bids-head{align-items:flex-start;flex-direction:column}.bid-metrics{grid-template-columns:1fr}}
+</style>
+
+<main class="bids-page">
+  <header class="bids-head">
+    <div><h1>Applied Bids</h1><p>Submitted proposals, decision status, engagement history, and the next client follow-up in one place.</p></div>
+    <div class="d-flex gap-2 flex-wrap"><a href="{% url 'financial_projects' %}" class="btn btn-light"><i class="bi bi-kanban me-1"></i> Bid pipeline</a><a href="{% url 'financial_kanban' %}" class="btn btn-outline-light"><i class="bi bi-list-check me-1"></i> My task Kanban</a></div>
+  </header>
+
+  {% if messages %}<div class="mt-3">{% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+  <section class="bid-metrics">
+    <div class="bid-metric"><strong>{{ awaiting_outcome }}</strong><span>Awaiting client decision</span></div>
+    <div class="bid-metric"><strong>{{ upcoming_followups }}</strong><span>Scheduled follow-ups</span></div>
+    <div class="bid-metric"><strong>{{ overdue_followups }}</strong><span>Overdue follow-ups requiring attention</span></div>
+  </section>
+
+  <section class="bid-table-card table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>Bid / Client</th><th>Reference</th><th>Applied</th><th>Stage</th><th>Contact</th><th>Value</th><th>Next follow-up</th><th>History</th><th></th></tr></thead>
+      <tbody>
+        {% for bid in applied_bids %}
+        <tr>
+          <td><strong>{{ bid.project.name }}</strong><div class="small text-muted">{{ bid.company_name|default:bid.client_name }}</div></td>
+          <td>{{ bid.bid_reference|default:"—" }}</td>
+          <td>{{ bid.applied_date|default:"Not captured" }}</td>
+          <td><span class="stage-badge">{{ bid.get_stage_display }}</span></td>
+          <td><strong>{{ bid.contact_name|default:"Not captured" }}</strong><div class="contact-stack">{{ bid.contact_email|default:bid.contact_phone }}</div></td>
+          <td>{% if bid.estimated_value %}R {{ bid.estimated_value|floatformat:2 }}{% else %}—{% endif %}</td>
+          <td>{% if bid.next_follow_up_date %}<span class="{% if bid.follow_up_overdue %}follow-overdue{% else %}follow-upcoming{% endif %}">{{ bid.next_follow_up_date }}{% if bid.follow_up_overdue %}<br><small>Overdue</small>{% endif %}</span>{% else %}<span class="text-muted">Not scheduled</span>{% endif %}</td>
+          <td>{{ bid.project.engagement_logs.count }} contact{{ bid.project.engagement_logs.count|pluralize }}</td>
+          <td><button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#followup{{ bid.id }}"><i class="bi bi-chat-plus"></i> Log follow-up</button></td>
+        </tr>
+        {% empty %}<tr><td colspan="9" class="text-center text-muted py-5">No submitted bids yet. Move a bid to “Bid Submitted” and it will appear here.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+</main>
+
+{% for bid in applied_bids %}
+<div class="modal fade" id="followup{{ bid.id }}" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><form class="modal-content" method="post" action="{% url 'add_financial_project_note' bid.id %}">
+  {% csrf_token %}<input type="hidden" name="return_to" value="applied_bids"><div class="modal-header"><h5 class="modal-title">Follow-up · {{ bid.client_name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body row g-3">
+    <div class="col-md-3"><label class="form-label">Contact method</label><select name="contact_method" class="form-select"><option value="email">Email</option><option value="phone">Phone call</option><option value="meeting">In-person meeting</option><option value="virtual">Virtual meeting</option><option value="other">Other</option></select></div>
+    <div class="col-md-3"><label class="form-label">Engagement date</label><input type="date" name="engagement_date" class="form-control" required></div>
+    <div class="col-md-3"><label class="form-label">Next follow-up</label><input type="date" name="next_follow_up_date" class="form-control"></div>
+    <div class="col-md-3"><label class="form-label">Type</label><select name="entry_type" class="form-select"><option value="meeting_minutes">Meeting minutes</option><option value="discussion">Discussion</option><option value="comment">Comment</option></select></div>
+    <div class="col-12"><label class="form-label">Subject</label><input name="subject" class="form-control"></div>
+    <div class="col-12"><label class="form-label">Minutes / contact notes</label><textarea name="notes" class="form-control" rows="4" required></textarea></div>
+    <div class="col-12"><label class="form-label">Proposal or outcome update</label><textarea name="proposal_summary" class="form-control" rows="2"></textarea></div>
+  </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Save and update follow-up</button></div>
+</form></div></div>
+{% endfor %}
+{% endblock %}

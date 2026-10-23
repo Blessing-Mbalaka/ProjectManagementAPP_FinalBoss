@@ -49,6 +49,7 @@
     </div>
     <div class="hero-actions">
       <a class="btn btn-light" href="{% url 'financial_kanban' %}"><i class="bi bi-kanban me-1"></i> My task Kanban</a>
+      <a class="btn btn-light" href="{% url 'applied_bids' %}"><i class="bi bi-send-check me-1"></i> Applied bids</a>
       <a class="btn btn-outline-light" href="{% url 'manager_engagements' %}"><i class="bi bi-chat-square-text me-1"></i> Engagement history</a>
       <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#newBidModal"><i class="bi bi-plus-lg me-1"></i> Add financial project</button>
     </div>
@@ -83,6 +84,7 @@
               <span><i class="bi bi-person me-1"></i>{{ item.owner.get_full_name|default:item.owner.username }}</span>
               {% if item.estimated_value %}<span><i class="bi bi-cash-stack me-1"></i>Estimated R {{ item.estimated_value|floatformat:2 }}</span>{% endif %}
               {% if item.bid_deadline %}<span><i class="bi bi-calendar-event me-1"></i>{{ item.bid_deadline }}</span>{% endif %}
+              {% if item.next_follow_up_date %}<span><i class="bi bi-bell me-1"></i>Follow up {{ item.next_follow_up_date }}</span>{% endif %}
               <span><i class="bi bi-chat-left-text me-1"></i>{{ item.project.engagement_logs.count }} engagement note{{ item.project.engagement_logs.count|pluralize }}</span>
             </div>
             {% if item.cost_centre %}<div class="converted-pill"><i class="bi bi-check-circle-fill"></i>{{ item.cost_centre.code }} · {{ item.cost_centre.name }}</div>{% endif %}
@@ -99,9 +101,11 @@
               {% csrf_token %}
               <div class="modal-header"><h5 class="modal-title">Client note · {{ item.client_name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
               <div class="modal-body row g-3">
-                <div class="col-md-4"><label class="form-label">Type</label><select name="entry_type" class="form-select"><option value="discussion">Discussion</option><option value="meeting_minutes">Meeting minutes</option><option value="comment">Comment</option></select></div>
-                <div class="col-md-4"><label class="form-label">Date</label><input type="date" name="engagement_date" class="form-control"></div>
-                <div class="col-md-4"><label class="form-label">Subject</label><input name="subject" class="form-control" placeholder="Call, meeting, follow-up"></div>
+                <div class="col-md-3"><label class="form-label">Record type</label><select name="entry_type" class="form-select"><option value="meeting_minutes">Meeting minutes</option><option value="discussion">Discussion</option><option value="comment">Comment</option></select></div>
+                <div class="col-md-3"><label class="form-label">Contact method</label><select name="contact_method" class="form-select"><option value="email">Email</option><option value="phone">Phone call</option><option value="meeting">In-person meeting</option><option value="virtual">Virtual meeting</option><option value="other">Other</option></select></div>
+                <div class="col-md-3"><label class="form-label">Engagement date</label><input type="date" name="engagement_date" class="form-control" required></div>
+                <div class="col-md-3"><label class="form-label">Next follow-up</label><input type="date" name="next_follow_up_date" class="form-control"></div>
+                <div class="col-12"><label class="form-label">Subject</label><input name="subject" class="form-control" placeholder="Call, meeting, follow-up"></div>
                 <div class="col-12"><label class="form-label">Engagement notes</label><textarea name="notes" class="form-control" rows="4" required></textarea></div>
                 <div class="col-12"><label class="form-label">Proposal summary</label><textarea name="proposal_summary" class="form-control" rows="2" placeholder="What was offered or agreed?"></textarea></div>
                 {% if item.project.engagement_logs.all %}<div class="col-12"><hr><h6>Recent history</h6>{% for note in item.project.engagement_logs.all|slice:':3' %}<div class="small border rounded p-2 mb-2"><strong>{{ note.engagement_date }} · {{ note.get_entry_type_display }}</strong>{% if note.subject %} — {{ note.subject }}{% endif %}<br>{{ note.notes|truncatechars:160 }}</div>{% endfor %}</div>{% endif %}
@@ -133,18 +137,39 @@
 </main>
 
 <div class="modal fade" id="newBidModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered"><form class="modal-content tracked-form" method="post" action="{% url 'add_financial_project' %}">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><form class="modal-content tracked-form" method="post" action="{% url 'add_financial_project' %}">
     {% csrf_token %}
     <div class="modal-header"><h5 class="modal-title">Add financial project</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body row g-3">
+      <div class="col-12"><h6 class="text-uppercase text-muted border-bottom pb-2">1 · Company details</h6></div>
       <div class="col-md-6"><label class="form-label">Project / bid title</label>{{ financial_project_form.project_name }}</div>
-      <div class="col-md-6"><label class="form-label">Client</label>{{ financial_project_form.client_name }}</div>
-      <div class="col-md-4"><label class="form-label">Contact person</label>{{ financial_project_form.contact_name }}</div>
-      <div class="col-md-4"><label class="form-label">Contact email</label>{{ financial_project_form.contact_email }}</div>
-      <div class="col-md-4"><label class="form-label">Contact phone</label>{{ financial_project_form.contact_phone }}</div>
-      <div class="col-md-6"><label class="form-label">Estimated value</label>{{ financial_project_form.estimated_value }}</div>
-      <div class="col-md-6"><label class="form-label">Bid deadline</label>{{ financial_project_form.bid_deadline }}</div>
+      <div class="col-md-6"><label class="form-label">Client / trading name</label>{{ financial_project_form.client_name }}</div>
+      <div class="col-md-6"><label class="form-label">Registered company name</label>{{ financial_project_form.company_name }}</div>
+      <div class="col-md-3"><label class="form-label">Registration number</label>{{ financial_project_form.company_registration_number }}</div>
+      <div class="col-md-3"><label class="form-label">Industry</label>{{ financial_project_form.industry }}</div>
+      <div class="col-md-4"><label class="form-label">Company website</label>{{ financial_project_form.company_website }}</div>
+      <div class="col-md-4"><label class="form-label">Company email</label>{{ financial_project_form.company_email }}</div>
+      <div class="col-md-4"><label class="form-label">Company phone</label>{{ financial_project_form.company_phone }}</div>
+      <div class="col-12"><label class="form-label">Company address</label>{{ financial_project_form.company_address }}</div>
+
+      <div class="col-12 mt-4"><h6 class="text-uppercase text-muted border-bottom pb-2">2 · Primary contact</h6></div>
+      <div class="col-md-3"><label class="form-label">Contact person</label>{{ financial_project_form.contact_name }}</div>
+      <div class="col-md-3"><label class="form-label">Role / position</label>{{ financial_project_form.contact_role }}</div>
+      <div class="col-md-3"><label class="form-label">Contact email</label>{{ financial_project_form.contact_email }}</div>
+      <div class="col-md-3"><label class="form-label">Contact phone</label>{{ financial_project_form.contact_phone }}</div>
+
+      <div class="col-12 mt-4"><h6 class="text-uppercase text-muted border-bottom pb-2">3 · Bid and follow-up</h6></div>
+      <div class="col-md-3"><label class="form-label">Bid reference</label>{{ financial_project_form.bid_reference }}</div>
+      <div class="col-md-3"><label class="form-label">Estimated value</label>{{ financial_project_form.estimated_value }}</div>
+      <div class="col-md-2"><label class="form-label">Bid deadline</label>{{ financial_project_form.bid_deadline }}</div>
+      <div class="col-md-2"><label class="form-label">Applied date</label>{{ financial_project_form.applied_date }}</div>
+      <div class="col-md-2"><label class="form-label">Next follow-up</label>{{ financial_project_form.next_follow_up_date }}</div>
       <div class="col-12"><label class="form-label">Summary and next action</label>{{ financial_project_form.summary }}</div>
+
+      <div class="col-12 mt-4"><h6 class="text-uppercase text-muted border-bottom pb-2">4 · Initial engagement minutes</h6></div>
+      <div class="col-md-4"><label class="form-label">Engagement date</label>{{ financial_project_form.initial_engagement_date }}</div>
+      <div class="col-md-4"><label class="form-label">Contact method</label>{{ financial_project_form.initial_contact_method }}</div>
+      <div class="col-12"><label class="form-label">Minutes / discussion notes</label>{{ financial_project_form.initial_engagement_minutes }}</div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-warning" type="submit">Create and assign to me</button></div>
   </form></div>

@@ -54,9 +54,10 @@
           {% endif %}
           {% for history in engagement.history_preview %}
             <div class="border rounded p-2 mb-2 bg-light-subtle">
-              <div class="small fw-semibold">{{ history.centre }} | {{ history.entry_type }} | {{ history.engagement_date }}</div>
+              <div class="small fw-semibold">{{ history.centre }} | {{ history.contact_method }} | {{ history.engagement_date }}</div>
               <div class="small text-muted">{{ history.entered_by }}</div>
               <div class="small mt-1">{{ history.notes|truncatechars:140 }}</div>
+              {% if history.next_follow_up_date %}<div class="small text-primary mt-1"><strong>Follow up:</strong> {{ history.next_follow_up_date }}</div>{% endif %}
             </div>
           {% empty %}
             <span class="text-muted small">No minutes or discussion history captured yet.</span>
