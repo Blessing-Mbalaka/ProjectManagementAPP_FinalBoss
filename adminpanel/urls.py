@@ -31,6 +31,7 @@ urlpatterns = [
     path('conference/<int:conference_id>/data/', views.get_conference_data, name='get_conference_data'),
     path('admin_ganttchart/', views.admin_ganttchart, name='admin_ganttchart'),
     path('overview/', views.overview, name='overview'),
+    path('activity/page-visits/', views.page_visit_audit, name='page_visit_audit'),
     path('crm/', views.crm, name='crm'),
     path('crm/reports/data/', views.crm_reporting_data, name='crm_reporting_data'),
     path('crm/reports/export/<str:period>/', views.crm_report_export, name='crm_report_export'),

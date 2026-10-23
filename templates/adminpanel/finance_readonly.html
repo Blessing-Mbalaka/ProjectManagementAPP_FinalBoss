@@ -111,7 +111,7 @@
                     <tr>
                         <th>Month</th>
                         <th>Cost Centre</th>
-                        <th>Name & Surname</th>
+                        <th>Payee / protected aggregate</th>
                         <th data-category-col="Salary">Salary</th>
                         <th data-category-col="Bursaries">Bursaries</th>
                         <th data-category-col="Invoices">Invoices</th>
@@ -128,7 +128,7 @@
                         <tr data-cost-centre="{{ record.cost_centre_id }}" data-category="{{ record.category }}" data-exp-id="{{ record.id }}">
                             <td>{{ record.month }}</td>
                             <td>{{ record.cost_centre.name }}</td>
-                            <td class="editable-name">{{ record.name }}</td>
+                            <td class="editable-name">{{ record.name }}{% if record.is_salary_aggregate %}<div class="small text-muted">{{ record.salary_record_count }} salary record{{ record.salary_record_count|pluralize }} combined</div>{% endif %}</td>
                             <td data-category-cell="Salary">{% if record.category == 'Salary' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
                             <td data-category-cell="Bursaries">{% if record.category == 'Bursaries' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
                             <td data-category-cell="Invoices">{% if record.category == 'Invoices' %}<span class="editable-amount">{{ record.amount|floatformat:2 }}</span>{% endif %}</td>
@@ -138,9 +138,10 @@
                             <td><strong>R <span class="total-amount">{{ record.amount|floatformat:2 }}</span></strong></td>
                             <td>R {{ record.opening_balance|floatformat:2 }}</td>
                             <td>
-                                <button class="btn btn-sm btn-warning edit-btn"> Edit</button>
+                                {% if record.is_salary_aggregate %}<span class="badge text-bg-secondary"><i class="bi bi-shield-lock me-1"></i>Protected</span>{% else %}<button class="btn btn-sm btn-warning edit-btn"> Edit</button>
                                 <button class="btn btn-sm btn-success save-btn" style="display: none;"> Save</button>
                                 <button class="btn btn-sm btn-secondary cancel-btn" style="display: none;"> Cancel</button>
+                                {% endif %}
                             </td>
                         </tr>
                     {% empty %}

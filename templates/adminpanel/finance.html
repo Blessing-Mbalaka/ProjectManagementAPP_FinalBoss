@@ -163,7 +163,7 @@
                     <tr>
                         <th>Month</th>
                         <th>Cost Centre</th>
-                        <th>Name & Surname</th>
+                        <th>Payee / protected aggregate</th>
                         <th data-category-col="Salary">Salary</th>
                         <th data-category-col="Bursaries">Bursaries</th>
                         <th data-category-col="Invoices">Invoices</th>
@@ -182,7 +182,7 @@
                         <tr data-cost-centre="{{ record.cost_centre_id }}" data-category="{{ record.category }}">
                             <td>{{ record.month }}</td>
                             <td>{{ record.cost_centre.name }}</td>
-                            <td>{{ record.name }}</td>
+                            <td>{{ record.name }}{% if record.is_salary_aggregate %}<div class="small text-muted">{{ record.salary_record_count }} salary record{{ record.salary_record_count|pluralize }} combined</div>{% endif %}</td>
                             <td data-category-cell="Salary">{% if record.category == 'Salary' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
                             <td data-category-cell="Bursaries">{% if record.category == 'Bursaries' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
                             <td data-category-cell="Invoices">{% if record.category == 'Invoices' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
@@ -193,13 +193,9 @@
                             <td>R {{ record.opening_balance|floatformat:2 }}</td>
                             {% if can_edit_finance %}
                             <td class="d-flex gap-2">
-                                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editExpenditureModal{{ record.id }}">
+                                {% if record.is_salary_aggregate %}<span class="badge text-bg-secondary"><i class="bi bi-shield-lock me-1"></i>Protected</span>{% else %}<button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editExpenditureModal{{ record.id }}">
                                      Edit
-                                </button>
-                                <!-- <form method="POST" action="{% url 'delete_expenditure' record.id %}" onsubmit="return confirm('Are you sure you want to delete this expenditure?');" style="display:inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-danger">🗑️ Delete</button>
-                                </form> -->
+                                </button>{% endif %}
                             </td>
                             {% endif %}
                         </tr>
@@ -562,6 +558,7 @@
 
 <!-- Edit Expenditure Modals -->
 {% for record in all_expenditures %}
+{% if not record.is_salary_aggregate %}
 <div class="modal fade" id="editExpenditureModal{{ record.id }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -600,6 +597,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 {% endfor %}
 
 

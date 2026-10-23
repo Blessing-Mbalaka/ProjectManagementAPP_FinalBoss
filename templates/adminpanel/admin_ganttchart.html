@@ -1,4 +1,4 @@
-{% extends 'adminpanel/index.html' %}
+{% extends gantt_base_template|default:'adminpanel/index.html' %}
 {% load static %}
 
 {% block title %}Gantt Chart{% endblock %}
@@ -95,9 +95,9 @@
 
             <div class="gantt-focus-toolbar">
                 <div class="d-flex align-items-center gap-3">
-                    <a class="btn btn-outline-secondary" href="{% url 'pm_overview' %}"><i class="bi bi-arrow-left me-1"></i>Back to Overview</a>
+                    <a class="btn btn-outline-secondary" href="{{ gantt_back_url }}"><i class="bi bi-arrow-left me-1"></i>{{ gantt_back_label|default:'Back to Overview' }}</a>
                     <div>
-                        <h1 id="project-title">{% if is_gantt_readonly %}Read-Only Project Timeline{% else %}Project Timeline{% endif %}</h1>
+                        <h1 id="project-title">{{ gantt_page_title|default:'Project Timeline' }}</h1>
                         <p class="text-muted small">Scroll inside the chart, or use Fit Screen to show the complete date range.</p>
                     </div>
                 </div>

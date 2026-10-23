@@ -10,7 +10,7 @@ from projects.work_scope import manageable_projects_for
 from users.models import CustomUser
 from users.forms import CustomUserCreationForm
 from manager.models import Book, Chapter
-from .models import CostCentre, EngagementLog, Expenditure, FinancialProject, ResearchCentre, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord
+from .models import CostCentre, EngagementLog, Expenditure, FinancialProject, ResearchCentre, SupervisorProfile, SupervisorFeedback, Notification, AuditLog, ClockInRecord, PageVisitLog
 from .audit_service import (
     log_cost_centre_creation, log_cost_centre_edit, log_cost_centre_deletion,
     log_expenditure_creation, log_expenditure_edit, log_expenditure_deletion,
@@ -38,6 +38,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.db import models, connection
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods, require_POST
 from django.apps import apps
 from projects.models import StudentProfile
@@ -53,11 +54,64 @@ import re
 import zipfile
 from xml.etree import ElementTree
 import logging
+import hashlib
+import hmac
 
 from .media_models import SystemMedia
 from .crm_logic import build_context as build_crm_logic_context
 
 logger = logging.getLogger(__name__)
+
+
+@login_required
+def page_visit_audit(request):
+    if not has_role(request.user, 'admin', 'centrehead'):
+        return HttpResponseForbidden('Only Admin and Centre Heads can view page activity logs.')
+
+    logs = PageVisitLog.objects.select_related('user', 'user__research_centre')
+    users = CustomUser.objects.filter(is_active=True)
+    if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin'):
+        centre_id = getattr(request.user, 'research_centre_id', None)
+        logs = logs.filter(user__research_centre_id=centre_id) if centre_id else logs.none()
+        users = users.filter(research_centre_id=centre_id) if centre_id else users.none()
+
+    selected_user = request.GET.get('user', '').strip()
+    search = request.GET.get('q', '').strip()
+    date_from = parse_date(request.GET.get('date_from', ''))
+    date_to = parse_date(request.GET.get('date_to', ''))
+    if selected_user.isdigit() and users.filter(id=selected_user).exists():
+        logs = logs.filter(user_id=int(selected_user))
+    if search:
+        logs = logs.filter(
+            Q(path__icontains=search)
+            | Q(view_name__icontains=search)
+            | Q(user__username__icontains=search)
+            | Q(user__first_name__icontains=search)
+            | Q(user__last_name__icontains=search)
+        )
+    if date_from:
+        logs = logs.filter(visited_at__date__gte=date_from)
+    if date_to:
+        logs = logs.filter(visited_at__date__lte=date_to)
+
+    filtered_logs = logs.order_by('-visited_at')
+    page_obj = Paginator(filtered_logs, 50).get_page(request.GET.get('page'))
+    return render(request, 'adminpanel/page_visit_audit.html', {
+        'page_obj': page_obj,
+        'activity_users': users.order_by('first_name', 'last_name', 'username'),
+        'selected_user': selected_user,
+        'search_query': search,
+        'date_from': date_from,
+        'date_to': date_to,
+        'activity_total': filtered_logs.count(),
+        'activity_user_count': filtered_logs.values('user_id').distinct().count(),
+        'activity_page_count': filtered_logs.values('path').distinct().count(),
+        'activity_scope_label': (
+            'All system users'
+            if has_role(request.user, 'admin')
+            else getattr(request.user.research_centre, 'name', 'Unassigned centre')
+        ),
+    })
 
 
 def safe_decimal(value, default=Decimal('0.00')):
@@ -78,6 +132,53 @@ def decimal_to_float(value):
         return float(safe_decimal(value))
     except (TypeError, ValueError, InvalidOperation, OverflowError):
         return 0.0
+
+
+def salary_group_token(cost_centre_id, period, source_ids):
+    payload = f'{cost_centre_id}|{period}|{"-".join(str(item) for item in sorted(source_ids))}'
+    return hmac.new(
+        settings.SECRET_KEY.encode('utf-8'),
+        payload.encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()[:10].upper()
+
+
+def aggregate_salary_rows(rows):
+    """Hide salary identities and return one exact-total row per centre and period."""
+    visible_rows = []
+    groups = {}
+    for row in rows:
+        if row.get('category') != 'Salary':
+            visible_rows.append(row)
+            continue
+        key = (row.get('cost_centre_id'), row.get('month') or '')
+        group = groups.setdefault(key, {
+            **row,
+            'amount': 0.0,
+            'oracle_balance': 0.0,
+            'oracle_value_count': 0,
+            'source_ids': [],
+            'salary_record_count': 0,
+            'is_salary_aggregate': True,
+        })
+        group['amount'] += float(row.get('amount') or 0)
+        if row.get('oracle_balance') is not None:
+            group['oracle_balance'] += float(row.get('oracle_balance') or 0)
+            group['oracle_value_count'] += 1
+        group['source_ids'].append(row.get('id'))
+        group['salary_record_count'] += 1
+
+    for (cost_centre_id, period), group in groups.items():
+        token = salary_group_token(cost_centre_id, period, group.pop('source_ids'))
+        oracle_value_count = group.pop('oracle_value_count')
+        if oracle_value_count != group['salary_record_count']:
+            group['oracle_balance'] = None
+        group['id'] = f'salary-{token}'
+        group['expense_id'] = f'SALARY-{token}'
+        group['name'] = f'Protected salary pool #{token}'
+        group['salary_hash'] = token
+        visible_rows.append(group)
+    return visible_rows
 
 
 def optional_decimal(value):
@@ -517,6 +618,10 @@ def admin_ganttchart(request):
         'gantt_detail_mode': detail_mode,
         'gantt_tasks_json': json.dumps(gantt_tasks),
         'gantt_staff_users': staff_users,
+        'gantt_base_template': 'adminpanel/index.html',
+        'gantt_back_url': reverse('pm_overview'),
+        'gantt_back_label': 'Back to Overview',
+        'gantt_page_title': 'Centre Project Timeline',
     })
 
 
@@ -1425,6 +1530,7 @@ def finance(request, section=None):
         })
         cost_centres.append(info)
 
+    all_expenditures = aggregate_salary_rows(all_expenditures)
     category_totals_dict = {}
     monthly_totals_dict = {}
     for exp in all_expenditures:
@@ -1594,6 +1700,7 @@ def finance_readonly(request, section=None):
 
     cost_centres.sort(key=lambda x: x['name'])
 
+    all_expenditures = aggregate_salary_rows(all_expenditures)
     category_totals_dict = {}
     monthly_totals_dict = {}
     for exp in all_expenditures:
@@ -1697,7 +1804,23 @@ def download_finance_summary_excel(request):
         'expense_id', 'database_id', 'cost_centre', 'month', 'date_from', 'date_to',
         'name', 'category', 'amount', 'opening_balance', 'closing_balance', 'oracle_balance', 'oracle_check'
     ]]
+    salary_export_groups = {}
     for expenditure in expenditures:
+        if expenditure.category == 'Salary':
+            key = (expenditure.cost_centre_id, expenditure.cost_centre.name, expenditure.month or '')
+            group = salary_export_groups.setdefault(key, {
+                'ids': [], 'amount': Decimal('0.00'), 'opening': Decimal('0.00'),
+                'closing': Decimal('0.00'), 'oracle': Decimal('0.00'), 'oracle_count': 0,
+                'date_from': expenditure.date_from, 'date_to': expenditure.date_to,
+            })
+            group['ids'].append(expenditure.id)
+            group['amount'] += safe_decimal(expenditure.amount)
+            group['opening'] += safe_decimal(expenditure.opening_balance)
+            group['closing'] += safe_decimal(expenditure.closing_balance)
+            if expenditure.oracle_balance is not None:
+                group['oracle'] += safe_decimal(expenditure.oracle_balance)
+                group['oracle_count'] += 1
+            continue
         oracle_check = ''
         if expenditure.oracle_balance is None:
             oracle_check = 'Pending'
@@ -1719,6 +1842,18 @@ def download_finance_summary_excel(request):
             expenditure.closing_balance,
             expenditure.oracle_balance if expenditure.oracle_balance is not None else '',
             oracle_check,
+        ])
+
+    for (cost_centre_id, cost_centre_name, period), group in salary_export_groups.items():
+        token = salary_group_token(cost_centre_id, period, group['ids'])
+        oracle_complete = group['oracle_count'] == len(group['ids'])
+        oracle_value = group['oracle'] if oracle_complete else ''
+        oracle_check = 'Pending' if not oracle_complete else ('Matched' if group['oracle'] == group['amount'] else 'Review')
+        expense_rows.append([
+            f'SALARY-{token}', '', cost_centre_name, period,
+            group['date_from'] or '', group['date_to'] or '',
+            f'Protected salary pool #{token}', 'Salary', group['amount'],
+            group['opening'], group['closing'], oracle_value, oracle_check,
         ])
 
     payment_rows = [['cost_centre', 'payment_date', 'amount', 'description']]
@@ -2091,7 +2226,7 @@ def get_expenditures(request, cost_centre_id):
                     'expense_id': expense_id,
                 })
         
-        return JsonResponse({'expenditures': data})
+        return JsonResponse({'expenditures': aggregate_salary_rows(data)})
     except Exception as e:
         return JsonResponse({'error': f'Error fetching expenditures: {str(e)}'}, status=500)
 

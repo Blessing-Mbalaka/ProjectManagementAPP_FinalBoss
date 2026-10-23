@@ -592,6 +592,39 @@ class AuditLog(models.Model):
         raise ValidationError("Audit logs are immutable and cannot be deleted")
 
 
+class PageVisitLog(models.Model):
+    """Privacy-conscious record of authenticated HTML pages visited in the app."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='page_visit_logs',
+    )
+    path = models.CharField(max_length=500)
+    view_name = models.CharField(max_length=160, blank=True)
+    method = models.CharField(max_length=10, default='GET')
+    visited_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-visited_at']
+        indexes = [
+            models.Index(fields=['user', '-visited_at'], name='admin_visit_user_time_idx'),
+            models.Index(fields=['path', '-visited_at'], name='admin_visit_path_time_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.user or "Deleted user"} visited {self.path} at {self.visited_at}'
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise ValidationError('Page visit logs are immutable and cannot be modified')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError('Page visit logs are immutable and cannot be deleted')
+
+
 class ClockInRecord(models.Model):
     """Records employee clock in/out times"""
     

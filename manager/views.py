@@ -9,7 +9,7 @@ from .models import LearningContent, Template, Paper, Book, Chapter, PaperCommen
 from .forms import BookForm, PaperForm, EngagementLogForm
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.contrib import messages
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.timezone import now
 import json
@@ -222,9 +222,84 @@ def app_kanban(request):
 
 @login_required
 def manager_ganttchart(request):
-    projects = manageable_projects_for(request.user)
+    projects = manageable_projects_for(
+        request.user,
+        Project.objects.select_related('assigned_user', 'created_by').prefetch_related(
+            'tasks__assigned_to', 'tasks__subtasks'
+        ),
+    )
+    detail_mode = request.GET.get('detail') == 'tasks'
+    timeline_items = []
 
-    return render(request, 'manager/manager_ganttchart.html', {'projects': projects})
+    for project in projects:
+        project_tasks = list(project.tasks.all())
+        if not detail_mode or not project_tasks:
+            start_date = timezone.localdate(project.created_at) if project.created_at else timezone.localdate()
+            task_dates = [task.due_date for task in project_tasks if task.due_date]
+            end_date = max(task_dates) if task_dates else (project.due_date or start_date + timedelta(days=3))
+            owner = project.assigned_user or project.created_by
+            timeline_items.append({
+                'id': f'project-{project.id}',
+                'name': project.name,
+                'project': project.name,
+                'owner': owner.get_full_name() or owner.username if owner else 'Unassigned',
+                'ownerId': owner.id if owner else '',
+                'status': project.get_status_display(),
+                'progress': round(sum(task.progress for task in project_tasks) / len(project_tasks)) if project_tasks else 0,
+                'startDate': start_date,
+                'endDate': end_date if end_date >= start_date else start_date,
+            })
+            continue
+
+        for task in project_tasks:
+            start_date = timezone.localdate(task.created_at) if task.created_at else timezone.localdate(project.created_at)
+            end_date = task.due_date or project.due_date or start_date + timedelta(days=3)
+            owner = task.assigned_to or project.assigned_user or project.created_by
+            timeline_items.append({
+                'id': f'task-{task.id}',
+                'name': task.title,
+                'project': project.name,
+                'owner': owner.get_full_name() or owner.username if owner else 'Unassigned',
+                'ownerId': owner.id if owner else '',
+                'status': task.get_status_display(),
+                'progress': task.progress,
+                'startDate': start_date,
+                'endDate': end_date if end_date >= start_date else start_date,
+            })
+
+    first_date = min((item['startDate'] for item in timeline_items), default=timezone.localdate())
+    gantt_tasks = []
+    for item in timeline_items:
+        start = (item['startDate'] - first_date).days + 1
+        end = (item['endDate'] - first_date).days + 1
+        gantt_tasks.append({
+            'id': item['id'],
+            'name': item['name'],
+            'project': item['project'],
+            'owner': item['owner'],
+            'ownerId': item['ownerId'],
+            'status': item['status'],
+            'progress': item['progress'],
+            'start': start,
+            'end': max(start, end),
+            'startLabel': item['startDate'].strftime('%Y-%m-%d'),
+            'endLabel': item['endDate'].strftime('%Y-%m-%d'),
+        })
+
+    staff_users = CustomUser.objects.filter(
+        id__in=[item['ownerId'] for item in gantt_tasks if item['ownerId']]
+    ).order_by('first_name', 'last_name', 'username')
+    return render(request, 'adminpanel/admin_ganttchart.html', {
+        'projects': projects,
+        'is_gantt_readonly': True,
+        'gantt_detail_mode': detail_mode,
+        'gantt_tasks_json': json.dumps(gantt_tasks),
+        'gantt_staff_users': staff_users,
+        'gantt_base_template': 'manager/home.html',
+        'gantt_back_url': reverse('manager_dashboard'),
+        'gantt_back_label': 'Back to Dashboard',
+        'gantt_page_title': 'My Project Timeline',
+    })
 
 
 @login_required

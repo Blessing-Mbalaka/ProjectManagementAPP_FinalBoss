@@ -159,6 +159,9 @@
                 <li><a href="{% url 'supervisor_dashboard' %}" class="nav-link"><i class="bi bi-collection-play"></i><span>Supervision</span></a></li>
                 {% endif %}
                 <li><a href="{% url 'manage_users' %}" class="nav-link"><i class="bi bi-people"></i><span>Manage Users</span></a></li>
+                {% if user.is_superuser or user.role == 'admin' or user.role == 'centrehead' %}
+                <li><a href="{% url 'page_visit_audit' %}" class="nav-link"><i class="bi bi-activity"></i><span>User Page Activity</span></a></li>
+                {% endif %}
                 {% endif %}
                 {% endif %}
                 <li><a href="{% url 'communique' %}" class="nav-link"><i class="bi bi-chat-dots"></i><span>Communique</span></a></li>

@@ -1,0 +1,68 @@
+{% extends 'adminpanel/index.html' %}
+
+{% block title %}User Page Activity{% endblock %}
+
+{% block content %}
+<style>
+  .activity-shell { padding: 24px; }
+  .activity-hero { background: linear-gradient(135deg, #5f0a63, #f0642b); color: #fff; border-radius: 20px; padding: 25px; margin-bottom: 20px; }
+  .activity-hero p { color: rgba(255,255,255,.86); margin: 5px 0 0; }
+  .activity-metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin: 18px 0; }
+  .activity-metric { background: #fff; border: 1px solid #eadfd8; border-radius: 14px; padding: 16px; }
+  .activity-metric strong { display: block; font-size: 1.5rem; color: #5f0a63; }
+  .activity-card { background: #fff; border: 1px solid #eadfd8; border-radius: 18px; padding: 20px; box-shadow: 0 12px 30px rgba(55,37,25,.06); }
+  .activity-filter { display: grid; grid-template-columns: 1.2fr 1fr .8fr .8fr auto; gap: 10px; align-items: end; }
+  .activity-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #5f0a63; word-break: break-word; }
+  @media (max-width: 980px) { .activity-filter { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 620px) { .activity-shell { padding: 14px; } .activity-metrics, .activity-filter { grid-template-columns: 1fr; } }
+</style>
+
+<main class="activity-shell">
+  <section class="activity-hero">
+    <h1 class="h3 mb-1"><i class="bi bi-activity me-2"></i>User Page Activity</h1>
+    <p>Authenticated page visits for {{ activity_scope_label }}. Query strings, form values and page content are not recorded.</p>
+  </section>
+
+  <section class="activity-metrics" aria-label="Activity summary">
+    <div class="activity-metric"><span class="text-muted">Recorded visits</span><strong>{{ activity_total }}</strong></div>
+    <div class="activity-metric"><span class="text-muted">Users represented</span><strong>{{ activity_user_count }}</strong></div>
+    <div class="activity-metric"><span class="text-muted">Distinct pages</span><strong>{{ activity_page_count }}</strong></div>
+  </section>
+
+  <section class="activity-card">
+    <form method="get" class="activity-filter mb-4">
+      <div><label class="form-label">Search</label><input class="form-control" name="q" value="{{ search_query }}" placeholder="Page, username or name"></div>
+      <div><label class="form-label">User</label><select class="form-select" name="user"><option value="">All permitted users</option>{% for person in activity_users %}<option value="{{ person.id }}" {% if selected_user == person.id|stringformat:'s' %}selected{% endif %}>{{ person.get_full_name|default:person.username }} · {{ person.get_role_display }}</option>{% endfor %}</select></div>
+      <div><label class="form-label">From</label><input class="form-control" type="date" name="date_from" value="{{ date_from|date:'Y-m-d' }}"></div>
+      <div><label class="form-label">To</label><input class="form-control" type="date" name="date_to" value="{{ date_to|date:'Y-m-d' }}"></div>
+      <div class="d-flex gap-2"><button class="btn btn-primary" type="submit">Filter</button><a class="btn btn-outline-secondary" href="{% url 'page_visit_audit' %}">Clear</a></div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead><tr><th>Date and time</th><th>User</th><th>Role / centre</th><th>Page visited</th><th>System view</th></tr></thead>
+        <tbody>
+          {% for visit in page_obj %}
+          <tr>
+            <td class="text-nowrap">{{ visit.visited_at|date:'Y-m-d H:i:s' }}</td>
+            <td><strong>{{ visit.user.get_full_name|default:visit.user.username|default:'Deleted user' }}</strong><div class="small text-muted">{{ visit.user.username }}</div></td>
+            <td>{{ visit.user.get_role_display|default:'Unknown' }}<div class="small text-muted">{{ visit.user.research_centre.name|default:'No centre' }}</div></td>
+            <td class="activity-path">{{ visit.path }}</td>
+            <td>{{ visit.view_name|default:'—' }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted py-5">No page visits match the selected filters.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Activity pagination">
+      <span class="small text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      <div class="d-flex gap-2">{% if page_obj.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?page={{ page_obj.previous_page_number }}&user={{ selected_user }}&q={{ search_query|urlencode }}">Previous</a>{% endif %}{% if page_obj.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?page={{ page_obj.next_page_number }}&user={{ selected_user }}&q={{ search_query|urlencode }}">Next</a>{% endif %}</div>
+    </nav>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}
