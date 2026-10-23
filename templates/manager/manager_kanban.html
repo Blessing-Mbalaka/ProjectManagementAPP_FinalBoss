@@ -125,6 +125,7 @@
 
 .kanban-toast-success { background: #198754; }
 .kanban-toast-error { background: #b02a37; }
+.kanban-toast-info { background: #5f1765; }
 
 @keyframes kanbanToastIn {
     from { opacity: 0; transform: translateY(-8px); }
@@ -237,14 +238,54 @@
 <script>
     let draggedTaskId = null;
 
-    function showKanbanToast(message, type = 'success') {
+    function showKanbanToast(message, type = 'success', duration = 3200) {
         const container = document.getElementById('kanbanToastContainer');
         const toast = document.createElement('div');
         toast.className = `kanban-toast kanban-toast-${type}`;
         toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
         toast.textContent = message;
         container.appendChild(toast);
-        window.setTimeout(() => toast.remove(), 3200);
+        if (duration) window.setTimeout(() => toast.remove(), duration);
+        return toast;
+    }
+
+    function beginSaveNotice() {
+        const toast = showKanbanToast(
+            'Saving your update. Please stay online while the system finishes.',
+            'info',
+            0
+        );
+        let seconds = 0;
+        const timer = window.setInterval(() => {
+            seconds += 5;
+            if (!toast.isConnected) return;
+            if (seconds >= 20) {
+                toast.textContent = 'Sorry this is taking longer than usual. Please stay online; we are still saving your update.';
+            } else if (seconds >= 10) {
+                toast.textContent = 'The system is still updating. Thank you for your patience—please stay online.';
+            }
+        }, 5000);
+        return {
+            finish() {
+                window.clearInterval(timer);
+                toast.remove();
+            }
+        };
+    }
+
+    async function fetchForSave(url, options = {}) {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 60000);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('Saving timed out after 60 seconds. Your screen has been restored; please check your connection and try again.');
+            }
+            throw error;
+        } finally {
+            window.clearTimeout(timeout);
+        }
     }
 
     function setButtonSaving(button, saving, savingLabel = 'Saving…') {
@@ -308,12 +349,13 @@
                 const originalZone = taskElement.closest('.drop-zone');
                 if (originalZone === zone) return;
                 taskElement.classList.add('task-saving');
+                const saveNotice = beginSaveNotice();
                 removeEmptyState(zone);
                 zone.appendChild(taskElement);
                 ensureEmptyState(originalZone);
 
                 try {
-                    const response = await fetch(`/manager/update-task-status/${draggedTaskId}/`, {
+                    const response = await fetchForSave(`/manager/update-task-status/${draggedTaskId}/`, {
                         method: 'POST',
                         headers: {
                             'X-CSRFToken': '{{ csrf_token }}',
@@ -333,8 +375,10 @@
                     ensureEmptyState(zone);
                     showKanbanToast(error.message || 'Task could not be saved.', 'error');
                 } finally {
+                    saveNotice.finish();
                     taskElement.classList.remove('task-saving');
                     draggedTaskId = null;
+                    clearOrphanedModalBackdrop();
                 }
             });
         });
@@ -346,10 +390,11 @@
                 const taskId = form.dataset.taskId;
                 const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
                 setButtonSaving(button, true);
+                const saveNotice = beginSaveNotice();
                 if (taskElement) taskElement.classList.add('task-saving');
 
                 try {
-                    const response = await fetch(form.action, {
+                    const response = await fetchForSave(form.action, {
                         method: 'POST',
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },
                         body: new FormData(form),
@@ -386,8 +431,10 @@
                 } catch (error) {
                     showKanbanToast(error.message || 'Task could not be saved.', 'error');
                 } finally {
+                    saveNotice.finish();
                     setButtonSaving(button, false);
                     if (taskElement) taskElement.classList.remove('task-saving');
+                    clearOrphanedModalBackdrop();
                 }
             });
         });

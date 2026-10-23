@@ -123,4 +123,9 @@ class ManagerKanbanSaveTests(TestCase):
         self.assertContains(response, "Task saved successfully.")
         self.assertContains(response, "clearOrphanedModalBackdrop")
         self.assertContains(response, "modal-backdrop")
+        self.assertContains(response, "Please stay online while the system finishes")
+        self.assertContains(response, "Sorry this is taking longer than usual")
+        self.assertContains(response, "fetchForSave")
+        self.assertContains(response, "60000")
+        self.assertContains(response, "Your screen has been restored")
 

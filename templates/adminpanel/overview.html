@@ -336,6 +336,67 @@ body{
   font-size:12px;
 }
 
+/* CLIENT PIPELINE */
+.pipeline-panel{
+  background:linear-gradient(135deg,#fff 0%,#fff9f5 54%,#f8f3fa 100%);
+  border:1px solid #efdcd3;
+  border-radius:24px;
+  padding:24px;
+  box-shadow:0 12px 30px rgba(61,35,20,.055);
+}
+
+.pipeline-layout{
+  display:grid;
+  grid-template-columns:220px minmax(0,1fr);
+  gap:28px;
+  align-items:center;
+}
+
+.pipeline-donut-wrap{
+  position:relative;
+  display:grid;
+  place-items:center;
+}
+
+.pipeline-donut{
+  width:178px;
+  aspect-ratio:1;
+  border-radius:50%;
+  background:conic-gradient(var(--pipeline-gradient));
+  box-shadow:0 16px 34px rgba(70,33,19,.12),inset 0 0 0 1px rgba(0,0,0,.04);
+}
+
+.pipeline-donut::after{
+  content:"";
+  position:absolute;
+  width:116px;
+  aspect-ratio:1;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 3px 14px rgba(0,0,0,.07);
+}
+
+.pipeline-donut-label{
+  position:absolute;
+  z-index:1;
+  text-align:center;
+}
+
+.pipeline-donut-label strong{display:block;font-size:34px;line-height:1;color:#26384d;}
+.pipeline-donut-label span{display:block;margin-top:5px;font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.08em;}
+.pipeline-summary{display:grid;gap:18px;}
+.pipeline-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.pipeline-kpi{border:1px solid #eee;border-radius:17px;padding:16px;background:rgba(255,255,255,.9);position:relative;overflow:hidden;}
+.pipeline-kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--pipeline-colour);}
+.pipeline-kpi strong{display:block;font-size:28px;color:#26384d;line-height:1;margin-bottom:6px;}
+.pipeline-kpi span{font-size:12px;font-weight:700;color:#666;}
+.pipeline-kpi small{display:block;color:#8a8a8a;margin-top:5px;}
+.pipeline-bar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:#eceff3;box-shadow:inset 0 1px 3px rgba(0,0,0,.08);}
+.pipeline-bar span{min-width:0;transition:width .4s ease;}
+.pipeline-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;}
+.pipeline-rate{display:flex;align-items:center;gap:10px;color:#556070;font-size:13px;}
+.pipeline-rate strong{font-size:18px;color:#26384d;}
+
 /* QUICK LINKS */
 .quick-grid{
   display:grid;
@@ -489,6 +550,10 @@ body{
   .health-grid{
     grid-template-columns:1fr;
   }
+
+  .pipeline-layout{grid-template-columns:1fr;}
+  .pipeline-donut-wrap{justify-self:center;}
+  .pipeline-kpis{grid-template-columns:1fr;}
 }
 </style>
 
@@ -510,6 +575,54 @@ body{
     <p>Summary of projects, research outputs, finance, CRM, and team activity.</p>
     <div class="hero-line"></div>
   </div>
+
+  {% if client_pipeline_visible %}
+  <section class="pipeline-panel mb-4" aria-labelledby="client-pipeline-heading">
+    <div class="portfolio-card-header">
+      <div>
+        <h5 id="client-pipeline-heading">Client Opportunity Pipeline</h5>
+        <p>Live summary of clients approached and bid outcomes.</p>
+      </div>
+      {% if user.is_superuser or user.role == 'admin' or user.role == 'centrehead' or user.role == 'financialadmin' %}
+      <a href="{% url 'financial_projects' %}">Open pipeline <i class="bi bi-arrow-right"></i></a>
+      {% endif %}
+    </div>
+
+    <div class="pipeline-layout">
+      <div class="pipeline-donut-wrap">
+        <div class="pipeline-donut" style="--pipeline-gradient:{{ client_pipeline.gradient }};"></div>
+        <div class="pipeline-donut-label">
+          <strong>{{ client_pipeline.approached_clients }}</strong>
+          <span>Clients approached</span>
+        </div>
+      </div>
+
+      <div class="pipeline-summary">
+        <div class="pipeline-kpis">
+          <article class="pipeline-kpi" style="--pipeline-colour:#19a974;">
+            <strong>{{ client_pipeline.won }}</strong><span>Won</span><small>{{ client_pipeline.won_percentage }}% of opportunities</small>
+          </article>
+          <article class="pipeline-kpi" style="--pipeline-colour:#f59e0b;">
+            <strong>{{ client_pipeline.pending }}</strong><span>Pending</span><small>{{ client_pipeline.pending_percentage }}% still in progress</small>
+          </article>
+          <article class="pipeline-kpi" style="--pipeline-colour:#dc3545;">
+            <strong>{{ client_pipeline.lost }}</strong><span>Lost</span><small>{{ client_pipeline.lost_percentage }}% closed without award</small>
+          </article>
+        </div>
+
+        <div class="pipeline-bar" aria-label="Won {{ client_pipeline.won }}, pending {{ client_pipeline.pending }}, lost {{ client_pipeline.lost }}">
+          <span style="width:{{ client_pipeline.won_percentage }}%;background:#19a974;" title="Won: {{ client_pipeline.won }}"></span>
+          <span style="width:{{ client_pipeline.pending_percentage }}%;background:#f59e0b;" title="Pending: {{ client_pipeline.pending }}"></span>
+          <span style="width:{{ client_pipeline.lost_percentage }}%;background:#dc3545;" title="Lost: {{ client_pipeline.lost }}"></span>
+        </div>
+        <div class="pipeline-footer">
+          <div class="pipeline-rate"><i class="bi bi-trophy-fill text-success"></i><span>Decision win rate <strong>{{ client_pipeline.decision_win_rate }}%</strong></span></div>
+          <div class="text-muted small">{{ client_pipeline.opportunities }} total opportunit{{ client_pipeline.opportunities|pluralize:"y,ies" }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
 
   <div class="row g-4 mb-4">
 

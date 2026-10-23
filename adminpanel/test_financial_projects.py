@@ -260,3 +260,62 @@ class FinancialProjectWorkflowTests(TestCase):
         self.assertContains(response, record.client_name)
         self.assertContains(response, 'Prospect')
         self.assertContains(response, 'Example Client Holdings (Pty) Ltd')
+
+
+class LandingClientPipelineAnalyticsTests(TestCase):
+    def setUp(self):
+        self.centre = ResearchCentre.objects.create(name='Analytics Centre')
+        self.other_centre = ResearchCentre.objects.create(name='External Analytics Centre')
+        self.head = User.objects.create_user(
+            username='analytics-head', password='pass', role='centrehead', research_centre=self.centre
+        )
+        self.other_head = User.objects.create_user(
+            username='analytics-other', password='pass', role='centrehead', research_centre=self.other_centre
+        )
+        self.admin = User.objects.create_user(username='analytics-admin', password='pass', role='admin')
+
+        self._create_opportunity(self.head, self.centre, 'Won Alpha', 'Alpha Client', 'won')
+        self._create_opportunity(self.head, self.centre, 'Pending Alpha', 'Alpha Client', 'proposal')
+        self._create_opportunity(self.head, self.centre, 'Lost Beta', 'Beta Client', 'lost')
+        self._create_opportunity(self.other_head, self.other_centre, 'External Win', 'External Client', 'won')
+
+    def _create_opportunity(self, owner, centre, project_name, client_name, stage):
+        project = Project.objects.create(
+            name=project_name,
+            project_type='financial',
+            created_by=owner,
+            assigned_user=owner,
+            research_centre=centre,
+        )
+        return FinancialProject.objects.create(
+            project=project,
+            owner=owner,
+            research_centre=centre,
+            client_name=client_name,
+            stage=stage,
+        )
+
+    def test_centre_head_landing_analytics_are_scoped_and_count_unique_clients(self):
+        self.client.force_login(self.head)
+        response = self.client.get(reverse('overview'))
+
+        self.assertEqual(response.status_code, 200)
+        pipeline = response.context['client_pipeline']
+        self.assertEqual(pipeline['approached_clients'], 2)
+        self.assertEqual(pipeline['opportunities'], 3)
+        self.assertEqual(pipeline['won'], 1)
+        self.assertEqual(pipeline['pending'], 1)
+        self.assertEqual(pipeline['lost'], 1)
+        self.assertEqual(pipeline['decision_win_rate'], 50)
+        self.assertContains(response, 'Client Opportunity Pipeline')
+        self.assertContains(response, 'Clients approached')
+
+    def test_admin_landing_analytics_include_all_centres(self):
+        self.client.force_login(self.admin)
+        pipeline = self.client.get(reverse('overview')).context['client_pipeline']
+
+        self.assertEqual(pipeline['approached_clients'], 3)
+        self.assertEqual(pipeline['opportunities'], 4)
+        self.assertEqual(pipeline['won'], 2)
+        self.assertEqual(pipeline['pending'], 1)
+        self.assertEqual(pipeline['lost'], 1)

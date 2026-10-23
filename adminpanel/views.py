@@ -708,6 +708,7 @@ def overview(request):
         'book': '#641566',
         'paper': '#2563eb',
         'conference': '#16a085',
+        'financial': '#d97706',
     }
     project_mix = []
     mix_stops = []
@@ -757,6 +758,43 @@ def overview(request):
         ),
     }
 
+    client_pipeline_visible = has_role(
+        request.user, 'admin', 'centrehead', 'dean', 'financialadmin'
+    )
+    client_pipeline = None
+    if client_pipeline_visible:
+        pipeline_records = financial_projects_for(request.user)
+        pipeline_total = pipeline_records.count()
+        won_count = pipeline_records.filter(stage='won').count()
+        lost_count = pipeline_records.filter(stage='lost').count()
+        pending_count = pipeline_records.exclude(stage__in=['won', 'lost']).count()
+        decided_count = won_count + lost_count
+        approached_clients = pipeline_records.exclude(client_name='').values('client_name').distinct().count()
+
+        def pipeline_percentage(value):
+            return round((value / pipeline_total) * 100, 1) if pipeline_total else 0
+
+        won_percentage = pipeline_percentage(won_count)
+        pending_percentage = pipeline_percentage(pending_count)
+        lost_percentage = pipeline_percentage(lost_count)
+        client_pipeline = {
+            'approached_clients': approached_clients,
+            'opportunities': pipeline_total,
+            'won': won_count,
+            'pending': pending_count,
+            'lost': lost_count,
+            'won_percentage': won_percentage,
+            'pending_percentage': pending_percentage,
+            'lost_percentage': lost_percentage,
+            'decision_win_rate': round((won_count / decided_count) * 100) if decided_count else 0,
+            'gradient': (
+                f'#19a974 0% {won_percentage}%, '
+                f'#f59e0b {won_percentage}% {won_percentage + pending_percentage}%, '
+                f'#dc3545 {won_percentage + pending_percentage}% 100%'
+                if pipeline_total else '#eceff3 0% 100%'
+            ),
+        }
+
         # --- Notifications for the page ---
     notifications_period = request.GET.get('notifications_period')
     if notifications_period not in {'today', 'week', 'month'}:
@@ -781,6 +819,8 @@ def overview(request):
         'project_mix_gradient': ', '.join(mix_stops) or '#e9ecef 0% 100%',
         'project_status_mix': project_status_mix,
         'portfolio_health': portfolio_health,
+        'client_pipeline_visible': client_pipeline_visible,
+        'client_pipeline': client_pipeline,
         'recent_notifications': recent_notifications,
         'notifications_period': notifications_period,
         'can_manage_overview': request.user.role == 'admin',
