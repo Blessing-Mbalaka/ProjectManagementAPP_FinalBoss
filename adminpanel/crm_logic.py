@@ -37,6 +37,8 @@ CRM_WELCOME = {
     'reports': ('CRM Reports', 'Export and inspect institutional CRM reporting summaries.'),
 }
 
+PUBLICATION_PROJECT_TYPES = {'book', 'paper', 'conference'}
+
 
 def safe_decimal(value, default=Decimal('0.00')):
     if value is None:
@@ -223,7 +225,7 @@ def build_prospects(projects):
 
 
 def build_engagements(projects, engagement_logs):
-    today = timezone.now().date()
+    today = timezone.localdate()
     logs_by_project = defaultdict(list)
     logs_by_client = defaultdict(list)
     for log in engagement_logs:
@@ -296,6 +298,9 @@ def build_engagements(projects, engagement_logs):
             'latest_proposal_summary': latest_log.proposal_summary if latest_log else '',
             'latest_entry_type': latest_log.get_entry_type_display() if latest_log else '',
             'next_follow_up_date': financial_record.next_follow_up_date if financial_record else None,
+            'project_type': project.project_type,
+            'project_type_label': project.get_project_type_display(),
+            'alert_category': 'publication' if project.project_type in PUBLICATION_PROJECT_TYPES else 'client',
         })
     return engagements
 
@@ -474,18 +479,38 @@ def build_context(request, active_tab):
     client_risk_alerts = []
     publication_risk_alerts = []
     for engagement in engagements:
+        is_publication = engagement['alert_category'] == 'publication'
         if engagement['is_overdue']:
-            alert = {'level': 'High', 'type': 'Client Risk', 'message': f"{engagement['name']} is past its due date.", 'owner': engagement['lead'], 'engagement_id': engagement['id']}
-            client_risk_alerts.append(alert)
-            if engagement['status'] != 'completed':
-                publication_type = next((project.project_type for project in projects if project.id == engagement['id']), None)
-                if publication_type in ['book', 'paper']:
-                    publication_risk_alerts.append({'level': 'High', 'type': 'Publication Deadline', 'message': f"{engagement['name']} is overdue and may affect publication delivery.", 'owner': engagement['lead'], 'engagement_id': engagement['id']})
+            alert = {
+                'level': 'High',
+                'type': 'Publication Deadline' if is_publication else 'Client Delivery',
+                'category': 'publication' if is_publication else 'client',
+                'message': (
+                    f"{engagement['name']} is overdue and may affect publication delivery."
+                    if is_publication
+                    else f"{engagement['name']} is past its client delivery due date."
+                ),
+                'owner': engagement['lead'],
+                'engagement_id': engagement['id'],
+            }
+            (publication_risk_alerts if is_publication else client_risk_alerts).append(alert)
         if engagement['last_contact'] and (timezone.now() - engagement['last_contact']).days > 60 and engagement['status'] != 'completed':
-            client_risk_alerts.append({'level': 'Medium', 'type': 'Client Risk', 'message': f"{engagement['name']} has no recent activity in 60+ days.", 'owner': engagement['lead'], 'engagement_id': engagement['id']})
+            alert = {
+                'level': 'Medium',
+                'type': 'Publication Activity' if is_publication else 'Client Follow-up',
+                'category': 'publication' if is_publication else 'client',
+                'message': (
+                    f"{engagement['name']} has had no publication activity in 60+ days."
+                    if is_publication
+                    else f"{engagement['name']} has had no client activity or follow-up in 60+ days."
+                ),
+                'owner': engagement['lead'],
+                'engagement_id': engagement['id'],
+            }
+            (publication_risk_alerts if is_publication else client_risk_alerts).append(alert)
     for cost_centre in cost_centres:
         if cost_centre.get_total_received() <= 0:
-            client_risk_alerts.append({'level': 'Medium', 'type': 'Client Risk', 'message': f"{cost_centre.name} has no recorded payments.", 'owner': None})
+            client_risk_alerts.append({'level': 'Medium', 'type': 'Client Finance', 'category': 'client', 'message': f"{cost_centre.name} has no recorded payments.", 'owner': None})
         phase_dates = [
             ('Phase 1', cost_centre.phase_1_due_date),
             ('Phase 2', cost_centre.phase_2_due_date),
@@ -497,20 +522,22 @@ def build_context(request, active_tab):
             if missing_phases:
                 client_risk_alerts.append({
                     'level': 'Medium',
-                    'type': 'Client Risk',
+                    'type': 'Client Governance',
+                    'category': 'client',
                     'message': f"{cost_centre.name} is missing due dates for {', '.join(missing_phases)}.",
                     'owner': None,
                 })
         for phase_label, due_date in phase_dates:
-            if due_date and due_date < timezone.now().date():
+            if due_date and due_date < timezone.localdate():
                 client_risk_alerts.append({
                     'level': 'High',
-                    'type': 'Client Risk',
+                    'type': 'Client Deadline',
+                    'category': 'client',
                     'message': f"{cost_centre.name} {phase_label} due date passed on {due_date}.",
                     'owner': None,
                 })
     for expenditure in Expenditure.objects.select_related('cost_centre').filter(cost_centre__in=cost_centres, oracle_balance__isnull=False).exclude(oracle_balance=F('amount'))[:20]:
-        client_risk_alerts.append({'level': 'High', 'type': 'Client Risk', 'message': f"{expenditure.cost_centre.name}: Oracle balance differs for {expenditure.name}.", 'owner': None})
+        client_risk_alerts.append({'level': 'High', 'type': 'Client Data Quality', 'category': 'client', 'message': f"{expenditure.cost_centre.name}: Oracle balance differs for {expenditure.name}.", 'owner': None})
 
     names = defaultdict(list)
     for client in clients:
@@ -518,26 +545,33 @@ def build_context(request, active_tab):
     for duplicates in names.values():
         centre_names = {client['sector'] for client in duplicates}
         if len(duplicates) > 1 and len(centre_names) > 1:
-            client_risk_alerts.append({'level': 'Medium', 'type': 'Client Risk', 'message': f"{duplicates[0]['name']} appears across multiple centres.", 'owner': None})
+            client_risk_alerts.append({'level': 'Medium', 'type': 'Client Data Quality', 'category': 'client', 'message': f"{duplicates[0]['name']} appears across multiple centres.", 'owner': None})
 
     stale_cutoff = timezone.now() - timedelta(days=60)
     for paper in papers:
         if paper.status not in ['published', 'accepted', 'rejected'] and paper.updated_at < stale_cutoff:
-            publication_risk_alerts.append({'level': 'Medium', 'type': 'Publication Risk', 'message': f"{paper.title} has had no paper update in 60+ days.", 'owner': paper.created_by})
+            publication_risk_alerts.append({'level': 'Medium', 'type': 'Publication Activity', 'category': 'publication', 'message': f"{paper.title} has had no paper update in 60+ days.", 'owner': paper.created_by})
     for conference in conferences:
         if conference.status not in ['presented', 'accepted', 'rejected'] and conference.updated_at < stale_cutoff:
-            publication_risk_alerts.append({'level': 'Medium', 'type': 'Publication Risk', 'message': f"{conference.title} has had no conference update in 60+ days.", 'owner': conference.created_by})
+            publication_risk_alerts.append({'level': 'Medium', 'type': 'Publication Activity', 'category': 'publication', 'message': f"{conference.title} has had no conference update in 60+ days.", 'owner': conference.created_by})
     for book in books:
-        if book.due_date and book.due_date < timezone.now().date() and book.status != 'published':
-            publication_risk_alerts.append({'level': 'High', 'type': 'Publication Risk', 'message': f"{book.title} is past its book due date.", 'owner': book.created_by})
+        if book.due_date and book.due_date < timezone.localdate() and book.status != 'published':
+            publication_risk_alerts.append({'level': 'High', 'type': 'Publication Deadline', 'category': 'publication', 'message': f"{book.title} is past its book due date.", 'owner': book.created_by})
 
     alerts = client_risk_alerts + publication_risk_alerts
     publications = build_publications(papers, conferences, books, projects)
     reporting = build_reports(clients, centres, engagements, alerts, publications, users)
     active_engagements = [item for item in engagements if item['status'] in ['planning', 'in-progress']]
-    active_alert_counts = Counter(alert.get('engagement_id') for alert in alerts if alert.get('engagement_id'))
+    client_alert_counts = Counter(alert.get('engagement_id') for alert in client_risk_alerts if alert.get('engagement_id'))
+    publication_alert_counts = Counter(alert.get('engagement_id') for alert in publication_risk_alerts if alert.get('engagement_id'))
     for engagement in active_engagements:
-        engagement['alert_count'] = active_alert_counts.get(engagement['id'], 0)
+        engagement['client_alert_count'] = client_alert_counts.get(engagement['id'], 0)
+        engagement['publication_alert_count'] = publication_alert_counts.get(engagement['id'], 0)
+        engagement['alert_count'] = (
+            engagement['publication_alert_count']
+            if engagement['alert_category'] == 'publication'
+            else engagement['client_alert_count']
+        )
         engagement['risk_level'] = 'High' if engagement['is_overdue'] else ('Medium' if engagement['alert_count'] else 'Low')
 
     send_dean_alert_email_once(request, alerts)
@@ -555,6 +589,8 @@ def build_context(request, active_tab):
         'alerts': alerts,
         'client_risk_alerts': client_risk_alerts,
         'publication_risk_alerts': publication_risk_alerts,
+        'client_alert_count': len(client_risk_alerts),
+        'publication_alert_count': len(publication_risk_alerts),
         'client_risk_explainer': client_risk_explainer(),
         'staff_directory': users,
         'publications': publications,

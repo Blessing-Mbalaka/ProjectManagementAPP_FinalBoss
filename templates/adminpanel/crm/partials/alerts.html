@@ -5,6 +5,17 @@
   </div>
 </div>
 
+<div class="crm-alert-summary">
+  <div class="crm-alert-card client">
+    <i class="bi bi-building"></i>
+    <div><strong>{{ client_alert_count }}</strong><span>Client and relationship alerts</span></div>
+  </div>
+  <div class="crm-alert-card publication">
+    <i class="bi bi-journal-text"></i>
+    <div><strong>{{ publication_alert_count }}</strong><span>Publication and research-output alerts</span></div>
+  </div>
+</div>
+
 <div class="alert alert-light border mb-3">
   <strong>Client retention risk is calculated from:</strong>
   <ul class="mb-0 mt-2">
@@ -14,7 +25,8 @@
   </ul>
 </div>
 
-<h6 class="mb-2">Client Risk</h6>
+<h6 class="mb-1"><i class="bi bi-building me-1 text-primary"></i> Client &amp; Relationship Alerts</h6>
+<p class="small text-muted mb-2">Only client delivery, contact, payment, governance, and client-data issues appear here.</p>
 <div class="table-responsive">
   <table class="table table-hover align-middle crm-table">
     <thead class="table-light">
@@ -33,7 +45,7 @@
             {{ alert.level }}
           </span>
         </td>
-        <td>{{ alert.type }}</td>
+        <td><span class="crm-kind client"><i class="bi bi-building"></i>{{ alert.type }}</span></td>
         <td>{{ alert.message }}</td>
         <td>
           {% if alert.owner %}
@@ -50,7 +62,8 @@
   </table>
 </div>
 
-<h6 class="mb-2 mt-4">Publication Risk</h6>
+<h6 class="mb-1 mt-4"><i class="bi bi-journal-text me-1" style="color:#7e22ce"></i> Publication &amp; Research-Output Alerts</h6>
+<p class="small text-muted mb-2">Books, papers, journals, and conferences are tracked separately from client relationships.</p>
 <div class="table-responsive">
   <table class="table table-hover align-middle crm-table">
     <thead class="table-light">
@@ -69,7 +82,7 @@
             {{ alert.level }}
           </span>
         </td>
-        <td>{{ alert.type }}</td>
+        <td><span class="crm-kind publication"><i class="bi bi-journal-text"></i>{{ alert.type }}</span></td>
         <td>{{ alert.message }}</td>
         <td>
           {% if alert.owner %}

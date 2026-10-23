@@ -698,8 +698,7 @@ class ClockInRecord(models.Model):
     @classmethod
     def get_today_sessions(cls, employee):
         """Get all clock sessions for today"""
-        from django.utils import timezone
-        today = timezone.now().date()
+        today = timezone.localdate()
         return cls.objects.filter(employee=employee, clock_in_time__date=today)
     
     @classmethod

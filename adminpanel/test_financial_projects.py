@@ -261,6 +261,42 @@ class FinancialProjectWorkflowTests(TestCase):
         self.assertContains(response, 'Prospect')
         self.assertContains(response, 'Example Client Holdings (Pty) Ltd')
 
+    def test_crm_alerts_keep_publications_separate_from_clients(self):
+        overdue_date = timezone.localdate() - timedelta(days=1)
+        client_project = Project.objects.create(
+            name='Overdue Client Delivery', project_type='financial', status='in-progress',
+            created_by=self.finance_user, assigned_user=self.finance_user,
+            research_centre=self.centre, due_date=overdue_date,
+        )
+        publication_project = Project.objects.create(
+            name='Overdue Research Book', project_type='book', status='in-progress',
+            created_by=self.finance_user, assigned_user=self.finance_user,
+            research_centre=self.centre, due_date=overdue_date,
+        )
+        self.client.force_login(self.centre_head)
+
+        response = self.client.get(reverse('crm_tab', args=['alerts']))
+
+        self.assertEqual(response.status_code, 200)
+        client_alerts = response.context['client_risk_alerts']
+        publication_alerts = response.context['publication_risk_alerts']
+        self.assertTrue(any(alert.get('engagement_id') == client_project.id for alert in client_alerts))
+        self.assertFalse(any(alert.get('engagement_id') == publication_project.id for alert in client_alerts))
+        self.assertTrue(any(alert.get('engagement_id') == publication_project.id for alert in publication_alerts))
+        self.assertFalse(any(alert.get('engagement_id') == client_project.id for alert in publication_alerts))
+        self.assertTrue(all(alert['category'] == 'client' for alert in client_alerts))
+        self.assertTrue(all(alert['category'] == 'publication' for alert in publication_alerts))
+        self.assertContains(response, 'Client &amp; Relationship Alerts')
+        self.assertContains(response, 'Publication &amp; Research-Output Alerts')
+
+        active_by_name = {item['name']: item for item in response.context['active_projects']}
+        self.assertEqual(active_by_name[client_project.name]['alert_category'], 'client')
+        self.assertEqual(active_by_name[client_project.name]['client_alert_count'], 1)
+        self.assertEqual(active_by_name[client_project.name]['publication_alert_count'], 0)
+        self.assertEqual(active_by_name[publication_project.name]['alert_category'], 'publication')
+        self.assertEqual(active_by_name[publication_project.name]['client_alert_count'], 0)
+        self.assertEqual(active_by_name[publication_project.name]['publication_alert_count'], 1)
+
 
 class LandingClientPipelineAnalyticsTests(TestCase):
     def setUp(self):

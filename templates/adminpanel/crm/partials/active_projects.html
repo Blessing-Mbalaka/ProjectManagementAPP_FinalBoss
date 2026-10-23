@@ -40,7 +40,10 @@
         </td>
         <td>
           {% if project.alert_count %}
-            <a href="{% url 'crm_tab' 'alerts' %}{% if selected_centre %}?centre={{ selected_centre.id }}{% endif %}" class="fw-semibold">{{ project.alert_count }}</a>
+            <a href="{% url 'crm_tab' 'alerts' %}{% if selected_centre %}?centre={{ selected_centre.id }}{% endif %}" class="crm-kind {{ project.alert_category }} text-decoration-none">
+              <i class="bi {% if project.alert_category == 'publication' %}bi-journal-text{% else %}bi-building{% endif %}"></i>
+              {% if project.alert_category == 'publication' %}Publication{% else %}Client{% endif %} · {{ project.alert_count }}
+            </a>
           {% else %}
             <span class="text-muted">0</span>
           {% endif %}
