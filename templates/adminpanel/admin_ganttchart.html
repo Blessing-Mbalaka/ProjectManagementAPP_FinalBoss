@@ -47,6 +47,15 @@
         flex: 0 0 auto !important;
         min-width: 0 !important;
     }
+    .gantt-header-item {
+        font-variant-numeric: tabular-nums;
+        overflow: visible;
+        padding-left: 1px !important;
+        padding-right: 1px !important;
+        white-space: nowrap;
+    }
+    .gantt-header-item.day-label-muted { color: transparent; }
+    .gantt-header-item.day-label-major { font-weight: 700; }
     .gantt-label-header {
         flex: 0 0 var(--gantt-label-width) !important;
         left: 0;
@@ -386,10 +395,18 @@
                         header.appendChild(headerLabel);
 
                         // Add day headers
+                        const headerLabelStep = dayWidth >= 34 ? 1
+                            : dayWidth >= 18 ? 2
+                            : dayWidth >= 10 ? 5
+                            : dayWidth >= 5 ? 10
+                            : 20;
                         for (let i = 1; i <= daysToShow; i++) {
                             const dayHeader = document.createElement('div');
                             dayHeader.className = 'gantt-header-item';
-                            dayHeader.textContent = i;
+                            const showDayLabel = i === 1 || i === daysToShow || (i - 1) % headerLabelStep === 0;
+                            dayHeader.textContent = showDayLabel ? i : '';
+                            dayHeader.title = `Day ${i}`;
+                            dayHeader.classList.add(showDayLabel ? 'day-label-major' : 'day-label-muted');
                             dayHeader.style.width = `${dayWidth}px`;
                             header.appendChild(dayHeader);
                         }

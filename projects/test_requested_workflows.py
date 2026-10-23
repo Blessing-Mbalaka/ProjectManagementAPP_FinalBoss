@@ -167,3 +167,5 @@ class PublicationAndGanttTests(TestCase):
         self.assertContains(response, 'Fit Screen')
         self.assertContains(response, 'toggleGanttSidebar')
         self.assertContains(response, 'fitGanttToWidth')
+        self.assertContains(response, 'headerLabelStep')
+        self.assertContains(response, 'day-label-muted')
