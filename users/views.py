@@ -12,6 +12,7 @@ from django.conf import settings
 from django.http import HttpResponseForbidden
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.urls import reverse
 
 from adminpanel.models import Notification, SecurityEvent
 from adminpanel.security_service import device_label, masked_ip, record_failed_login, record_login
@@ -91,7 +92,10 @@ def _role_home_name(user):
 @login_required
 def security_center(request):
     events = request.user.security_events.filter(is_suspicious=True).order_by('-occurred_at')[:50]
-    return render(request, 'users/security_center.html', {'security_events': events})
+    return render(request, 'users/security_center.html', {
+        'security_events': events,
+        'continue_url': reverse(_role_home_name(request.user)),
+    })
 
 
 @login_required
@@ -115,7 +119,7 @@ def security_event_review(request, event_id):
                 require_https=request.is_secure(),
             ):
                 return redirect(safe_destination)
-            return redirect('security_center')
+            return redirect(_role_home_name(request.user))
         if action == 'secure':
             request.session['security_password_event_id'] = event.id
             return redirect('security_password_change')

@@ -62,7 +62,15 @@ class SecurityMonitoringTests(TestCase):
         event.refresh_from_db()
         self.assertEqual(event.status, 'confirmed')
         self.assertIsNotNone(event.reviewed_at)
-        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(
+            response,
+            reverse('dashboard'),
+            fetch_redirect_response=False,
+        )
+
+        security_center = self.client.get(reverse('security_center'))
+        self.assertContains(security_center, 'Continue to my dashboard')
+        self.assertContains(security_center, f'href="{reverse("dashboard")}"')
 
     @override_settings(
         SECURITY_SUSPICIOUS_LOGIN_START_HOUR=0,
