@@ -122,6 +122,12 @@ class ProjectManagementOverviewTests(TestCase):
             assigned_to=teammate,
             created_by=self.admin,
         )
+        generic_tracker = Task.objects.create(
+            title="Chapter: manager-only tracker",
+            project=self.project,
+            assigned_to=None,
+            created_by=self.staff,
+        )
         self.client.force_login(self.admin)
 
         response = self.client.get(reverse("pm_overview"))
@@ -131,9 +137,11 @@ class ProjectManagementOverviewTests(TestCase):
         teammate_tasks = overview[teammate.id]["projects"][0]["tasks"]
         self.assertEqual({task.id for task in staff_tasks}, {self.parent_task.id, self.subtask.id})
         self.assertEqual([task.id for task in teammate_tasks], [teammate_task.id])
+        self.assertNotIn(generic_tracker.id, {task.id for task in staff_tasks})
         self.assertContains(response, "2 assigned tasks")
         self.assertContains(response, "1 assigned task")
         self.assertContains(response, "task-list-shell")
+        self.assertContains(response, "pm-overview-scroll")
 
     def test_creator_only_project_is_shown_as_not_assigned(self):
         manager = User.objects.create_user(

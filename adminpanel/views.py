@@ -2491,7 +2491,6 @@ def pm_overview(request):
                 tasks = [
                     task for task in project_tasks
                     if task.assigned_to_id == user_id
-                    or (task.assigned_to_id is None and task.created_by_id == user_id)
                 ]
                 completed_tasks = sum(task.status == 'done' for task in tasks)
                 projects_by_user[user_id].append({
