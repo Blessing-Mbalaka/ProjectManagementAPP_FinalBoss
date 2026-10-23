@@ -68,11 +68,11 @@ background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
         {% endfor %}
     {% endif %}
     <div class="header mb-4">
-        <a href="{% url 'manager_dashboard' %}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left me-2"></i> Back to Dashboard
+        <a href="{{ workspace_back_url }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i> Back to {% if user.role == 'centrehead' or user.role == 'admin' %}Overview{% else %}Dashboard{% endif %}
         </a>
-        <h3 class="mt-3">Project Manager Assignment</h3>
-        <p class="text-muted mb-2">Manage projects, assign members, and create tasks</p>
+        <h3 class="mt-3">{{ workspace_title }}</h3>
+        <p class="text-muted mb-2">Create or bulk-load projects, assign a project lead and team members, and manage tasks.</p>
         <div class="d-inline-flex align-items-center gap-2 px-3 py-2 bg-white border rounded shadow-sm">
             <i class="bi bi-diagram-3 text-primary"></i>
             <span class="fw-semibold">Research Centre:</span>
@@ -99,6 +99,9 @@ background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
                         </button>
                         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createProjectModal">
                             <i class="bi bi-plus-lg me-1"></i> New Project
+                        </button>
+                        <button id="newBookProjectBtn" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#createProjectModal">
+                            <i class="bi bi-book me-1"></i> New Book Project
                         </button>
                     </div>
                 </div>
@@ -132,6 +135,27 @@ background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
                     <i class="bi bi-people me-2"></i> Assign Team Members for "{{ project.name }}"
                 </div>
                 <div class="card-body">
+                    <form method="POST" action="{% url 'admin_assign_project' %}" class="border rounded p-3 mb-4 bg-light">
+                        {% csrf_token %}
+                        <input type="hidden" name="project_id" value="{{ project.id }}">
+                        <input type="hidden" name="return_to" value="project_workspace">
+                        <label for="projectLead" class="form-label fw-bold">Project Lead / Project Manager</label>
+                        <div class="d-flex flex-column flex-md-row gap-2">
+                            <select name="assigned_user" id="projectLead" class="form-select" required>
+                                <option value="">Select a project lead</option>
+                                {% for lead_user in project_lead_users %}
+                                <option value="{{ lead_user.id }}" {% if project.assigned_user_id == lead_user.id %}selected{% endif %}>
+                                    {{ lead_user.get_full_name|default:lead_user.username }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary text-nowrap">
+                                <i class="bi bi-person-check me-1"></i> Assign Project Lead
+                            </button>
+                        </div>
+                        <div class="form-text">Centre heads can allocate only people in their own research centre.</div>
+                    </form>
+
                     <form method="POST" action="{% url 'assign_team_member' project.id %}">
                         {% csrf_token %}
                         {{ assignment_form.as_p }}
@@ -383,6 +407,19 @@ background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
                 <label for="id_project_type" class="form-label">Project Type</label>
                 {{ project_form.project_type|add_class:"form-select" }}
             </div>
+            <div id="bookProjectFields" class="border rounded p-3 mb-3 bg-light" hidden>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label for="bookLeadAuthor" class="form-label">Lead Author</label>
+                        <input id="bookLeadAuthor" name="book_lead_author" class="form-control" placeholder="Lead author name">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="bookTotalChapters" class="form-label">Planned Chapters</label>
+                        <input id="bookTotalChapters" name="book_total_chapters" type="number" min="1" value="1" class="form-control">
+                    </div>
+                    <div class="col-12 form-text">This also creates the linked book tracker under Research Projects → Book Projects.</div>
+                </div>
+            </div>
             <div class="mb-3">
                 <label for="id_status" class="form-label">Status</label>
                 {{ project_form.status|add_class:"form-select" }}
@@ -404,6 +441,24 @@ background-blend-mode: lighten;           /* Or 'overlay', 'darken' */
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{% static 'js/table-tooltips.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const projectType = document.getElementById('id_project_type');
+    const bookFields = document.getElementById('bookProjectFields');
+    const bookButton = document.getElementById('newBookProjectBtn');
+    const syncBookFields = () => {
+      if (bookFields && projectType) bookFields.hidden = projectType.value !== 'book';
+    };
+    if (projectType) projectType.addEventListener('change', syncBookFields);
+    if (bookButton && projectType) {
+      bookButton.addEventListener('click', function () {
+        projectType.value = 'book';
+        syncBookFields();
+      });
+    }
+    syncBookFields();
+  });
+</script>
 <style>
   .table-heading-help { cursor: help; }
   .table-heading-help-icon { font-size: .78rem; opacity: .65; vertical-align: middle; }

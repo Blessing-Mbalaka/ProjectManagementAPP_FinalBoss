@@ -124,6 +124,9 @@
                         </summary>
                         <div class="sidebar-submenu">
                             <a href="{% url 'pm_overview' %}" class="nav-link"><i class="bi bi-table"></i><span>Overview</span></a>
+                            {% if user.role == 'admin' or user.role == 'centrehead' %}
+                            <a href="{% url 'assign_projects' %}" class="nav-link"><i class="bi bi-folder-plus"></i><span>Manage &amp; Load Projects</span></a>
+                            {% endif %}
                             <a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Kanban Board</span></a>
                             {% if user.role == 'admin' %}
                             <a href="{% url 'admin_my_projects' %}" class="nav-link"><i class="bi bi-folder-check"></i><span>My Projects</span></a>
@@ -134,15 +137,15 @@
                         </div>
                     </details>
                 </li>
-                {% if user.role == 'admin' or user.role == 'dean' %}
+                {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' %}
                 <li>
                     <details class="sidebar-dropdown">
                         <summary class="nav-link sidebar-dropdown-toggle">
-                            <i class="bi bi-journals"></i><span>Research Outputs</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i>
+                            <i class="bi bi-journals"></i><span>Research Projects</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i>
                         </summary>
                         <div class="sidebar-submenu">
-                            <a href="{% url 'admin_book' %}" class="nav-link"><i class="bi bi-book"></i><span>Books</span></a>
-                            <a href="{% url 'admin_journal' %}" class="nav-link"><i class="bi bi-file-earmark-text"></i><span>Journals</span></a>
+                            <a href="{% url 'admin_book' %}" class="nav-link"><i class="bi bi-book"></i><span>Book Projects</span></a>
+                            <a href="{% url 'admin_journal' %}" class="nav-link"><i class="bi bi-file-earmark-text"></i><span>Paper Projects</span></a>
                             <a href="{% url 'admin_conferences' %}" class="nav-link"><i class="bi bi-megaphone"></i><span>Conferences</span></a>
                         </div>
                     </details>

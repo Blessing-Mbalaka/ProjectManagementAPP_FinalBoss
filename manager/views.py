@@ -2,7 +2,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from django.db import models
+from django.db import models, transaction
 from projects.models import Project, Task, Assignment,TeamMember
 from projects.forms import ProjectForm, AssignmentForm, TaskForm
 from .models import LearningContent, Template, Paper, Book, Chapter, PaperComment
@@ -328,9 +328,15 @@ def assign_projects_view(request):
     task_form = None
     project_form = ProjectForm()
 
-    # (Optional) ensure TeamMember exists for each user
-    # Better: move to a post_save signal; kept here for now
-    for u in User.objects.all():
+    # Ensure the allocation list contains only users the actor may manage.
+    eligible_team_users = User.objects.filter(is_active=True).exclude(role='student')
+    if not has_role(request.user, 'admin', 'dean'):
+        centre_id = getattr(request.user, 'research_centre_id', None)
+        eligible_team_users = (
+            eligible_team_users.filter(research_centre_id=centre_id)
+            if centre_id else eligible_team_users.none()
+        )
+    for u in eligible_team_users:
         TeamMember.objects.get_or_create(
             user=u,
             defaults={
@@ -363,6 +369,17 @@ def assign_projects_view(request):
         "project_team_users": project_team_users,  # use this in the template if you keep manual selects
         "project_form": project_form,
         "task_form": task_form,
+        "project_lead_users": eligible_team_users.order_by('first_name', 'last_name', 'username'),
+        "workspace_title": (
+            'Centre Project Management'
+            if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin')
+            else 'Project Manager Assignment'
+        ),
+        "workspace_back_url": (
+            reverse('overview')
+            if has_role(request.user, 'admin', 'centrehead')
+            else reverse('manager_dashboard')
+        ),
     }
     return render(request, "manager/assign.html", context)
 
@@ -374,12 +391,34 @@ def create_project(request):
     if request.method == 'POST':
         form = ProjectForm(request.POST)
         if form.is_valid():
-            project = form.save(commit=False)
-            project.created_by = request.user
-            if has_role(request.user, 'manager') and not has_role(request.user, 'admin', 'centrehead', 'financialadmin'):
-                project.assigned_user = request.user
-            project.research_centre = getattr(request.user, 'research_centre', None)
-            project.save()
+            with transaction.atomic():
+                project = form.save(commit=False)
+                project.created_by = request.user
+                if has_role(request.user, 'manager') and not has_role(request.user, 'admin', 'centrehead', 'financialadmin'):
+                    project.assigned_user = request.user
+                project.research_centre = getattr(request.user, 'research_centre', None)
+                project.save()
+                if project.project_type == 'book':
+                    try:
+                        total_chapters = max(1, int(request.POST.get('book_total_chapters') or 1))
+                    except (TypeError, ValueError):
+                        total_chapters = 1
+                    Book.objects.get_or_create(
+                        project=project,
+                        defaults={
+                            'title': project.name,
+                            'description': project.description,
+                            'status': 'writing',
+                            'due_date': project.due_date,
+                            'lead_author': (
+                                request.POST.get('book_lead_author', '').strip()
+                                or request.user.get_full_name()
+                                or request.user.username
+                            ),
+                            'total_chapters': total_chapters,
+                            'created_by': request.user,
+                        },
+                    )
             messages.success(request, 'Project created successfully!')
             return redirect('assign_projects') 
     return redirect('assign_projects')
@@ -437,12 +476,12 @@ def assign_team_member(request, project_id):
 
 @login_required
 def remove_assignment(request, assignment_id):
+    if not can_manage_projects(request.user):
+        return HttpResponseForbidden('You are not authorized to remove project allocations.')
     assignment = get_object_or_404(
         Assignment,
         id=assignment_id,
-            project__in=scope_projects_for_user(Project.objects.filter(
-                Q(created_by=request.user) | Q(assigned_user=request.user)
-            ), request.user)
+        project__in=manageable_projects_for(request.user),
     )
     if request.method == 'POST':
         assignment.delete()
@@ -452,9 +491,9 @@ def remove_assignment(request, assignment_id):
 
 @login_required
 def add_task(request, project_id):
-    project = get_object_or_404(
-        scope_projects_for_user(Project.objects.filter(Q(id=project_id) & (Q(created_by=request.user) | Q(assigned_user=request.user))), request.user)
-    )
+    if not can_manage_projects(request.user):
+        return HttpResponseForbidden('You are not authorized to manage project tasks.')
+    project = get_object_or_404(manageable_projects_for(request.user), id=project_id)
     if request.method == 'POST':
         form = TaskForm(request.POST, project=project)
         if form.is_valid():
@@ -468,9 +507,14 @@ def add_task(request, project_id):
             # Form has errors - render the page with error messages displayed
             messages.error(request, 'Please fix the errors in the task form.')
             User = get_user_model()
-            projects = scope_projects_for_user(Project.objects.filter(
-                Q(created_by=request.user) | Q(assigned_user=request.user)
-            ), request.user).distinct()
+            projects = manageable_projects_for(request.user)
+            project_lead_users = User.objects.filter(is_active=True).exclude(role='student')
+            if not has_role(request.user, 'admin', 'dean'):
+                centre_id = getattr(request.user, 'research_centre_id', None)
+                project_lead_users = (
+                    project_lead_users.filter(research_centre_id=centre_id)
+                    if centre_id else project_lead_users.none()
+                )
             assignments = project.assignments.select_related("team_member__user")
             assignment_form = AssignmentForm(project=project, user=request.user)
             project_form = ProjectForm()
@@ -482,6 +526,9 @@ def add_task(request, project_id):
                 'assignment_form': assignment_form,
                 'task_form': form,  # Pass the form WITH errors
                 'project_form': project_form,
+                'project_lead_users': project_lead_users.order_by('first_name', 'last_name', 'username'),
+                'workspace_title': 'Centre Project Management' if has_role(request.user, 'centrehead') else 'Project Manager Assignment',
+                'workspace_back_url': reverse('overview') if has_role(request.user, 'admin', 'centrehead') else reverse('manager_dashboard'),
             }
             return render(request, 'manager/assign.html', context)
     
@@ -907,6 +954,8 @@ def manager_book(request):
 @csrf_exempt
 @login_required
 def add_book(request):
+    if not can_manage_publications(request.user):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == 'POST':
         try:
             data = json.loads(request.body)

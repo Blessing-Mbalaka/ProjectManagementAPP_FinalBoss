@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import connection
+from django.urls import reverse
 
 #Here  is the Default Django User_ROLE_VALIDATION.
 from django.contrib.auth.decorators import login_required, user_passes_test
-from users.roles import can_manage_projects, has_role
+from users.roles import can_manage_projects, can_manage_publications, has_role
 from projects.work_scope import manageable_projects_for
 
 from users.models import CustomUser
@@ -16,7 +17,7 @@ from .audit_service import (
     log_payment_creation, log_payment_deletion
 )
 from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 import json
 import csv
 from .media_service import MediaService
@@ -892,6 +893,8 @@ def assign_project(request):
         messages.success(request, f"Project '{project.name}' assigned to {assigned_user.get_full_name() or assigned_user.username}!")
         if not email_sent:
             messages.warning(request, "The project was assigned, but its email could not be delivered.")
+        if request.POST.get('return_to') == 'project_workspace':
+            return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
         return redirect('overview')
     
     # GET request - provide list of projects and users
@@ -3116,6 +3119,9 @@ def admin_conferences(request):
 def add_conference(request):
     from manager.models import Conference
     from manager.publication_projects import sync_publication_project
+
+    if not can_manage_publications(request.user):
+        return HttpResponseForbidden('You are not authorized to create conference projects.')
     
     if request.method == 'POST':
         conference = Conference(

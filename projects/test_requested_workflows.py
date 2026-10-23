@@ -63,6 +63,124 @@ class RequestedRoleAndPrivacyTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.assigned_user, self.other_staff)
 
+    def test_centre_head_pm_tools_open_full_centre_project_workspace(self):
+        self.client.force_login(self.head)
+
+        overview = self.client.get(reverse('overview'))
+        workspace = self.client.get(
+            reverse('assign_projects'),
+            {'project_id': self.project.id},
+        )
+
+        self.assertContains(overview, 'Manage &amp; Load Projects')
+        self.assertContains(overview, reverse('assign_projects'))
+        self.assertContains(overview, 'backdrop-filter:none')
+        self.assertEqual(workspace.status_code, 200)
+        self.assertContains(workspace, 'Centre Project Management')
+        self.assertContains(workspace, 'Upload Workbook')
+        self.assertContains(workspace, 'New Project')
+        self.assertContains(workspace, 'Assign Project Lead')
+        self.assertContains(workspace, self.project.name)
+        self.assertNotContains(workspace, self.other_project.name)
+
+    def test_centre_head_can_add_tasks_to_any_project_in_own_centre_only(self):
+        self.client.force_login(self.head)
+        response = self.client.post(reverse('manager_create_task', args=[self.project.id]), {
+            'title': 'Centre head milestone',
+            'status': 'todo',
+            'task_type': 'Book',
+            'priority': 'High',
+            'assigned_to': '',
+            'parent_task': '',
+            'due_date': '',
+        })
+
+        self.assertRedirects(
+            response,
+            f"{reverse('assign_projects')}?project_id={self.project.id}",
+        )
+        self.assertTrue(Task.objects.filter(
+            project=self.project,
+            title='Centre head milestone',
+            created_by=self.head,
+        ).exists())
+        outside_response = self.client.post(
+            reverse('manager_create_task', args=[self.other_project.id]),
+            {'title': 'Forbidden outside task', 'status': 'todo'},
+        )
+        self.assertEqual(outside_response.status_code, 404)
+
+    def test_centre_head_project_lead_assignment_returns_to_workspace(self):
+        self.client.force_login(self.head)
+        response = self.client.post(reverse('admin_assign_project'), {
+            'project_id': self.project.id,
+            'assigned_user': self.other_staff.id,
+            'return_to': 'project_workspace',
+        })
+
+        self.assertRedirects(
+            response,
+            f"{reverse('assign_projects')}?project_id={self.project.id}",
+        )
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.assigned_user, self.other_staff)
+
+    def test_centre_head_sidebar_exposes_scoped_research_project_tools(self):
+        self.client.force_login(self.head)
+
+        overview = self.client.get(reverse('overview'))
+
+        self.assertContains(overview, 'Research Projects')
+        self.assertContains(overview, 'Book Projects')
+        self.assertContains(overview, 'Paper Projects')
+        self.assertContains(overview, 'Conferences')
+        self.assertEqual(self.client.get(reverse('admin_book')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('admin_journal')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('admin_conferences')).status_code, 200)
+
+    def test_book_project_created_in_assignment_workspace_gets_book_tracker(self):
+        self.client.force_login(self.head)
+
+        response = self.client.post(reverse('create_project'), {
+            'name': 'Centre Handbook',
+            'description': 'A practical centre handbook',
+            'project_type': 'book',
+            'status': 'planning',
+            'due_date': '2027-06-30',
+            'book_lead_author': 'Lead Writer',
+            'book_total_chapters': '12',
+        })
+
+        self.assertRedirects(response, reverse('assign_projects'))
+        project = Project.objects.get(name='Centre Handbook')
+        book = Book.objects.get(project=project)
+        self.assertEqual(project.project_type, 'book')
+        self.assertEqual(project.research_centre, self.centre)
+        self.assertEqual(book.lead_author, 'Lead Writer')
+        self.assertEqual(book.total_chapters, 12)
+
+    def test_standalone_book_creation_also_creates_linked_book_project(self):
+        self.client.force_login(self.head)
+
+        response = self.client.post(
+            reverse('add_book'),
+            json.dumps({
+                'title': 'Research Methods Book',
+                'lead_author': 'Centre Author',
+                'description': 'Methods reference',
+                'status': 'writing',
+                'total_chapters': 8,
+                'completed_chapters': 0,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        book = Book.objects.get(title='Research Methods Book')
+        self.assertIsNotNone(book.project)
+        self.assertEqual(book.project.project_type, 'book')
+        self.assertEqual(book.project.research_centre, self.centre)
+
     def test_financial_admin_can_open_client_engagement_workspace(self):
         self.client.force_login(self.finance)
         self.assertEqual(self.client.get(reverse('manager_engagements')).status_code, 200)

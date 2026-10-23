@@ -37,7 +37,9 @@ body{
 /* IMPORTANT: do not cover the body background */
 .mega-container{
   background:rgba(255,255,255,0.78);
-  backdrop-filter:blur(6px);
+  /* A backdrop filter creates a containing block for fixed descendants in
+     Chromium, which made the overview sidebar end above the viewport. */
+  backdrop-filter:none;
   margin-top:-24px;
 }
 
