@@ -178,10 +178,25 @@ def edit_task(request, task_id):
     if request.method == 'POST':
         valid_statuses = {value for value, _label in Task.STATUS_CHOICES}
         new_status = request.POST.get('status')
-        if new_status in valid_statuses:
-            task.status = new_status
+        if new_status not in valid_statuses:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
+            return redirect('staff_kanban')
+        task.status = new_status
         task.comments = request.POST.get('comments', '').strip()
         task.save(update_fields=['status', 'comments', 'progress'])
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': 'Task update saved successfully.',
+                'task': {
+                    'id': task.id,
+                    'status': task.status,
+                    'progress': task.progress,
+                    'comments': task.comments,
+                },
+            })
 
         return redirect('staff_kanban')
 
@@ -203,7 +218,7 @@ def update_task_status(request, task_id):
         task.status = new_status
         task.save(update_fields=['status', 'progress'])
 
-        return JsonResponse({'success': True})
+        return JsonResponse({'success': True, 'status': task.status, 'progress': task.progress})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
     

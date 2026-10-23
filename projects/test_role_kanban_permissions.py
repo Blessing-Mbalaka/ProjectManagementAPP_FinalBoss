@@ -120,6 +120,30 @@ class RoleKanbanBehaviorTests(TestCase):
         self.assertNotContains(response, 'name="title"')
         self.assertNotContains(response, 'name="task_type"')
         self.assertNotContains(response, reverse("delete_task", args=[self.task.id]))
+        self.assertContains(response, 'staff-kanban-edit-form')
+        self.assertContains(response, 'Please stay online while the system finishes')
+        self.assertContains(response, 'Sorry this is taking longer than usual')
+        self.assertContains(response, 'fetchStaffSave')
+        self.assertContains(response, '60000')
+        self.assertContains(response, 'Your screen has been restored')
+        self.assertContains(response, 'clearStaffModalState')
+        self.assertContains(response, 'js/save-feedback.js')
+
+    def test_staff_ajax_update_returns_saved_state_for_non_blocking_board(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse('staff_edit_task', args=[self.task.id]),
+            {'status': 'in_progress', 'comments': 'Work underway.'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+        self.assertEqual(response.json()['task']['status'], 'in_progress')
+        self.assertEqual(response.json()['task']['progress'], 33)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.comments, 'Work underway.')
 
     def test_staff_cannot_create_or_delete_kanban_tasks(self):
         self.client.force_login(self.staff)

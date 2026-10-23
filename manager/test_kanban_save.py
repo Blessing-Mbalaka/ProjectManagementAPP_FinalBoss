@@ -128,4 +128,5 @@ class ManagerKanbanSaveTests(TestCase):
         self.assertContains(response, "fetchForSave")
         self.assertContains(response, "60000")
         self.assertContains(response, "Your screen has been restored")
+        self.assertContains(response, "js/save-feedback.js")
 

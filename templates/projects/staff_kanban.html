@@ -59,7 +59,13 @@
     gap: 10px;
     justify-content: flex-start;
 }
+.staff-kanban-toast-container{position:fixed;top:1rem;right:1rem;z-index:2100;width:min(380px,calc(100vw - 2rem));}
+.staff-kanban-toast{color:#fff;border-radius:11px;padding:.9rem 1rem;margin-bottom:.65rem;box-shadow:0 10px 28px rgba(0,0,0,.2);}
+.staff-kanban-toast-success{background:#198754}.staff-kanban-toast-error{background:#b02a37}.staff-kanban-toast-info{background:#5f1765}
+.task-saving{pointer-events:none;opacity:.62;}
 </style>
+
+<div id="staffKanbanToastContainer" class="staff-kanban-toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <div class="welcome-box">
     <h3>Kanban Board!</h3>
@@ -102,7 +108,7 @@
                         </li>
                         {% include 'projects/partials/edit_task_modal.html' with task=task task_types=task_types projects=projects %}
                     {% empty %}
-                        <li class="list-group-item text-muted">No tasks in {{ column|title }}.</li>
+                        <li class="list-group-item text-muted" data-empty-state>No tasks in {{ column|title }}.</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -112,6 +118,62 @@
 
 <script>
     let draggedTaskId = null;
+
+    function showStaffKanbanToast(message, type = 'success', duration = 3200) {
+        const toast = document.createElement('div');
+        toast.className = `staff-kanban-toast staff-kanban-toast-${type}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.textContent = message;
+        document.getElementById('staffKanbanToastContainer').appendChild(toast);
+        if (duration) window.setTimeout(() => toast.remove(), duration);
+        return toast;
+    }
+
+    function beginStaffSaveNotice() {
+        const toast = showStaffKanbanToast('Saving your update. Please stay online while the system finishes.', 'info', 0);
+        let seconds = 0;
+        const timer = window.setInterval(() => {
+            seconds += 5;
+            if (seconds >= 20) toast.textContent = 'Sorry this is taking longer than usual. Please stay online; we are still saving your update.';
+            else if (seconds >= 10) toast.textContent = 'The system is still updating. Thank you for your patience—please stay online.';
+        }, 5000);
+        return { finish() { window.clearInterval(timer); toast.remove(); } };
+    }
+
+    async function fetchStaffSave(url, options = {}) {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 60000);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } catch (error) {
+            if (error.name === 'AbortError') throw new Error('Saving timed out after 60 seconds. Your screen has been restored; please check your connection and try again.');
+            throw error;
+        } finally {
+            window.clearTimeout(timeout);
+        }
+    }
+
+    function clearStaffModalState() {
+        if (document.querySelector('.modal.show')) return;
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    }
+
+    function removeEmptyState(zone) {
+        const empty = zone && zone.querySelector('[data-empty-state]');
+        if (empty) empty.remove();
+    }
+
+    function ensureEmptyState(zone) {
+        if (!zone || zone.querySelector('.draggable-task') || zone.querySelector('[data-empty-state]')) return;
+        const empty = document.createElement('li');
+        empty.className = 'list-group-item text-muted';
+        empty.dataset.emptyState = '';
+        empty.textContent = 'No tasks in this column.';
+        zone.appendChild(empty);
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.draggable-task').forEach(task => {
@@ -123,31 +185,78 @@
 
         document.querySelectorAll('.drop-zone').forEach(zone => {
             zone.addEventListener('dragover', (e) => e.preventDefault());
-            zone.addEventListener('drop', (e) => {
+            zone.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 const newStatus = zone.dataset.status;
                 const taskElement = document.querySelector(`[data-task-id="${draggedTaskId}"]`);
                 if (!draggedTaskId || !taskElement) return;
-                taskElement.classList.add('opacity-50');
+                const originalZone = taskElement.closest('.drop-zone');
+                if (originalZone === zone) return;
+                taskElement.classList.add('task-saving');
+                const saveNotice = beginStaffSaveNotice();
+                try {
+                    const response = await fetchStaffSave(`/projects/update-task-status/${draggedTaskId}/`, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': '{{ csrf_token }}','Content-Type': 'application/json'},
+                        body: JSON.stringify({status: newStatus}),
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.error || 'Failed to update task.');
+                    removeEmptyState(zone);
+                    zone.appendChild(taskElement);
+                    ensureEmptyState(originalZone);
+                    showStaffKanbanToast('Task status saved successfully.');
+                } catch (error) {
+                    showStaffKanbanToast(error.message || 'Task could not be saved.', 'error');
+                } finally {
+                    saveNotice.finish();
+                    taskElement.classList.remove('task-saving');
+                    draggedTaskId = null;
+                    clearStaffModalState();
+                }
+            });
+        });
 
-                fetch(`/projects/update-task-status/${draggedTaskId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ status: newStatus })
-                }).then(async response => ({ok: response.ok, data: await response.json()}))
-                  .then(result => {
-                      if (!result.ok || !result.data.success) throw new Error(result.data.error || 'Failed to update task.');
-                      zone.appendChild(taskElement);
-                      taskElement.classList.remove('opacity-50');
-                      const notice = document.createElement('div');
-                      notice.className = 'alert alert-success position-fixed top-0 end-0 m-3 shadow';
-                      notice.style.zIndex = '2000'; notice.textContent = 'Task saved';
-                      document.body.appendChild(notice); setTimeout(() => notice.remove(), 1800);
-                  })
-                  .catch(error => { taskElement.classList.remove('opacity-50'); alert(error.message); });
+        document.querySelectorAll('.staff-kanban-edit-form').forEach(form => {
+            form.addEventListener('submit', async event => {
+                event.preventDefault();
+                const button = form.querySelector('[type="submit"]');
+                const taskElement = document.querySelector(`[data-task-id="${form.dataset.taskId}"]`);
+                const originalButton = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving…';
+                if (taskElement) taskElement.classList.add('task-saving');
+                const saveNotice = beginStaffSaveNotice();
+                try {
+                    const response = await fetchStaffSave(form.action, {
+                        method: 'POST',
+                        headers: {'X-Requested-With': 'XMLHttpRequest'},
+                        body: new FormData(form),
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.error || 'Task could not be saved.');
+                    const targetZone = document.querySelector(`.drop-zone[data-status="${result.task.status}"]`);
+                    const sourceZone = taskElement && taskElement.closest('.drop-zone');
+                    if (taskElement && targetZone && sourceZone !== targetZone) {
+                        removeEmptyState(targetZone);
+                        targetZone.appendChild(taskElement);
+                        ensureEmptyState(sourceZone);
+                    }
+                    const modal = form.closest('.modal');
+                    if (modal && window.bootstrap) {
+                        modal.addEventListener('hidden.bs.modal', clearStaffModalState, {once:true});
+                        bootstrap.Modal.getOrCreateInstance(modal).hide();
+                    }
+                    showStaffKanbanToast(result.message || 'Task update saved successfully.');
+                } catch (error) {
+                    showStaffKanbanToast(error.message || 'Task could not be saved.', 'error');
+                } finally {
+                    saveNotice.finish();
+                    button.disabled = false;
+                    button.innerHTML = originalButton;
+                    if (taskElement) taskElement.classList.remove('task-saving');
+                    window.setTimeout(clearStaffModalState, 450);
+                }
             });
         });
     });
