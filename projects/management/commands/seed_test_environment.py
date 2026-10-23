@@ -11,7 +11,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from adminpanel.models import ResearchCentre
-from projects.models import Project, Task
+from manager.models import Book, Chapter
+from projects.models import Assignment, Project, Task, TeamMember
 
 
 class Command(BaseCommand):
@@ -81,6 +82,86 @@ class Command(BaseCommand):
                         'due_date': project.due_date - timedelta(days=2 - task_index),
                     },
                 )
+
+        # A recognizable multi-author book reproduces the former leakage case:
+        # one manager tracker plus separate, explicitly assigned author work.
+        book_project, _ = Project.objects.update_or_create(
+            import_key='codex-test:book-privacy',
+            defaults={
+                'name': 'Digitalization for Dummies (Demo)',
+                'description': 'Safe demonstration of chapter and personal Kanban isolation.',
+                'project_type': 'book',
+                'status': 'in-progress',
+                'created_by': users['demo-pm'],
+                'assigned_user': users['demo-pm'],
+                'research_centre': centre,
+                'due_date': today + timedelta(days=90),
+            },
+        )
+        for username, responsibility in (
+            ('demo-raksha', 'Responsible author: Digital Readiness'),
+            ('demo-prof', 'Responsible author: Digital Governance'),
+        ):
+            user = users[username]
+            member, _ = TeamMember.objects.update_or_create(
+                user=user,
+                defaults={'full_name': user.get_full_name() or user.username, 'role': 'Author'},
+            )
+            Assignment.objects.update_or_create(
+                project=book_project,
+                team_member=member,
+                defaults={'responsibility': responsibility},
+            )
+
+        book, _ = Book.objects.update_or_create(
+            project=book_project,
+            defaults={
+                'title': 'Digitalization for Dummies (Demo)',
+                'description': 'Dummy book used only in the isolated SQLite environment.',
+                'lead_author': users['demo-pm'].username,
+                'lead_author_user': users['demo-pm'],
+                'total_chapters': 2,
+                'completed_chapters': 0,
+                'created_by': users['demo-pm'],
+                'due_date': book_project.due_date,
+            },
+        )
+        book.co_authors_users.set([users['demo-raksha'], users['demo-prof']])
+        chapter_specs = (
+            (1, 'Digital Readiness', users['demo-raksha']),
+            (2, 'Digital Governance', users['demo-prof']),
+        )
+        for number, title, author in chapter_specs:
+            Chapter.objects.update_or_create(
+                book=book,
+                chapter_number=number,
+                defaults={
+                    'title': title,
+                    'author': author.username,
+                    'assigned_author': author,
+                    'status': 'In Progress',
+                },
+            )
+        task_specs = (
+            ('book-manager-tracker', 'Chapter: manager-only tracker', None),
+            ('book-raksha', 'Write Digital Readiness — demo-raksha', users['demo-raksha']),
+            ('book-prof', 'Write Digital Governance — demo-prof', users['demo-prof']),
+        )
+        for import_key, title, assignee in task_specs:
+            Task.objects.update_or_create(
+                project=book_project,
+                import_key=import_key,
+                defaults={
+                    'title': title,
+                    'assigned_to': assignee,
+                    'created_by': users['demo-pm'],
+                    'status': 'in_progress',
+                    'due_date': book_project.due_date - timedelta(days=14),
+                },
+            )
+
+        seeded_projects = Project.objects.filter(import_key__startswith='codex-test:').count()
+        seeded_tasks = Task.objects.filter(project__import_key__startswith='codex-test:').count()
         self.stdout.write(self.style.SUCCESS(
-            f'Seeded {len(users)} dummy users, {len(projects)} projects and {len(projects) * 3} tasks in {database_name}.'
+            f'Seeded {len(users)} dummy users, {seeded_projects} projects and {seeded_tasks} tasks in {database_name}.'
         ))
