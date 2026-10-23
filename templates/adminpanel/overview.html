@@ -361,6 +361,7 @@ body{
 .pipeline-donut{
   width:178px;
   aspect-ratio:1;
+  position:relative;
   border-radius:50%;
   background:conic-gradient(var(--pipeline-gradient));
   box-shadow:0 16px 34px rgba(70,33,19,.12),inset 0 0 0 1px rgba(0,0,0,.04);
@@ -369,6 +370,9 @@ body{
 .pipeline-donut::after{
   content:"";
   position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
   width:116px;
   aspect-ratio:1;
   border-radius:50%;
