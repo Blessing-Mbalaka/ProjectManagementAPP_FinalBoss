@@ -657,6 +657,10 @@
                 </svg>
                 New Message
             </button>
+            <button class="new-message-btn" id="newBroadcastBtn" style="margin-top: 0.55rem; background: #6b3a75;">
+                <i class="fas fa-bullhorn" style="margin-right: 0.5rem;"></i>
+                New Broadcast
+            </button>
         </div>
         <div class="recipients-list" id="recipientsList">
             <div class="thread-placeholder" style="padding: 1rem;">
@@ -769,6 +773,46 @@
     </div>
 </div>
 
+<!-- New Broadcast Modal -->
+<div id="newBroadcastModal" class="new-message-modal">
+    <div class="modal-content">
+        <button class="modal-close" id="closeNewBroadcastModal">&times;</button>
+        <div class="modal-header">
+            <h5><i class="fas fa-bullhorn"></i> New Broadcast</h5>
+        </div>
+        <form id="newBroadcastForm">
+            <div class="form-group">
+                <label class="form-label" for="newBroadcastAudience">Audience:</label>
+                <select id="newBroadcastAudience" class="form-control" required>
+                    <option value="people">Selected people</option>
+                    <option value="project">Everyone involved in a project</option>
+                </select>
+            </div>
+            <div class="form-group" id="newBroadcastPeopleGroup">
+                <label class="form-label">Recipients:</label>
+                <div id="newBroadcastRecipientsList" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 8px;">
+                    <span class="text-muted">Loading recipients…</span>
+                </div>
+            </div>
+            <div class="form-group" id="newBroadcastProjectGroup" style="display: none;">
+                <label class="form-label" for="newBroadcastProject">Project team:</label>
+                <select id="newBroadcastProject" class="form-control">
+                    <option value="">Select a project…</option>
+                </select>
+                <small class="text-muted">Includes the project lead, creator, assigned team members, and task assignees. You are not sent a duplicate.</small>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="newBroadcastText">Message:</label>
+                <textarea id="newBroadcastText" class="form-control" rows="4" placeholder="Write the announcement or project update…" required></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn-send" id="sendNewBroadcastBtn">Send Broadcast</button>
+                <button type="button" class="btn-cancel" id="cancelNewBroadcastBtn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Broadcast Modal -->
 <div id="broadcastModal" class="new-message-modal">
     <div class="modal-content">
@@ -806,6 +850,7 @@
     let isSending = false;
     let selectedMessageIds = new Set();
     const API_BASE = "{% url 'api_staff_inbox' %}".replace('/inbox/', '/');
+    const NEW_BROADCAST_URL = "{% url 'api_new_broadcast_message' %}";
 
 
     // Load conversations and set up listeners on page load
@@ -878,8 +923,13 @@
 
     function setupEventListeners() {
         const newMessageBtn = document.getElementById('newMessageBtn');
+        const newBroadcastBtn = document.getElementById('newBroadcastBtn');
         const closeBtn = document.getElementById('closeModal');
         const cancelBtn = document.getElementById('cancelBtn');
+        const closeNewBroadcastBtn = document.getElementById('closeNewBroadcastModal');
+        const cancelNewBroadcastBtn = document.getElementById('cancelNewBroadcastBtn');
+        const newBroadcastForm = document.getElementById('newBroadcastForm');
+        const newBroadcastAudience = document.getElementById('newBroadcastAudience');
         const closeBroadcastBtn = document.getElementById('closeBroadcastModal');
         const cancelBroadcastBtn = document.getElementById('cancelBroadcastBtn');
         const messageForm = document.getElementById('messageForm');
@@ -888,8 +938,13 @@
         const broadcastModal = document.getElementById('broadcastModal');
 
         if (newMessageBtn) newMessageBtn.addEventListener('click', openNewMessageModal);
+        if (newBroadcastBtn) newBroadcastBtn.addEventListener('click', openNewBroadcastModal);
         if (closeBtn) closeBtn.addEventListener('click', closeNewMessageModal);
         if (cancelBtn) cancelBtn.addEventListener('click', closeNewMessageModal);
+        if (closeNewBroadcastBtn) closeNewBroadcastBtn.addEventListener('click', closeNewBroadcastModal);
+        if (cancelNewBroadcastBtn) cancelNewBroadcastBtn.addEventListener('click', closeNewBroadcastModal);
+        if (newBroadcastForm) newBroadcastForm.addEventListener('submit', sendNewBroadcast);
+        if (newBroadcastAudience) newBroadcastAudience.addEventListener('change', updateNewBroadcastAudience);
         if (closeBroadcastBtn) closeBroadcastBtn.addEventListener('click', closeBroadcastModal);
         if (cancelBroadcastBtn) cancelBroadcastBtn.addEventListener('click', closeBroadcastModal);
         if (messageForm) messageForm.addEventListener('submit', sendMessage);
@@ -911,6 +966,105 @@
                 }
             });
         }
+
+        const newBroadcastModal = document.getElementById('newBroadcastModal');
+        if (newBroadcastModal) {
+            newBroadcastModal.addEventListener('click', (e) => {
+                if (e.target.id === 'newBroadcastModal') closeNewBroadcastModal();
+            });
+        }
+    }
+
+    function openNewBroadcastModal() {
+        document.getElementById('newBroadcastModal').classList.add('active');
+        loadNewBroadcastOptions();
+        updateNewBroadcastAudience();
+        setTimeout(() => document.getElementById('newBroadcastText').focus(), 0);
+    }
+
+    function closeNewBroadcastModal() {
+        document.getElementById('newBroadcastModal').classList.remove('active');
+        document.getElementById('newBroadcastForm').reset();
+        updateNewBroadcastAudience();
+    }
+
+    function updateNewBroadcastAudience() {
+        const isProject = document.getElementById('newBroadcastAudience').value === 'project';
+        document.getElementById('newBroadcastPeopleGroup').style.display = isProject ? 'none' : 'block';
+        document.getElementById('newBroadcastProjectGroup').style.display = isProject ? 'block' : 'none';
+    }
+
+    function loadNewBroadcastOptions() {
+        fetch(`${API_BASE}recipients/`)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.message || 'Unable to load broadcast options.');
+
+                const recipientsList = document.getElementById('newBroadcastRecipientsList');
+                recipientsList.replaceChildren();
+                data.recipients.forEach(user => {
+                    const label = document.createElement('label');
+                    label.style.cssText = 'display:flex;align-items:center;padding:8px;gap:8px;cursor:pointer;border-bottom:1px solid #f0f0f0;';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = 'new_broadcast_recipients';
+                    checkbox.value = user.id;
+                    checkbox.style.cssText = 'width:18px;height:18px;';
+                    const name = document.createElement('span');
+                    name.textContent = user.name;
+                    const role = document.createElement('span');
+                    role.style.cssText = 'font-size:0.8rem;color:#999;';
+                    role.textContent = `(${user.role})`;
+                    label.append(checkbox, name, role);
+                    recipientsList.appendChild(label);
+                });
+                if (!data.recipients.length) recipientsList.textContent = 'No permitted recipients are available.';
+
+                const projectSelect = document.getElementById('newBroadcastProject');
+                projectSelect.replaceChildren(new Option('Select a project…', ''));
+                (data.projects || []).forEach(project => {
+                    projectSelect.add(new Option(`${project.name} · ${project.project_type}`, project.id));
+                });
+            })
+            .catch(error => alert(error.message));
+    }
+
+    function sendNewBroadcast(event) {
+        event.preventDefault();
+        const audience = document.getElementById('newBroadcastAudience').value;
+        const message = document.getElementById('newBroadcastText').value.trim();
+        const payload = { audience, message };
+        if (audience === 'project') {
+            payload.project_id = document.getElementById('newBroadcastProject').value;
+            if (!payload.project_id) return alert('Please select a project team.');
+        } else {
+            payload.recipient_ids = Array.from(
+                document.querySelectorAll('input[name="new_broadcast_recipients"]:checked')
+            ).map(input => Number(input.value));
+            if (!payload.recipient_ids.length) return alert('Please select at least one recipient.');
+        }
+        if (!message) return alert('Please enter a broadcast message.');
+
+        const button = document.getElementById('sendNewBroadcastBtn');
+        button.disabled = true;
+        button.textContent = 'Sending…';
+        fetch(NEW_BROADCAST_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+            body: JSON.stringify(payload),
+        })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || 'Broadcast could not be sent.');
+                alert(`✓ ${data.message}`);
+                closeNewBroadcastModal();
+                loadConversations();
+            })
+            .catch(error => alert(error.message))
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = 'Send Broadcast';
+            });
     }
 
     // File validation utility functions

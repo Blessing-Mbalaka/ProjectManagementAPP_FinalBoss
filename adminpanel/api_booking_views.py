@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.db import transaction
 from django.db.models import Q
 from datetime import datetime, timedelta
 import json
@@ -13,7 +14,10 @@ import io
 
 from adminpanel.models import UserAvailability, UserLeaveRequest
 from users.models import CustomUser
-from projects.models import Task, ChatMessage
+from projects.models import Project, Task, ChatMessage
+from projects.scope import scope_projects_for_user
+from projects.work_scope import manageable_projects_for
+from users.roles import has_role
 
 
 @login_required
@@ -422,6 +426,34 @@ def delete_availability(request, availability_id):
 
 # ============== STAFF MESSAGING API ENDPOINTS ==============
 
+MESSAGE_ROLES = ('staff', 'manager', 'admin', 'centrehead', 'dean', 'financialadmin', 'supervisor')
+
+
+def _can_send_staff_messages(user):
+    return has_role(user, *MESSAGE_ROLES)
+
+
+def _message_recipients_for(user):
+    return CustomUser.objects.filter(is_active=True, role__in=MESSAGE_ROLES).exclude(pk=user.pk)
+
+
+def _broadcast_projects_for(user):
+    projects = Project.objects.select_related('assigned_user', 'created_by').prefetch_related(
+        'assignments__team_member__user', 'tasks__assigned_to'
+    )
+    if has_role(user, 'admin', 'dean'):
+        return projects
+    if has_role(user, 'centrehead'):
+        return scope_projects_for_user(projects, user)
+    if has_role(user, 'manager', 'financialadmin'):
+        return manageable_projects_for(user, projects)
+    return projects.filter(
+        Q(created_by=user)
+        | Q(assigned_user=user)
+        | Q(assignments__team_member__user=user)
+        | Q(tasks__assigned_to=user)
+    ).distinct()
+
 @login_required
 @require_http_methods(["GET"])
 def get_staff_inbox(request):
@@ -603,8 +635,7 @@ def send_staff_message(request):
         recipient = get_object_or_404(CustomUser, id=recipient_id, is_active=True)
         
         # Permission check: sender and recipient should be staff/admin
-        allowed_roles = ['staff', 'manager', 'admin', 'financialadmin']
-        if request.user.role not in allowed_roles or recipient.role not in allowed_roles:
+        if not _can_send_staff_messages(request.user) or recipient.role not in MESSAGE_ROLES:
             return JsonResponse({
                 'success': False,
                 'message': 'Only staff members can send messages to each other'
@@ -645,15 +676,11 @@ def send_staff_message(request):
 @require_http_methods(["GET"])
 def get_recipients_list(request):
     """Get list of staff members available for messaging"""
+    if not _can_send_staff_messages(request.user):
+        return JsonResponse({'success': False, 'message': 'Your account cannot send staff messages.'}, status=403)
     try:
         # Get all active staff/admin users except current user
-        allowed_roles = ['staff', 'manager', 'admin', 'financialadmin']
-        recipients = CustomUser.objects.filter(
-            is_active=True,
-            role__in=allowed_roles
-        ).exclude(
-            id=request.user.id
-        ).values(
+        recipients = _message_recipients_for(request.user).values(
             'id', 'first_name', 'last_name', 'username', 'role'
         ).order_by('first_name', 'last_name')
         
@@ -669,9 +696,15 @@ def get_recipients_list(request):
                 'initials': ''.join([n[0].upper() for n in full_name.split()])
             })
         
+        projects_list = [
+            {'id': project.id, 'name': project.name, 'project_type': project.get_project_type_display()}
+            for project in _broadcast_projects_for(request.user).order_by('name')
+        ]
+
         return JsonResponse({
             'success': True,
             'recipients': recipients_list,
+            'projects': projects_list,
             'total_count': len(recipients_list)
         })
     
@@ -680,6 +713,81 @@ def get_recipients_list(request):
             'success': False,
             'message': str(e)
         }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def new_broadcast_message(request):
+    """Create one new message for selected people or every active member of a project team."""
+    if not _can_send_staff_messages(request.user):
+        return JsonResponse({'success': False, 'message': 'Your account cannot send staff broadcasts.'}, status=403)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid broadcast request.'}, status=400)
+
+    message_text = str(data.get('message', '')).strip()
+    audience = data.get('audience')
+    if not message_text:
+        return JsonResponse({'success': False, 'message': 'Please enter a broadcast message.'}, status=400)
+
+    if audience == 'project':
+        project_id = data.get('project_id')
+        project = _broadcast_projects_for(request.user).filter(pk=project_id).first()
+        if not project:
+            return JsonResponse(
+                {'success': False, 'message': 'That project is outside your permitted project scope.'},
+                status=403,
+            )
+        recipient_ids = {
+            project.created_by_id,
+            project.assigned_user_id,
+            *project.assignments.values_list('team_member__user_id', flat=True),
+            *project.tasks.exclude(assigned_to_id=None).values_list('assigned_to_id', flat=True),
+        }
+        recipient_ids.discard(None)
+        recipient_ids.discard(request.user.id)
+        recipients = CustomUser.objects.filter(pk__in=recipient_ids, is_active=True)
+        audience_label = project.name
+    elif audience == 'people':
+        raw_ids = data.get('recipient_ids') or []
+        if not isinstance(raw_ids, list):
+            return JsonResponse({'success': False, 'message': 'Choose one or more recipients.'}, status=400)
+        try:
+            requested_ids = {int(value) for value in raw_ids}
+        except (TypeError, ValueError):
+            return JsonResponse({'success': False, 'message': 'The recipient selection is invalid.'}, status=400)
+        requested_ids.discard(request.user.id)
+        recipients = _message_recipients_for(request.user).filter(pk__in=requested_ids)
+        if recipients.count() != len(requested_ids):
+            return JsonResponse(
+                {'success': False, 'message': 'One or more recipients are outside your messaging permissions.'},
+                status=403,
+            )
+        audience_label = 'selected recipients'
+    else:
+        return JsonResponse({'success': False, 'message': 'Choose people or a project team.'}, status=400)
+
+    recipient_ids = list(recipients.values_list('id', flat=True)[:250])
+    if not recipient_ids:
+        return JsonResponse({'success': False, 'message': 'No other active team members were found.'}, status=400)
+
+    with transaction.atomic():
+        ChatMessage.objects.bulk_create([
+            ChatMessage(
+                sender=request.user,
+                recipient_id=recipient_id,
+                message=message_text,
+                submission=None,
+            )
+            for recipient_id in recipient_ids
+        ])
+
+    return JsonResponse({
+        'success': True,
+        'recipient_count': len(recipient_ids),
+        'message': f'Broadcast sent to {len(recipient_ids)} member(s) of {audience_label}.',
+    })
 
 
 @login_required
@@ -718,8 +826,7 @@ def broadcast_message(request):
         recipient = get_object_or_404(CustomUser, id=recipient_id, is_active=True)
         
         # Permission check: sender and recipient should be staff/admin
-        allowed_roles = ['staff', 'manager', 'admin', 'financialadmin']
-        if request.user.role not in allowed_roles or recipient.role not in allowed_roles:
+        if not _can_send_staff_messages(request.user) or recipient.role not in MESSAGE_ROLES:
             return JsonResponse({
                 'success': False,
                 'message': 'Only staff members can broadcast messages'
