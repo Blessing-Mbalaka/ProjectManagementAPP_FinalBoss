@@ -190,7 +190,7 @@
                             <td data-category-cell="Equipment">{% if record.category == 'Equipment' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
                             <td data-category-cell="Travel">{% if record.category == 'Travel' %}R {{ record.amount|floatformat:2 }}{% endif %}</td>
                             <td><strong>R {{ record.amount|floatformat:2 }}</strong></td>
-                            <td>R {{ record.opening_balance|floatformat:2 }}</td>
+                            <td>{% if record.is_salary_aggregate %}—{% else %}R {{ record.opening_balance|floatformat:2 }}{% endif %}</td>
                             {% if can_edit_finance %}
                             <td class="d-flex gap-2">
                                 {% if record.is_salary_aggregate %}<span class="badge text-bg-secondary"><i class="bi bi-shield-lock me-1"></i>Protected</span>{% else %}<button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editExpenditureModal{{ record.id }}">
@@ -251,7 +251,7 @@
                             <small>{{ log.timestamp|date:"Y-m-d H:i:s" }}</small>
                         </td>
                         <td>
-                            <small>{{ log.user.get_full_name|default:log.user.username }}</small>
+                            <small>{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}System{% endif %}</small>
                         </td>
                         <td>
                             <span class="badge bg-info">{{ log.get_action_display }}</span>
@@ -265,7 +265,7 @@
                         <td>
                             <small>
                                 {% if log.previous_values %}
-                                    <code style="display: block; max-width: 200px; white-space: pre-wrap; word-wrap: break-word;">{{ log.previous_values|safe }}</code>
+                                    <code style="display: block; max-width: 200px; white-space: pre-wrap; word-wrap: break-word;">{{ log.previous_values }}</code>
                                 {% else %}
                                     <span class="text-muted">—</span>
                                 {% endif %}
@@ -274,7 +274,7 @@
                         <td>
                             <small>
                                 {% if log.new_values %}
-                                    <code style="display: block; max-width: 200px; white-space: pre-wrap; word-wrap: break-word;">{{ log.new_values|safe }}</code>
+                                    <code style="display: block; max-width: 200px; white-space: pre-wrap; word-wrap: break-word;">{{ log.new_values }}</code>
                                 {% else %}
                                     <span class="text-muted">—</span>
                                 {% endif %}
@@ -382,7 +382,7 @@
             <select name="category" class="form-select" required>
               <option value="">-- Select Category --</option>
               {% for key, label in category_choices %}
-              <option value="{{ key }}">{{ label }}</option>
+              <option value="{{ key }}" {% if key == 'Salary' and user.role != 'admin' and user.role != 'financialadmin' %}disabled{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
           </div>
@@ -581,7 +581,7 @@
             <label>Category</label>
             <select name="category" class="form-select" required>
               {% for key, label in category_choices %}
-                <option value="{{ key }}" {% if record.category == key %}selected{% endif %}>{{ label }}</option>
+                <option value="{{ key }}" {% if key == 'Salary' and user.role != 'admin' and user.role != 'financialadmin' %}disabled{% endif %} {% if record.category == key %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
           </div>
@@ -608,6 +608,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    window.canManageSalary = {% if user.role == 'admin' or user.role == 'financialadmin' %}true{% else %}false{% endif %};
     window.canEditFinance = {{ can_edit_finance|yesno:"true,false" }};
 </script>
 <script src="{% static 'js/finance.js' %}"></script>
@@ -915,7 +916,7 @@ const pieChart = new Chart(pieCtx, {
             <label class="form-label">Category</label>
             <select name="category" class="form-select" required>
               <option value="">-- Select Category --</option>
-              <option value="Salary">Salary</option>
+              <option value="Salary" {% if user.role != 'admin' and user.role != 'financialadmin' %}disabled{% endif %}>Salary</option>
               <option value="Bursaries">Bursaries</option>
               <option value="Invoices">Invoices</option>
               <option value="Fitness">Fitness</option>

@@ -5,6 +5,5 @@ class UsersConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'users'
 
-def ready(self):
-    import users.signals  # this ensures signals are connected
-
+    def ready(self):
+        from . import role_security  # noqa: F401

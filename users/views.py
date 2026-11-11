@@ -22,13 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 def register_view(request):
+    if request.method == 'POST' and request.POST.get('role') == 'it':
+        return HttpResponseForbidden('IT accounts must be created by an administrator.')
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             role = request.POST.get('role')
 
             # Prevent public self-registration into privileged roles
-            if role in ['admin', 'dean', 'centrehead', 'overseer', 'financialadmin']:
+            if role in ['admin', 'dean', 'centrehead', 'overseer', 'it', 'financialadmin']:
                 form.add_error(None, "You are not allowed to register with this role.")
                 return render(request, 'users/register.html', {'form': form})
 
@@ -80,6 +82,8 @@ def login_view(request):
 
 
 def _role_home_name(user):
+    if user.role == 'it':
+        return 'it_dashboard'
     if user.role in {'admin', 'dean', 'centrehead', 'overseer'}:
         return 'overview'
     if user.role == 'supervisor':

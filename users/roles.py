@@ -43,3 +43,7 @@ def can_manage_publications(user):
     # may upload; students and finance-only accounts may not.
     return has_role(user, "admin", 'centrehead', 'overseer', "manager", "supervisor", "staff")
 
+
+
+def can_operate_system(user):
+    return has_role(user, 'it', 'admin')

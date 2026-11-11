@@ -114,6 +114,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.middleware.RoleChangeContextMiddleware',
     'users.middleware.OverseerFinancialBoundaryMiddleware',
     'adminpanel.middleware.PageVisitAuditMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -261,3 +262,21 @@ LOGGING = {
         },
     },
 }
+
+# IT operations are opt-in. The staging directory must be private; emailed payloads are removed.
+DB_BACKUP_ENABLED = env_flag('DB_BACKUP_ENABLED', False)
+DB_BACKUP_DIR = Path(os.getenv('DB_BACKUP_DIR', str(BASE_DIR / 'private_backups')))
+DB_RESTORE_ENABLED = env_flag('DB_RESTORE_ENABLED', False)
+DB_MAINTENANCE_MODE = env_flag('DB_MAINTENANCE_MODE', False)
+PG_DUMP_BIN = os.getenv('PG_DUMP_BIN', 'pg_dump')
+PG_RESTORE_BIN = os.getenv('PG_RESTORE_BIN', 'pg_restore')
+
+DB_BACKUP_KEEP_LOCAL = env_flag('DB_BACKUP_KEEP_LOCAL', False)
+DB_BACKUP_MAX_EMAIL_BYTES = int(os.getenv('DB_BACKUP_MAX_EMAIL_BYTES', str(15 * 1024 * 1024)))
+DB_BACKUP_ALLOW_TEST_EMAIL = False
+
+DB_RESTORE_ALLOW_DIFFERENT_DATABASE = env_flag('DB_RESTORE_ALLOW_DIFFERENT_DATABASE', False)
+
+# Dedicated payroll keys must be kept outside the database and its emailed backups.
+# First key encrypts new values; subsequent keys permit reading older backups.
+SALARY_ENCRYPTION_KEYS = [key.strip() for key in os.getenv('SALARY_ENCRYPTION_KEYS', '').split(',') if key.strip()]

@@ -95,6 +95,15 @@
             </div>
 
             <ul class="sidebar-menu">
+                {% if user.role == 'it' %}
+                <li><a class="nav-link" href="{% url 'it_dashboard' %}"><i class="bi bi-hdd-stack"></i><span>IT Operations</span></a></li>
+                <li><a class="nav-link" href="{% url 'security_event_audit' %}"><i class="bi bi-shield-check"></i><span>Security Alerts</span></a></li>
+                <li><a class="nav-link" href="{% url 'page_visit_audit' %}"><i class="bi bi-activity"></i><span>User Page Activity</span></a></li>
+                {% else %}
+                {% if user.role == 'admin' or user.is_superuser %}
+                <li><a class="nav-link" href="{% url 'it_dashboard' %}"><i class="bi bi-hdd-stack"></i><span>IT Operations</span></a></li>
+                {% endif %}
+
                 {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' or user.role == 'overseer' %}
                 <li><a href="{% url 'overview' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
                 <!-- <li><a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li> -->
@@ -212,6 +221,7 @@
                 {% else %}
 {% if user.role != 'overseer' %}                <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>{% endif %}
                 {% endif %}
+{% endif %}
                 </ul>
 
             <div class="sidebar-footer">

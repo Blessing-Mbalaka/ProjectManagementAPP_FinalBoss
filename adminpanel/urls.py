@@ -1,4 +1,5 @@
 from django.urls import path
+from . import it_views
 from . import views
 from . import supervisors
 from . import notification_views
@@ -6,6 +7,11 @@ from . import api_booking_views
 from .clock_views import clock_in, clock_out, get_clock_status, clock_history
 
 urlpatterns = [
+    path('it/', it_views.it_dashboard, name='it_dashboard'),
+    path('it/backup/', it_views.it_backup_now, name='it_backup_now'),
+    path('it/import/', it_views.it_backup_import, name='it_backup_import'),
+    path('it/restore/', it_views.it_restore, name='it_restore'),
+    path('it/backups/<str:backup_id>/download/', it_views.it_backup_download, name='it_backup_download'),
     # Supervisor Portal Routes
     path('supervisor-portal/dashboard/', supervisors.supervisor_dashboard, name='supervisor_dashboard_portal'),
     path('supervisor-portal/messages/', supervisors.supervisor_messages, name='supervisor_messages'),

@@ -20,6 +20,12 @@ def create_audit_log(action, entity_type, entity_id, entity_name, user, previous
         previous_values: Dict of old values (for edit operations)
         new_values: Dict of new values (for edit operations)
     """
+    previous_values, new_values = previous_values or {}, new_values or {}
+    if entity_type == 'Expenditure' and ('(Salary)' in entity_name or previous_values.get('category') == 'Salary' or new_values.get('category') == 'Salary'):
+        entity_name = 'Protected salary record'
+        hidden = {'amount', 'name', 'opening_balance', 'closing_balance', 'oracle_balance'}
+        previous_values = {key: '[protected]' if key in hidden else value for key, value in previous_values.items()}
+        new_values = {key: '[protected]' if key in hidden else value for key, value in new_values.items()}
     try:
         with transaction.atomic():
             AuditLog.objects.create(

@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const categoryColor = categoryColors[forecast.category] || '#6c757d';
 
-            const actionsCell = canEditFinance ? `
+            const actionsCell = canEditFinance && forecast.is_salary_aggregate ? `<td><span class="badge bg-secondary">Protected salary pool</span></td>` : canEditFinance ? `
                     <td>
                         <button type="button" class="btn btn-sm btn-warning edit-forecast-btn"
                             data-id="${forecast.id}"
@@ -703,7 +703,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             archiveTableBody.innerHTML += `
                 <tr>
-                    <td><input type="checkbox" class="archive-checkbox" data-id="${forecast.id}" data-cost="${forecast.total_cost}" data-cc="${forecast.cost_centre_id}"></td>
+                    <td><input type="checkbox" class="archive-checkbox" ${forecast.category === 'Salary' && !window.canManageSalary ? 'disabled title="Payroll role required"' : ''} data-id="${forecast.id}" data-cost="${forecast.total_cost}" data-cc="${forecast.cost_centre_id}"></td>
                     <td><small>${period}</small></td>
                     <td>${forecast.name}</td>
                     <td><span class="badge" style="background-color: ${categoryColor};">${forecast.category}</span></td>
@@ -766,7 +766,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (releaseAllArchiveBtn) {
         releaseAllArchiveBtn.addEventListener('click', function() {
-            const allIds = archiveForecasts.map(f => f.id);
+            const allIds = archiveForecasts.filter(f => f.category !== 'Salary' || window.canManageSalary).map(f => f.id);
 
             if (allIds.length === 0) {
                 alert('No forecasts to release');
@@ -796,7 +796,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!forecastsByCostCentre[ccId]) {
                     forecastsByCostCentre[ccId] = [];
                 }
-                forecastsByCostCentre[ccId].push(parseInt(forecastId));
+                forecastsByCostCentre[ccId].push(String(forecastId).startsWith('salary-') ? forecastId : parseInt(forecastId, 10));
             });
 
             // Release for each cost centre

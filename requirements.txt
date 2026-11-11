@@ -18,3 +18,5 @@ tzdata==2025.2
 whitenoise==6.9.0
 
 django-storages[azure]>=1.14.4,<2
+
+cryptography==50.0.2

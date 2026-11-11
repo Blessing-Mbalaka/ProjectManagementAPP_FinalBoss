@@ -1,3 +1,4 @@
+from .salary_models import SalaryProtectedModel
 from django.conf import settings
 from django.db import models
 from django.apps import apps
@@ -287,7 +288,7 @@ class CostCentrePayment(models.Model):
             pass
 
 
-class Expenditure(models.Model):
+class Expenditure(SalaryProtectedModel):
     EXPENSE_CATEGORY_CHOICES = [
         ('Salary', 'Salary'),
         ('Bursaries', 'Bursaries'),
@@ -308,6 +309,12 @@ class Expenditure(models.Model):
     closing_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     oracle_balance = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     expense_id = models.CharField(max_length=100, unique=True, null=True, blank=True, db_index=True, help_text="External/import identifier used to prevent duplicate uploaded expenses")
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            condition=~models.Q(category='Salary') | (models.Q(amount=0, opening_balance=0, closing_balance=0, oracle_balance__isnull=True, name='Protected salary record') & ~models.Q(salary_ciphertext='')),
+            name='expenditure_salary_sealed',
+        )]
 
     @property
     def months_count(self):
@@ -366,7 +373,7 @@ class Expenditure(models.Model):
         return f"{self.name} ({self.category}) - {self.month}"
 
 
-class BudgetForecast(models.Model):
+class BudgetForecast(SalaryProtectedModel):
     """Forecast/draft expenditures before they are released to Monthly Expenditure Tracker"""
     EXPENSE_CATEGORY_CHOICES = [
         ('Salary', 'Salary'),
@@ -409,6 +416,10 @@ class BudgetForecast(models.Model):
         ordering = ['-created_at']
         verbose_name = "Budget Forecast"
         verbose_name_plural = "Budget Forecasts"
+        constraints = [models.CheckConstraint(
+            condition=~models.Q(category='Salary') | (models.Q(amount=0, name='Protected salary record') & ~models.Q(salary_ciphertext='')),
+            name='forecast_salary_sealed',
+        )]
 
     def __str__(self):
         return f"{self.name} ({self.category}) - Forecast {self.created_at.date()}"
@@ -629,6 +640,8 @@ class SecurityEvent(models.Model):
     """Auditable security signal raised by authentication and request monitoring."""
 
     EVENT_TYPES = [
+        ('role_change', 'Account role changed'),
+        ('role_change_attempt', 'Unauthorized role change attempt'),
         ('login', 'Login'),
         ('failed_login_burst', 'Repeated failed logins'),
         ('access_denied', 'Denied page access'),
@@ -658,6 +671,7 @@ class SecurityEvent(models.Model):
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='open')
     is_suspicious = models.BooleanField(default=True, db_index=True)
     reason = models.CharField(max_length=255)
+    details = models.JSONField(default=dict, blank=True, db_default={})
     path = models.CharField(max_length=500, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=500, blank=True)
@@ -923,3 +937,25 @@ class UserLeaveRequest(models.Model):
         self.status = 'rejected'
         self.rejection_reason = rejection_reason
         self.save()
+
+
+class BackupSchedule(models.Model):
+    """One managed backup schedule; run by the separate operations worker."""
+    key = models.CharField(max_length=30, unique=True, default='database')
+    enabled = models.BooleanField(default=False)
+    frequency = models.CharField(max_length=10, choices=[('hourly', 'Hourly'), ('daily', 'Daily'), ('weekly', 'Weekly')], default='daily')
+    run_at = models.TimeField(default='02:00')
+    weekday = models.PositiveSmallIntegerField(default=6)  # Monday = 0
+    next_run = models.DateTimeField(null=True, blank=True)
+    last_run = models.DateTimeField(null=True, blank=True)
+    last_result = models.CharField(max_length=255, blank=True)
+    worker_heartbeat = models.DateTimeField(null=True, blank=True)
+    recipients = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='database_backup_schedules')
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class BackupSnapshot(models.Model):
+    """Shared metadata only. Database payloads live in recipient mailboxes."""
+    identifier = models.CharField(max_length=32, unique=True)
+    metadata = models.JSONField(default=dict)

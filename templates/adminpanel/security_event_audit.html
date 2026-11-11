@@ -38,9 +38,9 @@
           {% for event in page_obj %}
           <tr>
             <td class="text-nowrap">{{ event.occurred_at|date:'d M Y H:i' }}</td>
-            <td><strong>{{ event.user.get_full_name|default:event.user.username|default:'Unknown visitor' }}</strong><div class="small text-muted">{{ event.user.username }}</div></td>
+            <td><strong>{% if event.user %}{{ event.user.get_full_name|default:event.user.username }}{% else %}Unknown visitor{% endif %}</strong><div class="small text-muted">{{ event.user.username }}</div></td>
             <td><span class="badge {% if event.severity == 'high' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ event.get_event_type_display }}</span></td>
-            <td>{{ event.reason }}{% if event.request_count %}<div class="small text-muted">Count: {{ event.request_count }}</div>{% endif %}</td>
+            <td>{{ event.reason }}{% if event.details %}<details><summary>Change details</summary><pre class="small text-wrap">{{ event.details }}</pre></details>{% endif %}{% if event.request_count %}<div class="small text-muted">Count: {{ event.request_count }}</div>{% endif %}</td>
             <td>{{ event.display_ip }}<div class="small text-muted">{{ event.display_device }}</div></td>
             <td class="security-path">{{ event.path|default:'—' }}</td>
             <td>{{ event.get_status_display }}</td>

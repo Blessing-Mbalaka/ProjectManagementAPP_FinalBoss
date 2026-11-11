@@ -88,3 +88,6 @@ STORAGES = {
 
 # Reduce logging noise
 logging_config = LOGGING
+
+# Fixed test-only key. Never use this key in a real deployment.
+SALARY_ENCRYPTION_KEYS = ['c2FsYXJ5LXRlc3Qta2V5LW9ubHktMzItYnl0ZXMhISE=']

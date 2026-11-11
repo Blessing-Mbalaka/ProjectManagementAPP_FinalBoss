@@ -1,3 +1,4 @@
+from .salary_crypto import decrypt_fields, can_manage_salaries
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import IntegrityError, connection, transaction
 from django.urls import reverse
@@ -66,12 +67,12 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def page_visit_audit(request):
-    if not has_role(request.user, 'admin', 'centrehead'):
+    if not has_role(request.user, 'admin', 'centrehead', 'it'):
         return HttpResponseForbidden('Only Admin and Centre Heads can view page activity logs.')
 
     logs = PageVisitLog.objects.select_related('user', 'user__research_centre')
     users = CustomUser.objects.filter(is_active=True)
-    if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin'):
+    if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin', 'it'):
         centre_id = getattr(request.user, 'research_centre_id', None)
         logs = logs.filter(user__research_centre_id=centre_id) if centre_id else logs.none()
         users = users.filter(research_centre_id=centre_id) if centre_id else users.none()
@@ -109,7 +110,7 @@ def page_visit_audit(request):
         'activity_page_count': filtered_logs.values('path').distinct().count(),
         'activity_scope_label': (
             'All system users'
-            if has_role(request.user, 'admin')
+            if has_role(request.user, 'admin', 'it')
             else getattr(request.user.research_centre, 'name', 'Unassigned centre')
         ),
     })
@@ -117,12 +118,12 @@ def page_visit_audit(request):
 
 @login_required
 def security_event_audit(request):
-    if not has_role(request.user, 'admin', 'centrehead'):
+    if not has_role(request.user, 'admin', 'centrehead', 'it'):
         return HttpResponseForbidden('Only Admin and Centre Heads can view security alerts.')
 
     events = SecurityEvent.objects.select_related('user', 'user__research_centre').filter(is_suspicious=True)
     users = CustomUser.objects.filter(is_active=True)
-    if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin'):
+    if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin', 'it'):
         centre_id = getattr(request.user, 'research_centre_id', None)
         events = events.filter(user__research_centre_id=centre_id) if centre_id else events.none()
         users = users.filter(research_centre_id=centre_id) if centre_id else users.none()
@@ -205,16 +206,21 @@ def aggregate_salary_rows(rows):
         key = (row.get('cost_centre_id'), row.get('month') or '')
         group = groups.setdefault(key, {
             **row,
-            'amount': 0.0,
-            'oracle_balance': 0.0,
+            'amount': Decimal('0.00'),
+            'opening_balance': None, 'closing_balance': None,
+            'total_cost': Decimal('0.00'),
+            'oracle_balance': Decimal('0.00'),
             'oracle_value_count': 0,
             'source_ids': [],
             'salary_record_count': 0,
             'is_salary_aggregate': True,
         })
-        group['amount'] += float(row.get('amount') or 0)
+        group['amount'] += safe_decimal(row.get('amount'))
+        if 'total_cost' in row:
+            group['total_cost'] += safe_decimal(row['total_cost'])
+            group['months'] = 'Combined'
         if row.get('oracle_balance') is not None:
-            group['oracle_balance'] += float(row.get('oracle_balance') or 0)
+            group['oracle_balance'] += safe_decimal(row.get('oracle_balance'))
             group['oracle_value_count'] += 1
         group['source_ids'].append(row.get('id'))
         group['salary_record_count'] += 1
@@ -228,6 +234,9 @@ def aggregate_salary_rows(rows):
         group['expense_id'] = f'SALARY-{token}'
         group['name'] = f'Protected salary pool #{token}'
         group['salary_hash'] = token
+        group['amount'] = decimal_to_float(group['amount'])
+        group['total_cost'] = decimal_to_float(group['total_cost'])
+        group['oracle_balance'] = decimal_to_float(group['oracle_balance']) if group['oracle_balance'] is not None else None
         visible_rows.append(group)
     return visible_rows
 
@@ -677,13 +686,15 @@ def admin_ganttchart(request):
 
 
 def register_users(request):
+    if request.method == 'POST' and request.POST.get('role') == 'it':
+        return HttpResponseForbidden('IT accounts must be created by an administrator.')
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             role = request.POST.get('role')
 
             # Prevent anyone from trying to register as an admin
-            if role in ['admin', 'dean', 'centrehead', 'overseer', 'financialadmin']:
+            if role in ['admin', 'dean', 'centrehead', 'overseer', 'it', 'financialadmin']:
                 form.add_error(None, "You are not allowed to register as an admin.")
                 return render(request, 'users/register.html', {'form': form})
 
@@ -1041,7 +1052,10 @@ def edit_user(request, user_id):
     if request.method == 'POST':
         user.username = request.POST.get('username')
         user.email = request.POST.get('email')
-        user.role = request.POST.get('role')
+        requested_role = request.POST.get('role')
+        if requested_role not in dict(CustomUser.ROLE_CHOICES):
+            return HttpResponseBadRequest('Choose a valid account role.')
+        user.role = requested_role
         research_centre_id = request.POST.get('research_centre')
         user.research_centre = ResearchCentre.objects.filter(id=research_centre_id).first() if research_centre_id else None
 
@@ -1571,11 +1585,15 @@ def finance(request, section=None):
             }
 
         cursor.execute("""
-            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id
+            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id, salary_ciphertext
             FROM adminpanel_expenditure
             ORDER BY id DESC
         """)
-        for exp_id, cc_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id in cursor.fetchall():
+        for exp_id, cc_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id, salary_ciphertext in cursor.fetchall():
+            if salary_ciphertext:
+                private = decrypt_fields(salary_ciphertext)
+                amount, name = private["amount"], private["name"]
+                opening_balance, closing_balance, oracle_balance = private["opening_balance"], private["closing_balance"], private["oracle_balance"]
             if scoped_cost_centre_ids is not None and cc_id not in scoped_cost_centre_ids:
                 continue
             amount_dec = safe_decimal(amount)
@@ -1637,7 +1655,7 @@ def finance(request, section=None):
 
     # Convert to list of dicts for template
     category_totals = [{'category': cat, 'total': total} for cat, total in sorted(category_totals_dict.items())]
-    monthly_totals = [{'month': month, 'total': total} for month, total in sorted(monthly_totals_dict.items())]
+    monthly_totals = [{'month': month, 'total': total} for month, total in sorted(monthly_totals_dict.items(), key=lambda item: str(item[0] or ""))]
     total_expenditure = sum((exp['amount'] for exp in all_expenditures), 0)
     highest_category = max(category_totals_dict, key=category_totals_dict.get) if category_totals_dict else '-'
     finance_summary = {
@@ -1736,11 +1754,15 @@ def finance_readonly(request, section=None):
             }
 
         cursor.execute("""
-            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance, expense_id
+            SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance, expense_id, salary_ciphertext
             FROM adminpanel_expenditure
             ORDER BY month DESC
         """)
-        for exp_id, cc_id, month, name, category, amount, opening_balance, oracle_balance, expense_id in cursor.fetchall():
+        for exp_id, cc_id, month, name, category, amount, opening_balance, oracle_balance, expense_id, salary_ciphertext in cursor.fetchall():
+            if salary_ciphertext:
+                private = decrypt_fields(salary_ciphertext)
+                amount, name = private["amount"], private["name"]
+                opening_balance, oracle_balance = private["opening_balance"], private["oracle_balance"]
             if scoped_cost_centre_id_set is not None and cc_id not in scoped_cost_centre_id_set:
                 continue
             amount_dec = safe_decimal(amount)
@@ -1806,7 +1828,7 @@ def finance_readonly(request, section=None):
         monthly_totals_dict[month] += exp['amount']
 
     category_totals = [{'category': cat, 'total': total} for cat, total in sorted(category_totals_dict.items())]
-    monthly_totals = [{'month': month, 'total': total} for month, total in sorted(monthly_totals_dict.items())]
+    monthly_totals = [{'month': month, 'total': total} for month, total in sorted(monthly_totals_dict.items(), key=lambda item: str(item[0] or ""))]
     total_expenditure = sum((exp['amount'] for exp in all_expenditures), 0)
     highest_category = max(category_totals_dict, key=category_totals_dict.get) if category_totals_dict else '-'
     finance_summary = {
@@ -2029,6 +2051,9 @@ def upload_expense_excel(request):
         if not name:
             errors.append(f"Row {index}: Name is required.")
             continue
+        if category == 'Salary' and not can_manage_salaries(request.user):
+            errors.append(f'Row {index}: only Admin and Financial Admin can import salaries.')
+            continue
         if category not in category_values:
             errors.append(f"Row {index}: Invalid category '{category}'.")
             continue
@@ -2183,6 +2208,10 @@ def add_expenditure(request):
         date_to_str = request.POST.get('date_to')
         name = request.POST.get('name')
         category = request.POST.get('category')
+        if category not in dict(Expenditure.EXPENSE_CATEGORY_CHOICES):
+            return HttpResponseBadRequest('Choose a valid expenditure category.')
+        if category == 'Salary' and not can_manage_salaries(request.user):
+            return HttpResponseForbidden('Only Admin and Financial Admin can create salary records.')
         oracle_balance = optional_decimal(request.POST.get('oracle_balance'))
         expense_id = request.POST.get('expense_id', '').strip() or None
 
@@ -2286,14 +2315,18 @@ def get_expenditures(request, cost_centre_id):
             
             # Fetch expenditures
             cursor.execute("""
-                SELECT id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id
+                SELECT id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id, salary_ciphertext
                 FROM adminpanel_expenditure
                 WHERE cost_centre_id = %s
                 ORDER BY id
             """, [cost_centre_id])
             
             for row in cursor.fetchall():
-                exp_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id = row
+                exp_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, expense_id, salary_ciphertext = row
+                if salary_ciphertext:
+                    private = decrypt_fields(salary_ciphertext)
+                    amount, name = private["amount"], private["name"]
+                    opening_balance, closing_balance, oracle_balance = private["opening_balance"], private["closing_balance"], private["oracle_balance"]
                 
                 # Convert to float safely
                 try:
@@ -2549,7 +2582,7 @@ def edit_expenditure(request, pk):
         with connection.cursor() as cursor:
             # Fetch expenditure
             cursor.execute("""
-                SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance, expense_id
+                SELECT id, cost_centre_id, month, name, category, amount, opening_balance, oracle_balance, expense_id, salary_ciphertext
                 FROM adminpanel_expenditure WHERE id = %s
             """, [pk])
             row = cursor.fetchone()
@@ -2558,7 +2591,13 @@ def edit_expenditure(request, pk):
                 messages.error(request, 'Expenditure not found')
                 return redirect('finance')
             
-            exp_id, cost_centre_id, old_month, old_name, old_category, old_amount, old_opening_balance, old_oracle_balance, old_expense_id = row
+            exp_id, cost_centre_id, old_month, old_name, old_category, old_amount, old_opening_balance, old_oracle_balance, old_expense_id, salary_ciphertext = row
+            if salary_ciphertext:
+                private = decrypt_fields(salary_ciphertext)
+                old_amount, old_name = private["amount"], private["name"]
+                old_opening_balance, old_oracle_balance = private["opening_balance"], private["oracle_balance"]
+            if old_category == "Salary" and not can_manage_salaries(request.user):
+                return HttpResponseForbidden("Only Admin and Financial Admin can manage salary records.")
             scoped_ids = get_accessible_cost_centre_ids(request.user)
             if scoped_ids is not None and cost_centre_id not in scoped_ids:
                 messages.error(request, "You can only edit expenditures for your assigned research centre.")
@@ -2632,16 +2671,13 @@ def edit_expenditure(request, pk):
                         )
                         return redirect('finance')
                     
-                    # Update expenditure
-                    cursor.execute("""
-                        UPDATE adminpanel_expenditure
-                        SET month = %s, name = %s, category = %s, amount = %s, 
-                            opening_balance = %s, closing_balance = %s, oracle_balance = %s, expense_id = %s
-                        WHERE id = %s
-                    """, [month, name, category, str(amount), str(opening_balance), str(closing_balance), str(oracle_balance) if oracle_balance is not None else None, expense_id_value, exp_id])
-                    
-                    # Get the updated expenditure for audit logging
                     expenditure = Expenditure.objects.get(id=pk)
+                    expenditure.month, expenditure.name, expenditure.category = month, name, category
+                    if category == 'Salary' and not can_manage_salaries(request.user):
+                        return HttpResponseForbidden('Only Admin and Financial Admin can manage salary records.')
+                    expenditure.amount, expenditure.opening_balance = amount, opening_balance
+                    expenditure.oracle_balance, expenditure.expense_id = oracle_balance, expense_id_value
+                    expenditure.save()
                     log_expenditure_edit(expenditure, request.user, previous_values)
                     
                     messages.success(request, 'Expenditure updated successfully')
@@ -2676,6 +2712,8 @@ def delete_expenditure(request, pk):
                 return redirect('finance')
             
             exp_id, cost_centre_id, exp_name, exp_category, exp_month = row
+            if exp_category == "Salary" and not can_manage_salaries(request.user):
+                return HttpResponseForbidden("Only Admin and Financial Admin can delete salary records.")
             scoped_ids = get_accessible_cost_centre_ids(request.user)
             if scoped_ids is not None and cost_centre_id not in scoped_ids:
                 messages.error(request, "You can only delete expenditures for your assigned research centre.")
@@ -2712,30 +2750,34 @@ def add_budget_forecast(request):
         return redirect(get_finance_redirect(request.user))
 
     if request.method == 'POST':
-        print("\n=== BUDGET FORECAST RECEIVED ===")
-        print(f"POST data: {request.POST}")
+        pass  # Financial values are never printed to application logs.
+        pass  # Financial values are never printed to application logs.
         
         cost_centre_id = request.POST.get('cost_centre_id')
         date_from_str = request.POST.get('date_from')
         date_to_str = request.POST.get('date_to')
         name = request.POST.get('name')
         category = request.POST.get('category')
+        if category not in dict(Expenditure.EXPENSE_CATEGORY_CHOICES):
+            return HttpResponseBadRequest('Choose a valid forecast category.')
+        if category == 'Salary' and not can_manage_salaries(request.user):
+            return HttpResponseForbidden('Only Admin and Financial Admin can create salary forecasts.')
         amount_str = request.POST.get('amount')
         
         # Pad dates with "-01" if missing day (yyyy-MM format → yyyy-MM-01)
         if date_from_str and len(date_from_str) == 7:
             date_from_str = date_from_str + '-01'
-            print(f"Padded date_from: {date_from_str}")
+            pass  # Financial values are never printed to application logs.
         if date_to_str and len(date_to_str) == 7:
             date_to_str = date_to_str + '-01'
-            print(f"Padded date_to: {date_to_str}")
+            pass  # Financial values are never printed to application logs.
         
-        print(f"cost_centre_id: {cost_centre_id}")
-        print(f"date_from: {date_from_str}")
-        print(f"date_to: {date_to_str}")
-        print(f"name: {name}")
-        print(f"category: {category}")
-        print(f"amount: {amount_str}")
+        pass  # Financial values are never printed to application logs.
+        pass  # Financial values are never printed to application logs.
+        pass  # Financial values are never printed to application logs.
+        pass  # Financial values are never printed to application logs.
+        pass  # Financial values are never printed to application logs.
+        pass  # Financial values are never printed to application logs.
 
         try:
             amount_str = amount_str or '0.00'
@@ -2746,14 +2788,14 @@ def add_budget_forecast(request):
                 return redirect('finance')
                 
         except (InvalidOperation, ValueError, TypeError) as e:
-            print(f"ERROR parsing amount: {e}")
+            pass  # Financial values are never printed to application logs.
             messages.error(request, 'Invalid number format')
             return redirect('finance')
 
         try:
             # Validate cost centre
             if not cost_centre_id:
-                print("ERROR: No cost centre ID provided")
+                pass  # Financial values are never printed to application logs.
                 messages.error(request, 'Please select a cost centre')
                 return redirect('finance')
             
@@ -2762,9 +2804,9 @@ def add_budget_forecast(request):
                 cost_centre = CostCentre.objects.get(id=cost_centre_id)
                 if not ensure_finance_editor(request, cost_centre):
                     return redirect(get_finance_redirect(request.user))
-                print(f"✅ Cost centre found: {cost_centre.name}")
+                pass  # Financial values are never printed to application logs.
             except Exception as e:
-                print(f"⚠️ Error fetching cost centre via ORM: {e}")
+                pass  # Financial values are never printed to application logs.
                 # Fallback: fetch using raw SQL to bypass decimal issues
                 from django.db import connection
                 with connection.cursor() as cursor:
@@ -2776,9 +2818,9 @@ def add_budget_forecast(request):
                         cost_centre.research_centre_id = row[2]
                         if not ensure_finance_editor(request, cost_centre):
                             return redirect(get_finance_redirect(request.user))
-                        print(f"✅ Cost centre found (via raw SQL): {cost_centre.name}")
+                        pass  # Financial values are never printed to application logs.
                     else:
-                        print(f"ERROR: Cost centre {cost_centre_id} not found")
+                        pass  # Financial values are never printed to application logs.
                         messages.error(request, 'Cost centre not found')
                         return redirect('finance')
             
@@ -2787,16 +2829,16 @@ def add_budget_forecast(request):
             date_to = None
             if date_from_str:
                 date_from = parse_date(date_from_str)
-                print(f"✅ Parsed date_from: {date_from}")
+                pass  # Financial values are never printed to application logs.
             if date_to_str:
                 date_to = parse_date(date_to_str)
-                print(f"✅ Parsed date_to: {date_to}")
+                pass  # Financial values are never printed to application logs.
             
             # Extract month from date_from
             month = None
             if date_from:
                 month = date_from.strftime('%Y-%m-%d')
-                print(f"✅ Month set to: {month}")
+                pass  # Financial values are never printed to application logs.
             
             # Create budget forecast (not released yet)
             BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
@@ -2811,16 +2853,16 @@ def add_budget_forecast(request):
                 is_released=False
             )
             
-            print(f"✅ SUCCESS: Forecast created with ID {forecast.id}")
-            print("=== END FORECAST DATA ===\n")
+            pass  # Financial values are never printed to application logs.
+            pass  # Financial values are never printed to application logs.
             messages.success(request, 'Budget forecast added successfully')
             return redirect('finance')
                 
         except Exception as e:
             import traceback
-            print(f"❌ ERROR creating forecast: {e}")
+            pass  # Financial values are never printed to application logs.
             traceback.print_exc()
-            print("=== END FORECAST DATA ===\n")
+            pass  # Financial values are never printed to application logs.
             messages.error(request, f'Error adding forecast: {str(e)}')
             return redirect('finance')
     
@@ -2842,12 +2884,11 @@ def get_budget_forecasts(request, cost_centre_id):
         forecasts = BudgetForecast.objects.filter(
             cost_centre_id=cost_centre_id,
             is_released=False
-        ).values(
-            'id', 'month', 'name', 'category', 'amount', 'date_from', 'date_to', 'created_at', 'cost_centre_id'
         )
         
         data = []
-        for forecast in forecasts:
+        for instance in forecasts:
+            forecast = {key: getattr(instance, key) for key in ['id', 'month', 'name', 'category', 'amount', 'date_from', 'date_to', 'cost_centre_id']}
             # Calculate months
             if forecast['date_from'] and forecast['date_to']:
                 date_from = forecast['date_from']
@@ -2872,7 +2913,7 @@ def get_budget_forecasts(request, cost_centre_id):
                 'cost_centre_id': forecast['cost_centre_id']
             })
         
-        return JsonResponse({'forecasts': data}, safe=False)
+        return JsonResponse({'forecasts': aggregate_salary_rows(data)}, safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -2892,6 +2933,8 @@ def edit_budget_forecast(request, pk):
         body = json.loads(request.body) if request.body else request.POST
         name = body.get('name', '').strip()
         category = body.get('category', '').strip()
+        if (category == 'Salary' or forecast.category == 'Salary') and not can_manage_salaries(request.user):
+            return HttpResponseForbidden('Only Admin and Financial Admin can manage salary forecasts.')
         amount = optional_decimal(body.get('amount'))
         date_from = parse_date(body.get('date_from')) if body.get('date_from') else None
         date_to = parse_date(body.get('date_to')) if body.get('date_to') else None
@@ -2925,6 +2968,8 @@ def delete_budget_forecast(request, pk):
         forecast = get_object_or_404(BudgetForecast, id=pk)
         if not ensure_finance_editor(request, forecast.cost_centre):
             return redirect(get_finance_redirect(request.user))
+        if forecast.category == 'Salary' and not can_manage_salaries(request.user):
+            return HttpResponseForbidden('Only Admin and Financial Admin can delete salary forecasts.')
         forecast.delete()
         messages.success(request, 'Budget forecast deleted successfully')
         return redirect('finance')
@@ -2946,7 +2991,23 @@ def release_budget_forecasts(request, cost_centre_id):
     try:
         import json
         body = json.loads(request.body) if request.body else {}
+        BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
         forecast_ids = body.get('forecast_ids', [])
+        if forecast_ids:
+            groups = {}
+            for row in BudgetForecast.objects.filter(cost_centre_id=cost_centre_id, is_released=False, category='Salary'):
+                groups.setdefault(row.month or '', []).append(row.id)
+            tokens = {'salary-' + salary_group_token(cost_centre_id, period, ids): ids for period, ids in groups.items()}
+            expanded = []
+            for identifier in forecast_ids:
+                if isinstance(identifier, str) and identifier.startswith('salary-'):
+                    if identifier not in tokens:
+                        return JsonResponse({'error': 'Salary pool has changed. Refresh the forecast list.'}, status=400)
+                    expanded.extend(tokens[identifier])
+                else:
+                    expanded.append(identifier)
+            forecast_ids = expanded
+
         
         cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
         if not ensure_finance_editor(request, cost_centre):
@@ -2968,6 +3029,8 @@ def release_budget_forecasts(request, cost_centre_id):
             )
         
         forecasts_list = list(forecasts)
+        if any(row.category == 'Salary' for row in forecasts_list) and not can_manage_salaries(request.user):
+            return HttpResponseForbidden('Only Admin and Financial Admin can release salary forecasts.')
         forecast_count = len(forecasts_list)
         forecast_total = sum((safe_decimal(forecast.total_cost) for forecast in forecasts_list), Decimal('0.00'))
         available_funds = get_cost_centre_available_funds(cost_centre)
@@ -2993,24 +3056,12 @@ def release_budget_forecasts(request, cost_centre_id):
                 opening_balance = current_spent
                 closing_balance = opening_balance - forecast_total_cost
                 
-                # Insert into expenditure
-                cursor.execute("""
-                    INSERT INTO adminpanel_expenditure 
-                    (cost_centre_id, month, name, category, amount, opening_balance, closing_balance, oracle_balance, date_from, date_to)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, [
-                    cost_centre_id,
-                    forecast.month,
-                    forecast.name,
-                    forecast.category,
-                    str(forecast_total_cost),
-                    str(opening_balance),
-                    str(closing_balance),
-                    None,
-                    forecast.date_from,
-                    forecast.date_to
-                ])
-                
+                Expenditure.objects.create(
+                    cost_centre_id=cost_centre_id, month=forecast.month,
+                    name=forecast.name, category=forecast.category, amount=forecast_total_cost,
+                    opening_balance=opening_balance, closing_balance=closing_balance,
+                    date_from=forecast.date_from, date_to=forecast.date_to,
+                )
                 # Update cost centre total_spent
                 new_total = opening_balance + forecast_total_cost
                 cursor.execute("""
@@ -3052,6 +3103,9 @@ def update_expenditure(request, pk):
         if not ensure_finance_editor(request, expenditure.cost_centre):
             return JsonResponse({'error': 'You can only update expenditures for your assigned cost centre'}, status=403)
         
+        if expenditure.category == 'Salary' and not can_manage_salaries(request.user):
+            return HttpResponseForbidden('Only Admin and Financial Admin can update salary records.')
+
         # Update fields
         if name:
             expenditure.name = name

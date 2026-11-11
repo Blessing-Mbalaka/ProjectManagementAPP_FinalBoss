@@ -101,3 +101,6 @@ celerybeat.pid
 
 # pyenv
 .python-version
+
+# Private database backup artifacts
+private_backups/

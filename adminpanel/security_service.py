@@ -67,7 +67,7 @@ def is_unusual_login_time(moment=None):
 
 def _security_recipients(user=None):
     queryset = CustomUser.objects.filter(is_active=True).filter(
-        Q(role='admin') | Q(is_superuser=True)
+        Q(role__in=['admin', 'it']) | Q(is_superuser=True)
     )
     if user and user.research_centre_id:
         queryset = queryset | CustomUser.objects.filter(
