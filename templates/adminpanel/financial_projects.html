@@ -50,7 +50,8 @@
     <div class="hero-actions">
       <a class="btn btn-light" href="{% url 'financial_kanban' %}"><i class="bi bi-kanban me-1"></i> My task Kanban</a>
       <a class="btn btn-light" href="{% url 'applied_bids' %}"><i class="bi bi-send-check me-1"></i> Applied bids</a>
-      <a class="btn btn-outline-light" href="{% url 'manager_engagements' %}"><i class="bi bi-chat-square-text me-1"></i> Engagement history</a>
+      <a class="btn btn-outline-light" href="{% url 'financial_kanban' %}"><i class="bi bi-kanban me-1"></i> My Work Kanban</a>
+      <a class="btn btn-outline-light" href="{% url 'financial_engagements' %}"><i class="bi bi-chat-square-text me-1"></i> Engagement history</a>
       <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#newBidModal"><i class="bi bi-plus-lg me-1"></i> Add financial project</button>
     </div>
   </section>
@@ -83,7 +84,7 @@
             <h3>{{ item.project.name }}</h3>
             <div class="client">{{ item.client_name }}</div>
             <div class="bid-meta">
-              <span><i class="bi bi-person me-1"></i>{{ item.owner.get_full_name|default:item.owner.username }}</span>
+              <span><i class="bi bi-person me-1"></i>Assigned to: {{ item.owner.get_full_name|default:item.owner.username }}</span>
               {% if item.estimated_value %}<span><i class="bi bi-cash-stack me-1"></i>Estimated R {{ item.estimated_value|floatformat:2 }}</span>{% endif %}
               {% if item.actual_contract_value is not None %}<span><i class="bi bi-patch-check me-1"></i>Contract R {{ item.actual_contract_value|floatformat:2 }}</span>{% endif %}
               {% if item.bid_deadline %}<span><i class="bi bi-calendar-event me-1"></i>{{ item.bid_deadline }}</span>{% endif %}
@@ -104,6 +105,17 @@
                 <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#contractModal{{ item.id }}"><i class="bi bi-cash-coin"></i> Contract details</button>
               {% endif %}
             </div>
+            {% if can_assign_financial_project %}
+            <form method="post" action="{% url 'assign_financial_project' item.id %}" class="mt-3 border-top pt-3">
+              {% csrf_token %}<label class="form-label small" for="bidAssignee{{ item.id }}">Assign bid work</label>
+              <select name="owner_id" id="bidAssignee{{ item.id }}" class="form-select form-select-sm mb-2" required>
+                <option value="">Choose assignee</option>
+                {% if user.research_centre_id == item.research_centre_id %}<option value="{{ user.pk }}" {% if item.owner_id == user.pk %}selected{% endif %}>{{ user.get_full_name|default:user.username }} (me)</option>{% endif %}
+                {% for person in financial_assignees %}{% if person.research_centre_id == item.research_centre_id %}<option value="{{ person.pk }}" {% if item.owner_id == person.pk %}selected{% endif %}>{{ person.get_full_name|default:person.username }}</option>{% endif %}{% endfor %}
+              </select>
+              <button class="btn btn-primary btn-sm" type="submit">Assign work</button><p class="small text-muted mt-2 mb-0">A new assignee starts the follow-up task in To Do at 0%.</p>
+            </form>
+            {% endif %}
           </article>
 
           <div class="modal fade" id="noteModal{{ item.id }}" tabindex="-1" aria-hidden="true">
@@ -168,6 +180,7 @@
     {% csrf_token %}
     <div class="modal-header"><h5 class="modal-title">Add financial project</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body row g-3">
+      {% if can_assign_financial_project %}<div class="col-12"><label class="form-label" for="newBidAssignee">Assign this bid to</label><select name="owner_id" id="newBidAssignee" class="form-select"><option value="{{ user.pk }}">{{ user.get_full_name|default:user.username }} (me)</option>{% for person in financial_assignees %}{% if person.research_centre_id == user.research_centre_id %}<option value="{{ person.pk }}">{{ person.get_full_name|default:person.username }}</option>{% endif %}{% endfor %}</select><div class="form-text">Delegated bid work starts in the assignee's To Do column.</div></div>{% endif %}
       <div class="col-12"><h6 class="text-uppercase text-muted border-bottom pb-2">1 · Company details</h6></div>
       <div class="col-md-6"><label class="form-label">Project / bid title</label>{{ financial_project_form.project_name }}</div>
       <div class="col-md-6"><label class="form-label">Client / trading name</label>{{ financial_project_form.client_name }}</div>

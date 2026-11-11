@@ -5,6 +5,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('my-projects/', views.my_projects, name='my_projects'),
+    path('my-projects/task/<int:task_id>/update/', views.my_project_task_update, name='my_project_task_update'),
     path('manager_dashboard/', views.manager_dashboard, name='manager_dashboard'),
     path('manager_book/', views.manager_book, name='manager_book'),
     path('app_kanban/', views.app_kanban, name='app_kanban'),

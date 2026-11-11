@@ -1,4 +1,4 @@
-{% extends 'adminpanel/index.html' %}
+{% extends my_projects_base_template|default:'adminpanel/index.html' %}
 
 {% block title %}My Projects{% endblock %}
 
@@ -6,7 +6,7 @@
 <div class="container-fluid py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div><h2 class="mb-1">My Projects</h2><p class="text-muted mb-0">Projects and tasks assigned to you.</p></div>
-    <a class="btn btn-outline-secondary" href="{% url 'admin_kanban' %}">Staff Kanban Viewer</a>
+    {% if my_board_url %}<a class="btn btn-outline-secondary" href="{{ my_board_url }}">My Work Kanban</a>{% else %}<a class="btn btn-outline-secondary" href="{% url 'admin_kanban' %}">Staff Kanban Viewer</a>{% endif %}
   </div>
   {% if projects %}
   <div class="card mb-4">
@@ -23,7 +23,7 @@
       <div class="card-header"><strong>{{ label }}</strong></div>
       <div class="card-body">
         {% for task in tasks %}
-        <form method="post" action="{% url 'admin_my_task_update' task.id %}" class="border rounded p-3 mb-3">
+        <form method="post" action="{% url task_update_url_name|default:'admin_my_task_update' task.id %}" class="border rounded p-3 mb-3">
           {% csrf_token %}<strong>{{ task.title }}</strong>
           <div class="small text-muted mb-2">{{ task.project.name|default:'Project unavailable' }}</div>
           {% if task.due_date and task.due_date < today and task.status != 'done' %}<div class="alert alert-danger py-1 px-2 small">Overdue</div>{% endif %}

@@ -43,13 +43,16 @@
       </button>
     </div>
     <ul class="sidebar-menu">
-      <li><a href="{% url 'manager_dashboard' %}" class="nav-link {% if current_url == 'manager_dashboard' %}active{% endif %}"><i class="bi bi-house"></i> <span>Home</span></a></li>
+      <li><a href="{% if user.role == 'financialadmin' %}{% url 'finance' %}{% else %}{% url 'manager_dashboard' %}{% endif %}" class="nav-link {% if current_url == 'manager_dashboard' %}active{% endif %}"><i class="bi bi-house"></i> <span>Home</span></a></li>
       {% if user.role == 'financialadmin' %}
       <li><a href="{% url 'financial_projects' %}" class="nav-link {% if current_url == 'financial_projects' %}active{% endif %}"><i class="bi bi-briefcase"></i> <span>Financial Projects</span></a></li>
       <li><a href="{% url 'applied_bids' %}" class="nav-link {% if current_url == 'applied_bids' %}active{% endif %}"><i class="bi bi-send-check"></i> <span>Applied Bids</span></a></li>
       <li><a href="{% url 'financial_kanban' %}" class="nav-link {% if current_url == 'financial_kanban' %}active{% endif %}"><i class="bi bi-kanban"></i> <span>My Project Kanban</span></a></li>
       {% else %}
       <li><a href="{% url 'manager_kanban' %}" class="nav-link {% if current_url == 'manager_kanban' %}active{% endif %}"><i class="bi bi-kanban"></i> <span>Kanban Board</span></a></li>
+      {% endif %}
+      {% if user.role == 'manager' or user.role == 'financialadmin' or user.role == 'admin' or user.is_superuser %}
+      <li><a href="{% url 'my_projects' %}" class="nav-link {% if current_url == 'my_projects' %}active{% endif %}"><i class="bi bi-folder-check"></i> <span>My Projects</span></a></li>
       {% endif %}
       <li><a href="{% url 'communique' %}" class="nav-link {% if current_url == 'communique' %}active{% endif %}"><i class="bi bi-chat-dots"></i> <span>Communique</span></a></li>
       <li><a href="{% url 'assign_projects' %}" class="nav-link {% if current_url == 'assign_projects' %}active{% endif %}"><i class="bi bi-person-check"></i> <span>Assign</span></a></li>

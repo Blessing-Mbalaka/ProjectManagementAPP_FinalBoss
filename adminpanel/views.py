@@ -1183,6 +1183,19 @@ def financial_projects_for(user):
     return queryset
 
 
+def financial_followup_task(financial_project):
+    tasks = financial_project.project.tasks
+    task = tasks.filter(import_key='financial-bid-follow-up').first()
+    if task is None:
+        task = tasks.filter(title__startswith='Bid follow-up:').order_by('created_at', 'pk').first()
+        if task:
+            task.import_key = 'financial-bid-follow-up'
+            task.save(update_fields=['import_key'])
+    if task is None:
+        task = tasks.create(import_key='financial-bid-follow-up', title=f'Bid follow-up: {financial_project.client_name}', assigned_to=financial_project.owner, created_by=financial_project.project.created_by, status='todo', priority='High', task_type='Other', due_date=financial_project.next_follow_up_date or financial_project.bid_deadline)
+    return task
+
+
 def sync_financial_project_task(financial_project):
     status_map = {
         'lead': 'todo',
@@ -1202,10 +1215,9 @@ def sync_financial_project_task(financial_project):
         'won': 'completed',
         'lost': 'on-hold',
     }
-    task = financial_project.project.tasks.order_by('created_at').first()
-    if task:
-        task.status = status_map[financial_project.stage]
-        task.save(update_fields=['status', 'progress'])
+    task = financial_followup_task(financial_project)
+    task.status = status_map[financial_project.stage]
+    task.save(update_fields=['status', 'progress'])
     financial_project.project.status = project_status_map[financial_project.stage]
     financial_project.project.save(update_fields=['status'])
 
@@ -1231,6 +1243,8 @@ def financial_projects(request):
         'financial_project_won': counts.get('won', 0),
         'financial_project_converted': records.filter(cost_centre__isnull=False).count(),
         'can_convert_financial_project': can_manage_cost_centres(request.user),
+        'can_assign_financial_project': has_role(request.user, 'admin'),
+        'financial_assignees': CustomUser.objects.filter(is_active=True, role='financialadmin').order_by('first_name', 'username'),
     })
 
 
@@ -1273,6 +1287,15 @@ def add_financial_project(request):
         messages.error(request, 'Your account must be assigned to a research centre before creating a bid.')
         return redirect('financial_projects')
 
+    owner = request.user
+    owner_id = request.POST.get('owner_id')
+    if owner_id and str(owner_id) != str(request.user.pk):
+        if not has_role(request.user, 'admin'):
+            return HttpResponseForbidden('Only administrators can assign a bid to another account.')
+        if not owner_id.isdecimal():
+            return HttpResponseBadRequest('Choose a valid financial assignee.')
+        owner = get_object_or_404(CustomUser, pk=owner_id, is_active=True, role='financialadmin', research_centre_id=request.user.research_centre_id)
+
     form = FinancialProjectForm(request.POST)
     if not form.is_valid():
         for field_errors in form.errors.values():
@@ -1288,22 +1311,23 @@ def add_financial_project(request):
             project_type='financial',
             status='in-progress' if starting_stage == 'submitted' else 'planning',
             created_by=request.user,
-            assigned_user=request.user,
+            assigned_user=owner,
             research_centre=request.user.research_centre,
             due_date=form.cleaned_data.get('bid_deadline'),
         )
         record = form.save(commit=False)
         record.project = project
-        record.owner = request.user
+        record.owner = owner
         record.research_centre = request.user.research_centre
         record.stage = starting_stage
         record.save()
         Task.objects.create(
             project=project,
-            assigned_to=request.user,
+            assigned_to=owner,
             created_by=request.user,
             title=f"Bid follow-up: {record.client_name}",
-            status='review' if starting_stage == 'submitted' else 'todo',
+            status='todo',
+            import_key='financial-bid-follow-up',
             task_type='Other',
             priority='High',
             due_date=record.next_follow_up_date or record.bid_deadline,
@@ -1323,7 +1347,37 @@ def add_financial_project(request):
                 notes=form.cleaned_data['initial_engagement_minutes'],
                 proposal_summary=record.summary,
             )
-    messages.success(request, 'Financial project created, assigned to you, and added to your Kanban.')
+        if owner != request.user:
+            transaction.on_commit(lambda: notify_project_assignment(request=request, project=project, recipient=owner, responsibility='Financial bid follow-up. Start in To Do on your financial Kanban.'))
+    messages.success(request, f'Financial project created, assigned to {owner.get_full_name() or owner.username}, and added to their Kanban.')
+    return redirect('financial_projects')
+
+
+@login_required
+@require_POST
+def assign_financial_project(request, project_id):
+    if not has_role(request.user, 'admin'):
+        return HttpResponseForbidden('Only administrators can assign financial bids.')
+    with transaction.atomic():
+        record = get_object_or_404(financial_projects_for(request.user).select_for_update(), pk=project_id)
+        owner_id = request.POST.get('owner_id', '')
+        if not owner_id.isdecimal():
+            return HttpResponseBadRequest('Choose a valid financial assignee.')
+        owners = CustomUser.objects.filter(is_active=True, research_centre_id=record.research_centre_id).filter(Q(role='financialadmin') | Q(pk=request.user.pk))
+        owner = get_object_or_404(owners, pk=owner_id)
+        if record.owner_id != owner.pk or record.project.assigned_user_id != owner.pk:
+            record.owner = owner
+            record.save(update_fields=['owner', 'updated_at'])
+            record.project.assigned_user = owner
+            record.project.save(update_fields=['assigned_user'])
+            task = financial_followup_task(record)
+            task.assigned_to = owner
+            task.status = 'todo'
+            task.save(update_fields=['assigned_to', 'status', 'progress'])
+            transaction.on_commit(lambda: notify_project_assignment(request=request, project=record.project, recipient=owner, responsibility='Financial bid follow-up. Start in To Do on your financial Kanban.'))
+            messages.success(request, 'Bid assigned. The follow-up task starts in To Do with 0% progress.')
+        else:
+            messages.info(request, 'This bid is already assigned to that account; existing progress was preserved.')
     return redirect('financial_projects')
 
 

@@ -4,9 +4,11 @@ from . import views
 from . import supervisors
 from . import notification_views
 from . import api_booking_views
+from manager import views as manager_views
 from .clock_views import clock_in, clock_out, get_clock_status, clock_history
 
 urlpatterns = [
+    path('engagements/', manager_views.manager_engagements, name='financial_engagements'),
     path('it/', it_views.it_dashboard, name='it_dashboard'),
     path('it/backups/', it_views.it_backups, name='it_backups'),
     path('it/recovery/', it_views.it_recovery, name='it_recovery'),
@@ -49,6 +51,7 @@ urlpatterns = [
     path('finance/projects/', views.financial_projects, name='financial_projects'),
     path('finance/applied-bids/', views.applied_bids, name='applied_bids'),
     path('finance/projects/add/', views.add_financial_project, name='add_financial_project'),
+    path('finance/projects/<int:project_id>/assign/', views.assign_financial_project, name='assign_financial_project'),
     path('finance/projects/<int:project_id>/stage/', views.update_financial_project_stage, name='update_financial_project_stage'),
     path('finance/projects/<int:project_id>/notes/', views.add_financial_project_note, name='add_financial_project_note'),
     path('finance/projects/<int:project_id>/convert/', views.convert_financial_project, name='convert_financial_project'),

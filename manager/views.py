@@ -126,6 +126,8 @@ def manager_dashboard(request):
 def manager_engagements(request):
     if not can_manage_client_engagements(request.user):
         return HttpResponseForbidden('You are not authorized to manage client engagement notes.')
+    financial_workspace = request.user.role == 'financialadmin'
+    engagement_url = 'financial_engagements' if financial_workspace else 'manager_engagements'
     project_scope = manageable_projects_for(
         request.user,
         Project.objects.select_related('research_centre', 'assigned_user', 'created_by'),
@@ -160,7 +162,7 @@ def manager_engagements(request):
                 query = f"project={log.project_id}"
                 if log.cost_centre_id:
                     query = f"cost_centre={log.cost_centre_id}&{query}"
-                return redirect(f"{reverse('manager_engagements')}?{query}")
+                return redirect(f"{reverse(engagement_url)}?{query}")
     else:
         initial = {}
         if request.GET.get('project'):
@@ -201,6 +203,8 @@ def manager_engagements(request):
             })
 
     context = {
+        'engagement_base_template': 'adminpanel/index.html' if financial_workspace else 'manager/home.html',
+        'financial_workspace': financial_workspace,
         'engagement_form': form,
         'engagement_projects': project_scope.order_by('-created_at', 'name'),
         'engagement_cost_centres': cost_centres,
@@ -349,8 +353,47 @@ def _kanban_projects_for(user):
         Q(id__in=assigned_project_ids) | Q(created_by=user)
     ).distinct()
 
+
+@login_required
+def my_projects(request):
+    if not can_manage_projects(request.user):
+        return HttpResponseForbidden('You are not authorized to open this project workspace.')
+    projects = scope_projects_for_user(Project.objects.all(), request.user).filter(
+        Q(assigned_user=request.user)
+        | Q(assignments__team_member__user=request.user)
+        | Q(tasks__assigned_to=request.user)
+    ).distinct().select_related('research_centre', 'assigned_user', 'created_by')
+    tasks = workable_tasks_for(request.user).filter(project__in=projects).select_related('project')
+    admin_layout = request.user.role in {'admin', 'financialadmin', 'centrehead', 'overseer'}
+    return render(request, 'adminpanel/my_projects.html', {
+        'my_projects_base_template': 'adminpanel/index.html' if admin_layout else 'manager/home.html',
+        'projects': projects,
+        'columns': [(status, label, tasks.filter(status=status)) for status, label in Task.STATUS_CHOICES],
+        'task_update_url_name': 'my_project_task_update',
+        'my_board_url': reverse('financial_kanban' if request.user.role == 'financialadmin' else 'manager_kanban'),
+        'today': timezone.localdate(),
+    })
+
+
+@login_required
+@require_POST
+def my_project_task_update(request, task_id):
+    if not can_manage_projects(request.user):
+        return HttpResponseForbidden('You are not authorized to update project work.')
+    task = get_object_or_404(workable_tasks_for(request.user), pk=task_id)
+    status = request.POST.get('status')
+    if status not in dict(Task.STATUS_CHOICES):
+        return HttpResponseBadRequest('Invalid task status.')
+    task.status = status
+    task.comments = request.POST.get('comments', '').strip()
+    task.save(update_fields=['status', 'comments', 'progress'])
+    messages.success(request, 'Task update saved.')
+    return redirect('my_projects')
+
 @login_required
 def manager_kanban(request):
+    if request.user.role == 'financialadmin' and not getattr(request, '_financial_board', False):
+        return redirect('financial_kanban')
     status_labels = {
         'todo': 'To Do',
         'in_progress': 'In Progress',
@@ -370,6 +413,20 @@ def manager_kanban(request):
     tasks = Task.objects.filter(
         Q(id__in=workable_task_ids) | Q(project__in=managed_projects)
     ).distinct()
+
+    financial_board = getattr(request, '_financial_board', False)
+    show_assignee_filter = financial_board and has_role(request.user, 'admin')
+    assignee_users = User.objects.none()
+    selected_assignee = ''
+    if financial_board and request.user.role == 'financialadmin' and not has_role(request.user, 'admin'):
+        tasks = tasks.filter(assigned_to=request.user)
+    if show_assignee_filter:
+        assignee_users = User.objects.filter(is_active=True).filter(Q(role__in=['financialadmin', 'admin']) | Q(assigned_tasks__in=tasks)).distinct().order_by('first_name', 'username')
+        selected_assignee = request.GET.get('assignee', '')
+        if selected_assignee:
+            if not selected_assignee.isdecimal() or not assignee_users.filter(pk=selected_assignee).exists():
+                return HttpResponseBadRequest('Choose a valid assignee.')
+            tasks = tasks.filter(assigned_to_id=selected_assignee)
     
     #Group tasks by their status
     tasks_by_status = defaultdict(list)
@@ -385,24 +442,33 @@ def manager_kanban(request):
         'status_labels': status_labels,
         'priorities': priorities,
         'grouped_tasks': dict(tasks_by_status),
+        'has_tasks': bool(tasks_by_status),
+        'show_financial_assignee_filter': show_assignee_filter,
+        'assignee_filter_users': assignee_users,
+        'selected_assignee': selected_assignee,
+        'kanban_average_progress': round(sum(task.progress for group in tasks_by_status.values() for task in group) / sum(len(group) for group in tasks_by_status.values()), 1) if tasks_by_status else 0,
         'task_types': TASK_TYPES,
         'projects': projects,
         'today': now().date(),
         'kanban_base_template': (
             'adminpanel/index.html'
-            if has_role(request.user, 'admin', 'centrehead')
+            if has_role(request.user, 'admin', 'centrehead', 'financialadmin')
             else 'manager/home.html'
         ),
         'kanban_title': (
             'My Financial Projects Kanban'
-            if getattr(request, '_financial_board', False)
+            if financial_board and not show_assignee_filter
+            else 'Financial Projects Kanban'
+            if financial_board
             else 'My Editable Project Kanban'
             if has_role(request.user, 'centrehead')
             else 'Project Manager Kanban'
         ),
         'kanban_intro': (
-            'Update the client bids and other project tasks assigned to you.'
-            if getattr(request, '_financial_board', False)
+            'Review all financial work, or select one assignee. New assignments start in To Do.'
+            if show_assignee_filter
+            else 'Update the client bids and other project tasks assigned to you.'
+            if financial_board
             else 'Update tasks in projects assigned to you or managed by you.'
             if has_role(request.user, 'centrehead')
             else 'Track and manage tasks for your assigned projects.'
@@ -498,12 +564,16 @@ def assign_projects_view(request):
         "task_form": task_form,
         "project_lead_users": eligible_team_users.order_by('first_name', 'last_name', 'username'),
         "workspace_title": (
-            'Centre Project Management'
+            'Financial Project Management'
+            if request.user.role == 'financialadmin'
+            else 'Centre Project Management'
             if has_role(request.user, 'centrehead') and not has_role(request.user, 'admin')
             else 'Project Manager Assignment'
         ),
         "workspace_back_url": (
-            reverse('overview')
+            reverse('financial_projects')
+            if request.user.role == 'financialadmin'
+            else reverse('overview')
             if has_role(request.user, 'admin', 'centrehead')
             else reverse('manager_dashboard')
         ),

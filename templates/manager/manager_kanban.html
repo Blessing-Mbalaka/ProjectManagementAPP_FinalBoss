@@ -144,16 +144,22 @@
     <h3>{{ kanban_title|default:'Project Manager Kanban' }}</h3>
     <p>{{ kanban_intro|default:'Track and manage tasks for your assigned projects.' }}</p>
     <div class="progress mt-2" style="width: 75%; height: 10px;">
-        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 75%"></div>
+        <div id="kanbanOverallProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-label="Average progress of visible tasks" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ kanban_average_progress }}" style="width: {{ kanban_average_progress }}%"></div>
     </div>
 </div>
 
+{% if show_financial_assignee_filter %}
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-4">
+    <div><label for="financialAssignee" class="form-label">Assigned to</label><select class="form-select" name="assignee" id="financialAssignee"><option value="">All assignees</option>{% for person in assignee_filter_users %}<option value="{{ person.pk }}" {% if selected_assignee == person.pk|stringformat:'s' %}selected{% endif %}>{{ person.get_full_name|default:person.username }}</option>{% endfor %}</select></div>
+    <button class="btn btn-primary" type="submit">Show work</button>
+</form>
+{% endif %}
 {% if projects %}
     <div class="mb-3 text-end">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
     </div>
     {% include 'manager/partials/task_modal.html' with form_url='manager_create_task' task_types=task_types project_id=projects.0.id %}
-{% else %}
+{% elif not has_tasks %}
     <div class="alert alert-info mb-4" role="status">
         <i class="bi bi-info-circle me-2"></i>
         No projects have been assigned to you yet. Your Kanban will be ready when a project is assigned.
@@ -331,6 +337,13 @@
         window.setTimeout(clearOrphanedModalBackdrop, 450);
     }
 
+    function updateOverallProgress() {
+        const values = Array.from(document.querySelectorAll('.draggable-task [data-task-field="progress"]'), el => parseFloat(el.textContent) || 0);
+        const average = values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length * 10) / 10 : 0;
+        const bar = document.getElementById('kanbanOverallProgress');
+        if (bar) { bar.style.width = `${average}%`; bar.setAttribute('aria-valuenow', String(average)); }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.draggable-task').forEach(task => {
             task.addEventListener('dragstart', (e) => {
@@ -368,6 +381,7 @@
                     if (!response.ok || !result.success) throw new Error(result.error || 'Failed to update task.');
                     const progress = taskElement.querySelector('[data-task-field="progress"]');
                     if (progress) progress.textContent = `${result.progress ?? ''}%`;
+                    updateOverallProgress();
                     showKanbanToast('Task status saved successfully.');
                 } catch (error) {
                     removeEmptyState(originalZone);
@@ -426,6 +440,7 @@
                     }
 
                     const modalElement = form.closest('.modal');
+                    updateOverallProgress();
                     closeSavedModal(modalElement);
                     showKanbanToast(result.message || 'Task saved successfully.');
                 } catch (error) {

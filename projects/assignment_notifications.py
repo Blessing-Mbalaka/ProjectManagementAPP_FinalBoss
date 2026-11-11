@@ -20,7 +20,7 @@ def notify_project_assignment(*, request, project, recipient, responsibility="")
     )
     notification.recipients.add(recipient)
 
-    kanban_name = "manager_kanban" if recipient.role == "manager" else "staff_kanban"
+    kanban_name = 'financial_kanban' if recipient.role == 'financialadmin' else 'manager_kanban' if recipient.role in {'manager', 'admin', 'centrehead', 'overseer'} else 'staff_kanban'
     kanban_url = request.build_absolute_uri(reverse(kanban_name))
     assigner_name = request.user.get_full_name() or request.user.username
     context = {
