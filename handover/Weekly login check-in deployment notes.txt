@@ -1,0 +1,73 @@
+WEEKLY ACCOUNT CHECK-INS
+
+Recipients and wording
+Every active account with a valid email address receives one private email per
+calendar week. Days are calculated from the actual last_login date in the app's
+Africa/Johannesburg timezone. Today's logins get a neutral weekly check-in;
+never-used accounts get the true account age and are told they have not logged
+in yet. Other accounts get their last-login date and days away, plus a request
+to log in. Emails contain no app link and no other users' addresses.
+
+Manual preview (no email and no reservations):
+  python manage.py send_login_pings
+
+Send now (requires production SMTP):
+  python manage.py send_login_pings --send
+
+Weekly activation: choose one hosting mechanism
+1. Existing operations worker:
+   Set LOGIN_PINGS_ENABLED=True on the worker and keep this command running:
+     python manage.py run_backup_jobs --loop
+   Check-ins run Mondays from 09:00 Africa/Johannesburg. This works even when
+   DB_BACKUP_ENABLED=False. The normal web process does not run scheduled jobs.
+   The worker must be available during Monday's sending window; if the whole
+   window is missed, the next automatic attempt is the following Monday.
+
+2. Host cron / Render Cron Job:
+   Command: python manage.py send_login_pings --send
+   UTC cron expression: 0 7 * * 1
+   This means Mondays at 09:00 South African time. Render cron uses UTC and is
+   a separately billed service; do not provision a new service without choosing
+   that hosting arrangement. Keep LOGIN_PINGS_ENABLED=False if using cron alone.
+   Build: pip install -r requirements.txt
+   Share the production DATABASE_URL, SECRET_KEY and SMTP configuration through
+   the host's secret/environment settings. Never commit populated credentials.
+   Apply users migration 0008 before the first run. Usual app deployment secrets
+   (including salary keys for any normal app migrations) remain necessary.
+   Reference: https://render.com/docs/cronjobs
+
+Delivery and duplicate prevention
+users.LoginPingDelivery has a database-unique reservation per account and local
+Monday-start calendar week. A reservation commits before contacting SMTP. A
+second command or competing worker skips it. SMTP acceptance is not proof of
+inbox receipt: verify provider logs, spam/quarantine and eventual bounces.
+
+DB reconnects retry only idempotent database work, never the SMTP send itself.
+No streaming DB cursor is held open while email is being sent. The job stops on
+the first email failure/uncertain send and alerts IT/admin in the notification
+bell. Failed, reserved and uncertain attempts are never automatically resent.
+The automatic worker pauses the week's batch if a reservation already exists;
+an operator can inspect delivery records/provider logs and run the manual
+command to send only accounts that have no reservation for that week.
+
+If a process loses its DB connection after SMTP accepted a message, its log may
+remain Reserved. Verify the exact message in the sender/provider logs before
+reconciling it to Accepted. Never delete the reservation just to force a retry.
+Do not copy SMTP credentials or production recipient lists into this handover.
+
+Activation status
+The command and existing-worker integration are implemented. A running worker
+with LOGIN_PINGS_ENABLED=True or an enabled hosting cron job is required for
+future automatic sends. No Render API credential was available from this
+workspace, so no hosted cron service was created or worker environment changed.
+
+Production execution: 11 November 2026
+27 active accounts, 27 valid email addresses, four accounts never logged in.
+All 27 messages were accepted by the mail server. One reserved attempt after
+a DB disconnect was verified in the sender Sent folder before reconciliation;
+it was not resent. The remaining 24 were then sent and recorded. A final
+preview showed all 27 already processed and no repeat recipients eligible.
+Inbox delivery was not verified. Only users.0008 was applied from this
+workstation. Future scheduling still needs the host activation described above.
+300 automated tests passed, including individual wording, weekly boundaries,
+SMTP failures, duplicate prevention and reconnection without duplicate sends.

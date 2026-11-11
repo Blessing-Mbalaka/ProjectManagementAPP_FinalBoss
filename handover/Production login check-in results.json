@@ -1,0 +1,19 @@
+{
+  "verified_at": "2026-11-11T14:55:16.016632+02:00",
+  "production_database": "PostgreSQL",
+  "active_accounts": 27,
+  "already_processed_this_week": 27,
+  "eligible_for_another_send": 0,
+  "delivery_states": [
+    {
+      "status": "accepted",
+      "count": 27
+    }
+  ],
+  "emails_contain_app_link": false,
+  "inbox_delivery_verified": false,
+  "initial_sent_folder_records_verified": 3,
+  "uncertain_reservation_reconciled_from_sent_folder": 1,
+  "production_migration_applied": "users.0008_loginpingdelivery only",
+  "hosted_weekly_job_activated": false
+}
