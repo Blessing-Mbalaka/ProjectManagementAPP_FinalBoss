@@ -1,0 +1,76 @@
+PROJECT MANAGEMENT APPLICATION
+RESTRICTED USE AND COPYRIGHT NOTICE
+
+Copyright (c) 2025-2026 Blessing Mbalaka and the respective contributors.
+All rights reserved, subject to the exceptions below.
+
+RECORDED AUTHORS AND CONTRIBUTORS
+
+Blessing Mbalaka (st10466840; Blessing-Mbalaka)
+HopeLotriet
+Mpho Nkadimeng (gnkadimeng)
+Tiisetsopudinyane
+
+README author and project maintainer: Blessing Mbalaka (st10466840).
+Contributor identities are credited from repository history. Each contributor
+retains the rights they hold in their original contributions. Attribution does
+not constitute a copyright assignment or authorise any person to relicense
+another contributor's work without the necessary rights or permission.
+
+1. SCOPE
+
+This notice concerns original application source code, original documentation
+and other original project material in this repository, only to the extent
+that the relevant rights holder has the authority to impose these terms.
+It is not an open-source or public-use licence and grants no general licence.
+
+2. NO UNAUTHORISED COPYING OR CLONING
+
+Except as stated in section 4, prior written authorisation from the relevant
+rights holder or an authorised representative is required to:
+
+- clone, download, copy, mirror or otherwise reproduce the project or its parts;
+- fork or redistribute the project or provide copies or access to others;
+- modify the project or create derivative works;
+- install, run, host or deploy the project;
+- sell, sublicense, commercialise or otherwise exploit the project; or
+- remove or alter applicable authorship, copyright or licence notices.
+
+Public visibility, possession of a copy, access to a deployed application or
+contributor credit does not by itself grant these permissions. Educational,
+personal, evaluation and noncommercial use are not generally licensed here.
+
+3. AUTHORISED OPERATORS
+
+A person with separate written authorisation may use, copy or modify project
+material only within the scope of that authorisation. Authorised installation,
+maintenance, backup, recovery and migration remain subject to that scope.
+Permission to operate the system does not itself permit redistribution or
+grant rights in another contributor's or a third party's material.
+
+Requests for authorisation should be directed to the project maintainer,
+Blessing Mbalaka, through the project's agreed communication channel and, where
+required, to the relevant contributor or other rights holder.
+
+4. EXISTING RIGHTS, PLATFORM TERMS AND THIRD-PARTY MATERIAL
+
+This notice does not override rights granted by applicable law, applicable
+hosting-platform terms, an existing valid licence or a separate agreement.
+It does not retroactively revoke permissions already validly granted.
+In particular, publishing a repository publicly on GitHub is subject to
+GitHub's terms concerning viewing and forking through that service. This
+notice does not technically prevent access to or copying of public content.
+
+Third-party libraries, frameworks, vendored assets, trademarks and other
+separately licensed material remain subject to their own terms and notices.
+They are not relicensed by this file, and no ownership of them is claimed.
+Preserve their applicable notices and comply with their licences.
+
+5. NO WARRANTY; LIMITATION OF LIABILITY
+
+To the extent permitted by applicable law and except as separately agreed in
+writing, project material is provided "AS IS", without express or implied
+warranties, including warranties of merchantability, fitness for a particular
+purpose and noninfringement. To the same extent, the respective rights holders
+and contributors are not liable for claims, damages or other liability arising
+from the material or its use, whether in contract, tort or otherwise.
