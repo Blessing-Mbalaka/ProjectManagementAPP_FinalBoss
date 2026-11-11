@@ -2,6 +2,7 @@
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from adminpanel.models import Notification
 from adminpanel.notification_service import mark_read, unread_count_for, visible_notifications_for
@@ -9,6 +10,7 @@ from adminpanel.notification_service import mark_read, unread_count_for, visible
 
 @login_required
 @require_http_methods(["GET"])
+@ensure_csrf_cookie
 def get_user_notifications(request):
     """Get recent notifications for the logged-in user"""
     notifications = list(visible_notifications_for(request.user)[:20])

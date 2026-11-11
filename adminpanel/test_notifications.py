@@ -89,3 +89,17 @@ class NotificationBehaviorTests(TestCase):
         self.assertNotContains(overview, self.role_notice.title)
         self.assertNotContains(overview, self.specific_notice.title)
         self.assertContains(board, 'id="notificationBell"')
+
+
+    def test_notification_api_sets_csrf_cookie_and_read_requires_token(self):
+        from django.test import Client
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.staff)
+        response = client.get(reverse('get_user_notifications'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('csrftoken', client.cookies)
+        url = f'/adminpanel/api/notifications/{self.role_notice.id}/read/'
+        self.assertEqual(client.post(url).status_code, 403)
+        response = client.post(url, HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(NotificationReceipt.objects.filter(notification=self.role_notice, user=self.staff, read_at__isnull=False).exists())

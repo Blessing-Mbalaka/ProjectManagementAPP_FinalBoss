@@ -1,0 +1,74 @@
+[
+  {
+    "role": "admin",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  },
+  {
+    "role": "centrehead",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  },
+  {
+    "role": "overseer",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  },
+  {
+    "role": "manager",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  },
+  {
+    "role": "financialadmin",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  },
+  {
+    "role": "staff",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  },
+  {
+    "role": "dean",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  },
+  {
+    "role": "student",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  },
+  {
+    "role": "supervisor",
+    "open": "pass",
+    "read": "pass",
+    "escape": "pass",
+    "outsideClick": "pass",
+    "bootstrapUnavailable": true
+  }
+]
