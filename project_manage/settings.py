@@ -210,6 +210,19 @@ STORAGES = {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
+# A connection string can target Azure or Azurite (including custom endpoints).
+AZURE_CONNECTION_STRING = os.getenv('AZURE_CONNECTION_STRING', '')
+if AZURE_CONNECTION_STRING:
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.azure_storage.AzureStorage',
+        'OPTIONS': {
+            'connection_string': AZURE_CONNECTION_STRING,
+            'azure_container': os.getenv('AZURE_CONTAINER', 'media'),
+            'expiration_secs': 3600,
+            'overwrite_files': False,
+        },
+    }
+
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
