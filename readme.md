@@ -25,7 +25,7 @@ This repository is restricted software. Obtain written authorisation before copy
 - Project creation, lead assignment and team allocation feed shared task, subtask, Kanban and progress views.
 - Staff assigned to a project can add tasks and subtasks through the same task-creation workflow used by project managers. This does not grant staff project-creation rights.
 - Books, papers and conferences have their own research delivery workflows.
-- Financial administration includes cost centres, expenditure, forecasts and editable financial project tracking for authorised roles.
+- Financial administration includes cost centres, expenditure, forecasts and editable financial project tracking for authorised roles. Admin can assign bid work to an active Financial Admin in the same centre; newly assigned follow-up work starts in To Do at 0%, with Admin able to view all assignees or filter one. Financial Admin uses its own engagement-notes layout, My Projects and personal Kanban.
 - Individual salary records are encrypted in the database and masked in finance views; salary totals remain available to the application.
 - Notifications, account-security confirmation, role-change alerts and page-activity records support account oversight.
 - IT operations separates its overview, backup schedules/history and database recovery into distinct pages. Recovery archives are emailed to selected users rather than retained as the only copy on the application server.
@@ -196,7 +196,7 @@ python manage.py makemigrations --check --dry-run --settings=project_manage.sett
 python manage.py test --settings=project_manage.settings_test --noinput
 ```
 
-The latest recorded suite passed **300 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
+The latest recorded suite passed **316 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
 
 ## Render deployment
 

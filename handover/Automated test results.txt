@@ -77,7 +77,18 @@ Forbidden: /adminpanel/finance/update-expenditure/1/
 .Bad Request: /adminpanel/edit-user/3/
 ..Forbidden: /users/register/
 ....Forbidden: /adminpanel/activity/page-visits/
-...........................................Bad Request: /manager/update-task-status/1/
+........................................Bad Request: /manager/financial-kanban/
+..Not Found: /adminpanel/finance/projects/1/assign/
+Not Found: /adminpanel/finance/projects/1/assign/
+Not Found: /adminpanel/finance/projects/1/assign/
+Bad Request: /adminpanel/finance/projects/1/assign/
+.....Forbidden: /adminpanel/finance/projects/1/assign/
+Forbidden: /adminpanel/finance/projects/add/
+.Not Found: /manager/my-projects/task/2/update/
+Bad Request: /manager/my-projects/task/1/update/
+.....Forbidden: /manager/my-projects/
+Forbidden: /adminpanel/engagements/
+......Bad Request: /manager/update-task-status/1/
 .Bad Request: /manager/edit-task/1/
 .Forbidden: /manager/assign/workbook/apply/
 .Forbidden: /manager/assign/workbook/apply/
@@ -138,12 +149,12 @@ Forbidden: /adminpanel/crm/alerts/
 ...................................Not Found: /this-page-does-not-exist/
 ..
 ----------------------------------------------------------------------
-Ran 300 tests in 15.157s
+Ran 316 tests in 8.187s
 
 OK
 Destroying test database for alias 'default'...
 
-Found 300 test(s).
+Found 316 test(s).
 System check identified no issues (0 silenced).
 Completed: snapshot
 [PASS] Cost centre created with MOA amount

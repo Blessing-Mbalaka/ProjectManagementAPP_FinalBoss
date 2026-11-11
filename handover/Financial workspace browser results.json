@@ -1,0 +1,13 @@
+{
+  "adminCreatesDelegatedBid": "pass",
+  "financialAdminSeesOwnToDoAtZero": "pass",
+  "kanbanDragSaveAndReload": "pass",
+  "myProjectsTaskSave": "pass",
+  "financeEngagementSaveAndRedirect": "pass",
+  "financeSidebarDoesNotLeadToPMHome": "pass",
+  "adminAssigneeFilterAndOversight": "pass",
+  "pmMyProjectsNavigation": "pass",
+  "javascriptErrors": [],
+  "existingBidAssignmentControl": "pass",
+  "reassignedWorkStartsTodoAtZero": "pass"
+}
