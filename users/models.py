@@ -65,3 +65,15 @@ class CustomUser(AbstractUser):
     def save(self, *args, **kwargs):
         with transaction.atomic(using=kwargs.get('using') or 'default'):
             return super().save(*args, **kwargs)
+
+
+class LoginPingDelivery(models.Model):
+    """Reserve one check-in per account and calendar week before contacting SMTP."""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    week_start = models.DateField()
+    status = models.CharField(max_length=12, default='claimed', choices=[('claimed', 'Reserved'), ('accepted', 'Accepted by mail server'), ('failed', 'Not accepted'), ('uncertain', 'Acceptance unknown')])
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'week_start'], name='one_login_ping_per_user_week')]

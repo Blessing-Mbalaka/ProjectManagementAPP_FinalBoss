@@ -11,6 +11,7 @@ from .settings import *  # noqa
 
 TEST_RUNNER = 'project_manage.test_runner.ApplicationDiscoverRunner'
 DEBUG = True
+LOGIN_PINGS_ENABLED = False
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False

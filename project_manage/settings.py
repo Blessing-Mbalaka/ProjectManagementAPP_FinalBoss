@@ -78,6 +78,12 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'webmaster@localhost')
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
+# Opt-in schedule inside `run_backup_jobs --loop`: Mondays from 09:00 app time.
+# This never starts a worker in the web process. Set True on the actual worker,
+# even if DB_BACKUP_ENABLED is False. Keep False when using hosting cron instead.
+# `send_login_pings --send` is an explicit manual/cron action, independent of
+# this flag; without --send that command previews only. See .env.example.
+LOGIN_PINGS_ENABLED = env_flag('LOGIN_PINGS_ENABLED', False)
 # ENABLE_CRM_ALERT_EMAILS = env_flag('ENABLE_CRM_ALERT_EMAILS', False)
 
 

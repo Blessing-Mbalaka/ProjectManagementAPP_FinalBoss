@@ -5,6 +5,7 @@ from django.utils import timezone
 from adminpanel.models import BackupSchedule
 from adminpanel.backup_service import BackupError, backup_directory, create_backup, next_backup_run
 from adminpanel.email_health import email_health
+from users.login_pings import run_weekly_login_pings
 
 
 class Command(BaseCommand):
@@ -22,6 +23,12 @@ class Command(BaseCommand):
 
     def run_due(self):
         from django.conf import settings
+        try:
+            ping_result = run_weekly_login_pings()
+            if ping_result is not None:
+                self.stdout.write('Weekly login check-ins: ' + str(ping_result))
+        except ValueError:
+            self.stdout.write('Weekly login check-ins paused: configure SMTP; IT has been notified.')
         if not settings.DB_BACKUP_ENABLED:
             self.stdout.write('Database backups are disabled; no jobs executed.')
             return
