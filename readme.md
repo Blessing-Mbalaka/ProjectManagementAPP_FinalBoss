@@ -197,7 +197,7 @@ python manage.py makemigrations --check --dry-run --settings=project_manage.sett
 python manage.py test --settings=project_manage.settings_test --noinput
 ```
 
-The latest recorded suite passed **325 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
+The latest recorded suite passed **351 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
 
 ## Render deployment
 
@@ -221,6 +221,12 @@ Workers and cron jobs are separate processes/services; the web start command doe
 | `staticfiles/` | Collected deployment assets; edit source assets under `static/`. |
 | `outputs/import_templates/` | Workbook templates and import guidance. |
 | `handover/` | User manual, operations notes and recorded verification results. |
+
+## Role navigation evaluation
+
+Saves return to the current authorised workspace, including its relevant filters. Primary roles choose navigation and fallback destinations independently of additional permissions. Communique remains shared; its section returns, protected saves and Student supervisor-chat link follow the same rule.
+
+The latest audit covers 158 role/page visits, 201 rendered form destinations and browser journeys across all ten roles plus elevated Staff. Read the [evaluation and open findings](handover/Global%20role%20navigation%20evaluation.html) before release sign-off. The Books page still has non-persistent chapter controls and demo comments; the PM dashboard personal task list uses browser local storage. These are not covered by a blanket system approval.
 
 ## Contributors
 

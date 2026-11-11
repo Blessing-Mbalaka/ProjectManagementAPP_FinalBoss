@@ -1,0 +1,1344 @@
+{
+  "roles": {
+    "admin": {
+      "home": "/overview/",
+      "navigation": [
+        {
+          "text": "Overview",
+          "href": "/adminpanel/it/"
+        },
+        {
+          "text": "Backups & Schedules",
+          "href": "/adminpanel/it/backups/"
+        },
+        {
+          "text": "Restore Database",
+          "href": "/adminpanel/it/recovery/"
+        },
+        {
+          "text": "Home",
+          "href": "/overview/"
+        },
+        {
+          "text": "Overview",
+          "href": "/adminpanel/pm-overview/"
+        },
+        {
+          "text": "Manage & Load Projects",
+          "href": "/manager/assign/"
+        },
+        {
+          "text": "Financial Projects",
+          "href": "/adminpanel/finance/projects/"
+        },
+        {
+          "text": "Applied Bids",
+          "href": "/adminpanel/finance/applied-bids/"
+        },
+        {
+          "text": "Team Monitoring Kanban",
+          "href": "/adminpanel/admin_kanban/"
+        },
+        {
+          "text": "My Projects",
+          "href": "/adminpanel/my-projects/"
+        },
+        {
+          "text": "Gantt Chart",
+          "href": "/adminpanel/admin_ganttchart/"
+        },
+        {
+          "text": "Book Projects",
+          "href": "/adminpanel/admin_book/"
+        },
+        {
+          "text": "Paper Projects",
+          "href": "/adminpanel/admin_journal/"
+        },
+        {
+          "text": "Conferences",
+          "href": "/adminpanel/conferences/"
+        },
+        {
+          "text": "Supervision",
+          "href": "/adminpanel/supervisor_dashboard/"
+        },
+        {
+          "text": "Manage Users",
+          "href": "/adminpanel/manage-users/"
+        },
+        {
+          "text": "User Page Activity",
+          "href": "/adminpanel/activity/page-visits/"
+        },
+        {
+          "text": "Security Alerts",
+          "href": "/adminpanel/activity/security/"
+        },
+        {
+          "text": "Communique",
+          "href": "/adminpanel/communique/"
+        },
+        {
+          "text": "Templates",
+          "href": "/adminpanel/communique/templates/"
+        },
+        {
+          "text": "Finance",
+          "href": "/adminpanel/finance/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "2",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Denied page accessuat-nav-centrehead: Requested a protected record that was unavailable or outside the account permissions (11 Nov 2026 at 23:34).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/activity/page-visits/",
+        "/adminpanel/activity/security/",
+        "/adminpanel/admin_book/",
+        "/adminpanel/admin_ganttchart/",
+        "/adminpanel/admin_journal/",
+        "/adminpanel/admin_kanban/",
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/adminpanel/conferences/",
+        "/adminpanel/finance/",
+        "/adminpanel/finance/applied-bids/",
+        "/adminpanel/finance/projects/",
+        "/adminpanel/it/",
+        "/adminpanel/it/backups/",
+        "/adminpanel/it/recovery/",
+        "/adminpanel/manage-users/",
+        "/adminpanel/my-projects/",
+        "/adminpanel/pm-overview/",
+        "/adminpanel/supervisor_dashboard/",
+        "/manager/assign/",
+        "/overview/",
+        "/projects/project/13/tasks/"
+      ],
+      "script_errors": []
+    },
+    "dean": {
+      "home": "/overview/",
+      "navigation": [
+        {
+          "text": "Home",
+          "href": "/overview/"
+        },
+        {
+          "text": "Clients",
+          "href": "/adminpanel/crm/clients/"
+        },
+        {
+          "text": "Centres",
+          "href": "/adminpanel/crm/centres/"
+        },
+        {
+          "text": "Engagements",
+          "href": "/adminpanel/crm/engagements/"
+        },
+        {
+          "text": "Directory",
+          "href": "/adminpanel/crm/directory/"
+        },
+        {
+          "text": "Financials",
+          "href": "/adminpanel/crm/financials/"
+        },
+        {
+          "text": "Detailed Finance Overview",
+          "href": "/adminpanel/finance-readonly/"
+        },
+        {
+          "text": "Alerts",
+          "href": "/adminpanel/crm/alerts/"
+        },
+        {
+          "text": "Reports",
+          "href": "/adminpanel/crm/reports/"
+        },
+        {
+          "text": "Overview",
+          "href": "/adminpanel/pm-overview/"
+        },
+        {
+          "text": "Team Monitoring Kanban",
+          "href": "/adminpanel/admin_kanban/"
+        },
+        {
+          "text": "Gantt Chart",
+          "href": "/adminpanel/admin_ganttchart/"
+        },
+        {
+          "text": "Book Projects",
+          "href": "/adminpanel/admin_book/"
+        },
+        {
+          "text": "Paper Projects",
+          "href": "/adminpanel/admin_journal/"
+        },
+        {
+          "text": "Conferences",
+          "href": "/adminpanel/conferences/"
+        },
+        {
+          "text": "Communique",
+          "href": "/adminpanel/communique/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "1",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/admin_book/",
+        "/adminpanel/admin_ganttchart/",
+        "/adminpanel/admin_journal/",
+        "/adminpanel/admin_kanban/",
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/adminpanel/conferences/",
+        "/adminpanel/crm/alerts/",
+        "/adminpanel/crm/centres/",
+        "/adminpanel/crm/clients/",
+        "/adminpanel/crm/directory/",
+        "/adminpanel/crm/engagements/",
+        "/adminpanel/crm/financials/",
+        "/adminpanel/crm/reports/",
+        "/adminpanel/finance-readonly/",
+        "/adminpanel/pm-overview/",
+        "/overview/"
+      ],
+      "script_errors": []
+    },
+    "centrehead": {
+      "home": "/overview/",
+      "navigation": [
+        {
+          "text": "Home",
+          "href": "/overview/"
+        },
+        {
+          "text": "Overview",
+          "href": "/adminpanel/pm-overview/"
+        },
+        {
+          "text": "Manage & Load Projects",
+          "href": "/manager/assign/"
+        },
+        {
+          "text": "Financial Projects",
+          "href": "/adminpanel/finance/projects/"
+        },
+        {
+          "text": "Applied Bids",
+          "href": "/adminpanel/finance/applied-bids/"
+        },
+        {
+          "text": "Team Monitoring Kanban",
+          "href": "/adminpanel/admin_kanban/"
+        },
+        {
+          "text": "My Editable Kanban",
+          "href": "/manager/manager_kanban/"
+        },
+        {
+          "text": "Gantt Chart",
+          "href": "/adminpanel/admin_ganttchart/"
+        },
+        {
+          "text": "Book Projects",
+          "href": "/adminpanel/admin_book/"
+        },
+        {
+          "text": "Paper Projects",
+          "href": "/adminpanel/admin_journal/"
+        },
+        {
+          "text": "Conferences",
+          "href": "/adminpanel/conferences/"
+        },
+        {
+          "text": "User Page Activity",
+          "href": "/adminpanel/activity/page-visits/"
+        },
+        {
+          "text": "Security Alerts",
+          "href": "/adminpanel/activity/security/"
+        },
+        {
+          "text": "Communique",
+          "href": "/adminpanel/communique/"
+        },
+        {
+          "text": "Templates",
+          "href": "/adminpanel/communique/templates/"
+        },
+        {
+          "text": "Clients",
+          "href": "/adminpanel/crm/clients/"
+        },
+        {
+          "text": "Centres",
+          "href": "/adminpanel/crm/centres/"
+        },
+        {
+          "text": "Engagements",
+          "href": "/adminpanel/crm/engagements/"
+        },
+        {
+          "text": "Directory",
+          "href": "/adminpanel/crm/directory/"
+        },
+        {
+          "text": "Financials",
+          "href": "/adminpanel/crm/financials/"
+        },
+        {
+          "text": "Alerts",
+          "href": "/adminpanel/crm/alerts/"
+        },
+        {
+          "text": "Reports",
+          "href": "/adminpanel/crm/reports/"
+        },
+        {
+          "text": "Finance",
+          "href": "/adminpanel/finance/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "3",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Unusual request volumeuat-nav-admin: Unusual request volume: 120 requests within 60 seconds (11 Nov 2026 at 23:39).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Was this you? Security activity detectedRequested a protected record that was unavailable or outside the account permissions on 11 Nov 2026 at 23:34. Open Account Security to confirm it or secure your account.11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/activity/page-visits/",
+        "/adminpanel/activity/security/",
+        "/adminpanel/admin_book/",
+        "/adminpanel/admin_ganttchart/",
+        "/adminpanel/admin_journal/",
+        "/adminpanel/admin_kanban/",
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/adminpanel/conferences/",
+        "/adminpanel/crm/alerts/",
+        "/adminpanel/crm/centres/",
+        "/adminpanel/crm/clients/",
+        "/adminpanel/crm/directory/",
+        "/adminpanel/crm/engagements/",
+        "/adminpanel/crm/financials/",
+        "/adminpanel/crm/reports/",
+        "/adminpanel/finance/",
+        "/adminpanel/finance/applied-bids/",
+        "/adminpanel/finance/projects/",
+        "/adminpanel/pm-overview/",
+        "/manager/assign/",
+        "/manager/manager_kanban/",
+        "/overview/",
+        "/projects/project/15/tasks/"
+      ],
+      "script_errors": []
+    },
+    "overseer": {
+      "home": "/overview/",
+      "navigation": [
+        {
+          "text": "Home",
+          "href": "/overview/"
+        },
+        {
+          "text": "Overview",
+          "href": "/adminpanel/pm-overview/"
+        },
+        {
+          "text": "Manage & Load Projects",
+          "href": "/manager/assign/"
+        },
+        {
+          "text": "Team Monitoring Kanban",
+          "href": "/adminpanel/admin_kanban/"
+        },
+        {
+          "text": "My Editable Kanban",
+          "href": "/manager/manager_kanban/"
+        },
+        {
+          "text": "Gantt Chart",
+          "href": "/adminpanel/admin_ganttchart/"
+        },
+        {
+          "text": "Book Projects",
+          "href": "/adminpanel/admin_book/"
+        },
+        {
+          "text": "Paper Projects",
+          "href": "/adminpanel/admin_journal/"
+        },
+        {
+          "text": "Conferences",
+          "href": "/adminpanel/conferences/"
+        },
+        {
+          "text": "User Page Activity",
+          "href": "/adminpanel/activity/page-visits/"
+        },
+        {
+          "text": "Security Alerts",
+          "href": "/adminpanel/activity/security/"
+        },
+        {
+          "text": "Communique",
+          "href": "/adminpanel/communique/"
+        },
+        {
+          "text": "Templates",
+          "href": "/adminpanel/communique/templates/"
+        },
+        {
+          "text": "Clients",
+          "href": "/adminpanel/crm/clients/"
+        },
+        {
+          "text": "Centres",
+          "href": "/adminpanel/crm/centres/"
+        },
+        {
+          "text": "Engagements",
+          "href": "/adminpanel/crm/engagements/"
+        },
+        {
+          "text": "Directory",
+          "href": "/adminpanel/crm/directory/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "4",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Unusual request volumeuat-nav-centrehead: Unusual request volume: 120 requests within 60 seconds (11 Nov 2026 at 23:40).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Unusual request volumeuat-nav-admin: Unusual request volume: 120 requests within 60 seconds (11 Nov 2026 at 23:39).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Denied page accessuat-nav-centrehead: Requested a protected record that was unavailable or outside the account permissions (11 Nov 2026 at 23:34).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/activity/page-visits/",
+        "/adminpanel/activity/security/",
+        "/adminpanel/admin_book/",
+        "/adminpanel/admin_ganttchart/",
+        "/adminpanel/admin_journal/",
+        "/adminpanel/admin_kanban/",
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/adminpanel/conferences/",
+        "/adminpanel/crm/centres/",
+        "/adminpanel/crm/clients/",
+        "/adminpanel/crm/directory/",
+        "/adminpanel/crm/engagements/",
+        "/adminpanel/pm-overview/",
+        "/manager/assign/",
+        "/manager/manager_kanban/",
+        "/overview/",
+        "/projects/project/16/tasks/"
+      ],
+      "script_errors": []
+    },
+    "it": {
+      "home": "/adminpanel/it/",
+      "navigation": [
+        {
+          "text": "Overview",
+          "href": "/adminpanel/it/"
+        },
+        {
+          "text": "Backups & Schedules",
+          "href": "/adminpanel/it/backups/"
+        },
+        {
+          "text": "Restore Database",
+          "href": "/adminpanel/it/recovery/"
+        },
+        {
+          "text": "Security Alerts",
+          "href": "/adminpanel/activity/security/"
+        },
+        {
+          "text": "User Page Activity",
+          "href": "/adminpanel/activity/page-visits/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "4",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Unusual request volumeuat-nav-centrehead: Unusual request volume: 120 requests within 60 seconds (11 Nov 2026 at 23:40).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Unusual request volumeuat-nav-admin: Unusual request volume: 120 requests within 60 seconds (11 Nov 2026 at 23:39).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Denied page accessuat-nav-centrehead: Requested a protected record that was unavailable or outside the account permissions (11 Nov 2026 at 23:34).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/activity/page-visits/",
+        "/adminpanel/activity/security/",
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/adminpanel/it/",
+        "/adminpanel/it/backups/",
+        "/adminpanel/it/recovery/"
+      ],
+      "script_errors": []
+    },
+    "supervisor": {
+      "home": "/adminpanel/supervisor-portal/dashboard/",
+      "navigation": [
+        {
+          "text": "Dashboard",
+          "href": "/adminpanel/supervisor-portal/dashboard/"
+        },
+        {
+          "text": "Messages",
+          "href": "/adminpanel/supervisor-portal/messages/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "1",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/adminpanel/supervisor-portal/dashboard/",
+        "/adminpanel/supervisor-portal/messages/"
+      ],
+      "script_errors": []
+    },
+    "manager": {
+      "home": "/manager/manager_dashboard/",
+      "navigation": [
+        {
+          "text": "Home",
+          "href": "/manager/manager_dashboard/"
+        },
+        {
+          "text": "Kanban Board",
+          "href": "/manager/manager_kanban/"
+        },
+        {
+          "text": "My Projects",
+          "href": "/manager/my-projects/"
+        },
+        {
+          "text": "Communique",
+          "href": "/adminpanel/communique/"
+        },
+        {
+          "text": "Assign",
+          "href": "/manager/assign/"
+        },
+        {
+          "text": "e-Learning",
+          "href": "/manager/manager_elearning/"
+        },
+        {
+          "text": "Templates",
+          "href": "/manager/manager_templates/"
+        },
+        {
+          "text": "Project Management",
+          "href": "#"
+        },
+        {
+          "text": "Paper",
+          "href": "/manager/manager_journal/"
+        },
+        {
+          "text": "Books",
+          "href": "/manager/manager_book/"
+        },
+        {
+          "text": "Gantt Chart",
+          "href": "/manager/manager_ganttchart/"
+        },
+        {
+          "text": "Engagement Notes",
+          "href": "/manager/manager_engagements/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "1",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Add",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/manager/assign/",
+        "/manager/manager_book/",
+        "/manager/manager_dashboard/",
+        "/manager/manager_elearning/",
+        "/manager/manager_engagements/",
+        "/manager/manager_ganttchart/",
+        "/manager/manager_journal/",
+        "/manager/manager_kanban/",
+        "/manager/manager_templates/",
+        "/manager/my-projects/",
+        "/projects/project/19/tasks/"
+      ],
+      "script_errors": []
+    },
+    "financialadmin": {
+      "home": "/adminpanel/finance/",
+      "navigation": [
+        {
+          "text": "Communique",
+          "href": "/adminpanel/communique/"
+        },
+        {
+          "text": "Templates",
+          "href": "/adminpanel/communique/templates/"
+        },
+        {
+          "text": "Financial Projects",
+          "href": "/adminpanel/finance/projects/"
+        },
+        {
+          "text": "Applied Bids",
+          "href": "/adminpanel/finance/applied-bids/"
+        },
+        {
+          "text": "My Project Kanban",
+          "href": "/manager/financial-kanban/"
+        },
+        {
+          "text": "My Projects",
+          "href": "/manager/my-projects/"
+        },
+        {
+          "text": "Manage & Load Projects",
+          "href": "/manager/assign/"
+        },
+        {
+          "text": "Engagement Notes",
+          "href": "/adminpanel/engagements/"
+        },
+        {
+          "text": "Finance",
+          "href": "/adminpanel/finance/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "1",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Add Cost Centre",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Add Payment",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Edit",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Add Expenditure",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Save",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": "/adminpanel/finance/add-expenditure/"
+        },
+        {
+          "text": "Cancel",
+          "disabled": false,
+          "action": "/adminpanel/finance/add-expenditure/"
+        },
+        {
+          "text": "Add Expenditure",
+          "disabled": false,
+          "action": "/adminpanel/finance/add-expenditure/"
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": "/adminpanel/finance/edit-cost-centre/2/"
+        },
+        {
+          "text": "Cancel",
+          "disabled": false,
+          "action": "/adminpanel/finance/edit-cost-centre/2/"
+        },
+        {
+          "text": "Save Changes",
+          "disabled": false,
+          "action": "/adminpanel/finance/edit-cost-centre/2/"
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": "/adminpanel/finance/add-payment/"
+        },
+        {
+          "text": "Add Payment",
+          "disabled": false,
+          "action": "/adminpanel/finance/add-payment/"
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "🔍 Apply Filters",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/adminpanel/engagements/",
+        "/adminpanel/finance/",
+        "/adminpanel/finance/applied-bids/",
+        "/adminpanel/finance/projects/",
+        "/manager/assign/",
+        "/manager/financial-kanban/",
+        "/manager/my-projects/",
+        "/projects/project/20/tasks/"
+      ],
+      "script_errors": []
+    },
+    "staff": {
+      "home": "/projects/",
+      "navigation": [
+        {
+          "text": "Home",
+          "href": "/projects/"
+        },
+        {
+          "text": "Communique",
+          "href": "/adminpanel/communique/"
+        },
+        {
+          "text": "Kanban Board",
+          "href": "/projects/staff_kanban/"
+        },
+        {
+          "text": "Project Tasks",
+          "href": "/projects/my-projects/"
+        },
+        {
+          "text": "Assignments",
+          "href": "/projects/assignments/"
+        },
+        {
+          "text": "e-Learning",
+          "href": "/projects/elearning/"
+        },
+        {
+          "text": "Templates",
+          "href": "/projects/templates/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "1",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "View",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Add to day",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Clock In",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Clock Out",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/projects/",
+        "/projects/assignments/",
+        "/projects/elearning/",
+        "/projects/my-projects/",
+        "/projects/project/21/tasks/",
+        "/projects/staff_kanban/",
+        "/projects/templates/"
+      ],
+      "script_errors": []
+    },
+    "student": {
+      "home": "/projects/student_dashboard/",
+      "navigation": [
+        {
+          "text": "Dashboard",
+          "href": "#"
+        },
+        {
+          "text": "My Profile",
+          "href": "#profile-section"
+        },
+        {
+          "text": "Submissions",
+          "href": "#submissions-section"
+        },
+        {
+          "text": "Feedback",
+          "href": "#feedback-section"
+        },
+        {
+          "text": "Notifications\n                        0",
+          "href": "#notifications-section"
+        },
+        {
+          "text": "Meetings",
+          "href": "#meetings-section"
+        },
+        {
+          "text": "Chat",
+          "href": "#chat-section"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "0",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Update Profile",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "New Submission",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Mark as read",
+          "disabled": false,
+          "action": "/projects/notification/read/13/"
+        },
+        {
+          "text": "Request Meeting",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": "/projects/submit-meeting/"
+        },
+        {
+          "text": "Cancel",
+          "disabled": false,
+          "action": "/projects/submit-meeting/"
+        },
+        {
+          "text": "Request",
+          "disabled": false,
+          "action": "/projects/submit-meeting/"
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": "/projects/send-chat/"
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": "/projects/submit-document/"
+        },
+        {
+          "text": "Cancel",
+          "disabled": false,
+          "action": "/projects/submit-document/"
+        },
+        {
+          "text": "Submit",
+          "disabled": false,
+          "action": "/projects/submit-document/"
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/projects/student_dashboard/"
+      ],
+      "script_errors": []
+    },
+    "staff_superuser": {
+      "home": "/projects/",
+      "navigation": [
+        {
+          "text": "Home",
+          "href": "/projects/"
+        },
+        {
+          "text": "Communique",
+          "href": "/adminpanel/communique/"
+        },
+        {
+          "text": "Kanban Board",
+          "href": "/projects/staff_kanban/"
+        },
+        {
+          "text": "Project Tasks",
+          "href": "/projects/my-projects/"
+        },
+        {
+          "text": "Assignments",
+          "href": "/projects/assignments/"
+        },
+        {
+          "text": "e-Learning",
+          "href": "/projects/elearning/"
+        },
+        {
+          "text": "Templates",
+          "href": "/projects/templates/"
+        },
+        {
+          "text": "Logout",
+          "href": "/users/logout/"
+        }
+      ],
+      "buttons": [
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "4",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Unusual request volumeuat-nav-centrehead: Unusual request volume: 120 requests within 60 seconds (11 Nov 2026 at 23:40).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Unusual request volumeuat-nav-admin: Unusual request volume: 120 requests within 60 seconds (11 Nov 2026 at 23:39).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Security flag: Denied page accessuat-nav-centrehead: Requested a protected record that was unavailable or outside the account permissions (11 Nov 2026 at 23:34).11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Navigation UAT noticeLocal test notification for role navigation evaluation.11/11/2026",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "View",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Add to day",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Clock In",
+          "disabled": false,
+          "action": ""
+        },
+        {
+          "text": "Clock Out",
+          "disabled": false,
+          "action": ""
+        }
+      ],
+      "checked_pages": [
+        "/adminpanel/communique/",
+        "/adminpanel/communique/availability/",
+        "/adminpanel/communique/messages/",
+        "/adminpanel/communique/templates/",
+        "/projects/",
+        "/projects/assignments/",
+        "/projects/elearning/",
+        "/projects/my-projects/",
+        "/projects/project/23/tasks/",
+        "/projects/staff_kanban/",
+        "/projects/templates/"
+      ],
+      "script_errors": []
+    }
+  },
+  "actions": [
+    "admin: notification bell opens and loads local notice",
+    "admin: shared Communique section returns to tiles, then role home",
+    "admin: Create Task saves and stays on project task page",
+    "dean: notification bell opens and loads local notice",
+    "dean: shared Communique section returns to tiles, then role home",
+    "centrehead: notification bell opens and loads local notice",
+    "centrehead: shared Communique section returns to tiles, then role home",
+    "overseer: notification bell opens and loads local notice",
+    "overseer: shared Communique section returns to tiles, then role home",
+    "it: notification bell opens and loads local notice",
+    "it: shared Communique section returns to tiles, then role home",
+    "supervisor: notification bell opens and loads local notice",
+    "supervisor: shared Communique section returns to tiles, then role home",
+    "manager: notification bell opens and loads local notice",
+    "manager: shared Communique section returns to tiles, then role home",
+    "manager: Create Task saves and stays on project task page",
+    "financialadmin: notification bell opens and loads local notice",
+    "financialadmin: shared Communique section returns to tiles, then role home",
+    "financialadmin: Create Task saves and stays on project task page",
+    "Financial Admin: Kanban Add Task saves and returns to same board",
+    "staff: notification bell opens and loads local notice",
+    "staff: shared Communique section returns to tiles, then role home",
+    "staff: Create Task saves and stays on project task page",
+    "student: notification bell opens and loads local notice",
+    "student: shared Communique section returns to tiles, then role home",
+    "Student: notification Mark as read saves and keeps Notifications section",
+    "staff_superuser: notification bell opens and loads local notice",
+    "staff_superuser: shared Communique section returns to tiles, then role home",
+    "staff_superuser: Create Task saves and stays on project task page"
+  ],
+  "screenshots": [
+    "handover/screenshots/role-navigation-admin-saved-task.png",
+    "handover/screenshots/role-navigation-manager-saved-task.png",
+    "handover/screenshots/role-navigation-financialadmin-saved-task.png",
+    "handover/screenshots/role-navigation-financial-kanban-saved.png",
+    "handover/screenshots/role-navigation-staff-saved-task.png",
+    "handover/screenshots/role-navigation-staff_superuser-saved-task.png"
+  ]
+}

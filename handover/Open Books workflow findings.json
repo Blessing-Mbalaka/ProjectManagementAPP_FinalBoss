@@ -1,0 +1,17 @@
+{
+  "result": "OPEN functional gap",
+  "page": "/adminpanel/admin_book/",
+  "steps": [
+    "Select Table View and local audit book",
+    "Add Chapter and Save Chapter",
+    "Chapter appears in table",
+    "Reload and select the same book"
+  ],
+  "chapter_visible_before_reload": true,
+  "chapter_visible_after_reload": false,
+  "source_findings": [
+    "saveChapter only mutates the in-memory books array",
+    "showComments uses placeholder comments; postComment only updates the DOM"
+  ],
+  "production_data_changed": false
+}

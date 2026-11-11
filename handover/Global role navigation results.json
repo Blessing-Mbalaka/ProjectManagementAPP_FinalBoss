@@ -1,0 +1,972 @@
+{
+  "admin": [
+    {
+      "page": "/adminpanel/activity/page-visits/",
+      "final_page": "/adminpanel/activity/page-visits/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/activity/security/",
+      "final_page": "/adminpanel/activity/security/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/admin_book/",
+      "final_page": "/adminpanel/admin_book/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/admin_ganttchart/",
+      "final_page": "/adminpanel/admin_ganttchart/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/admin_journal/",
+      "final_page": "/adminpanel/admin_journal/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/admin_kanban/",
+      "final_page": "/adminpanel/admin_kanban/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 5
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/conferences/",
+      "final_page": "/adminpanel/conferences/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/finance/",
+      "final_page": "/adminpanel/finance/",
+      "status": 200,
+      "resolved_form_actions": 5
+    },
+    {
+      "page": "/adminpanel/finance/applied-bids/",
+      "final_page": "/adminpanel/finance/applied-bids/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/finance/projects/",
+      "final_page": "/adminpanel/finance/projects/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/it/",
+      "final_page": "/adminpanel/it/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/it/backups/",
+      "final_page": "/adminpanel/it/backups/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/it/recovery/",
+      "final_page": "/adminpanel/it/recovery/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/manage-users/",
+      "final_page": "/adminpanel/manage-users/",
+      "status": 200,
+      "resolved_form_actions": 14
+    },
+    {
+      "page": "/adminpanel/my-projects/",
+      "final_page": "/adminpanel/my-projects/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/pm-overview/",
+      "final_page": "/adminpanel/pm-overview/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/supervisor_dashboard/",
+      "final_page": "/adminpanel/supervisor_dashboard/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/manager/assign/",
+      "final_page": "/manager/assign/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/overview/",
+      "final_page": "/overview/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/project/1/tasks/",
+      "final_page": "/projects/project/1/tasks/",
+      "status": 200,
+      "resolved_form_actions": 1
+    }
+  ],
+  "dean": [
+    {
+      "page": "/adminpanel/admin_book/",
+      "final_page": "/adminpanel/admin_book/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/admin_ganttchart/",
+      "final_page": "/adminpanel/admin_ganttchart/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/admin_journal/",
+      "final_page": "/adminpanel/admin_journal/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/admin_kanban/",
+      "final_page": "/adminpanel/admin_kanban/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/conferences/",
+      "final_page": "/adminpanel/conferences/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/crm/alerts/",
+      "final_page": "/adminpanel/crm/alerts/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/centres/",
+      "final_page": "/adminpanel/crm/centres/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/clients/",
+      "final_page": "/adminpanel/crm/clients/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/directory/",
+      "final_page": "/adminpanel/crm/directory/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/engagements/",
+      "final_page": "/adminpanel/crm/engagements/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/financials/",
+      "final_page": "/adminpanel/crm/financials/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/reports/",
+      "final_page": "/adminpanel/crm/reports/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/finance-readonly/",
+      "final_page": "/adminpanel/finance-readonly/",
+      "status": 200,
+      "resolved_form_actions": 5
+    },
+    {
+      "page": "/adminpanel/pm-overview/",
+      "final_page": "/adminpanel/pm-overview/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/overview/",
+      "final_page": "/overview/",
+      "status": 200,
+      "resolved_form_actions": 0
+    }
+  ],
+  "centrehead": [
+    {
+      "page": "/adminpanel/activity/page-visits/",
+      "final_page": "/adminpanel/activity/page-visits/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/activity/security/",
+      "final_page": "/adminpanel/activity/security/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/admin_book/",
+      "final_page": "/adminpanel/admin_book/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/admin_ganttchart/",
+      "final_page": "/adminpanel/admin_ganttchart/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/admin_journal/",
+      "final_page": "/adminpanel/admin_journal/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/admin_kanban/",
+      "final_page": "/adminpanel/admin_kanban/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/conferences/",
+      "final_page": "/adminpanel/conferences/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/crm/alerts/",
+      "final_page": "/adminpanel/crm/alerts/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/centres/",
+      "final_page": "/adminpanel/crm/centres/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/clients/",
+      "final_page": "/adminpanel/crm/clients/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/directory/",
+      "final_page": "/adminpanel/crm/directory/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/engagements/",
+      "final_page": "/adminpanel/crm/engagements/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/financials/",
+      "final_page": "/adminpanel/crm/financials/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/reports/",
+      "final_page": "/adminpanel/crm/reports/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/finance/",
+      "final_page": "/adminpanel/finance/",
+      "status": 200,
+      "resolved_form_actions": 5
+    },
+    {
+      "page": "/adminpanel/finance/applied-bids/",
+      "final_page": "/adminpanel/finance/applied-bids/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/finance/projects/",
+      "final_page": "/adminpanel/finance/projects/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/pm-overview/",
+      "final_page": "/adminpanel/pm-overview/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/manager/assign/",
+      "final_page": "/manager/assign/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/manager/manager_kanban/",
+      "final_page": "/manager/manager_kanban/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/overview/",
+      "final_page": "/overview/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/project/3/tasks/",
+      "final_page": "/projects/project/3/tasks/",
+      "status": 200,
+      "resolved_form_actions": 1
+    }
+  ],
+  "overseer": [
+    {
+      "page": "/adminpanel/activity/page-visits/",
+      "final_page": "/adminpanel/activity/page-visits/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/activity/security/",
+      "final_page": "/adminpanel/activity/security/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/admin_book/",
+      "final_page": "/adminpanel/admin_book/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/admin_ganttchart/",
+      "final_page": "/adminpanel/admin_ganttchart/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/admin_journal/",
+      "final_page": "/adminpanel/admin_journal/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/admin_kanban/",
+      "final_page": "/adminpanel/admin_kanban/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/conferences/",
+      "final_page": "/adminpanel/conferences/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/adminpanel/crm/centres/",
+      "final_page": "/adminpanel/crm/centres/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/clients/",
+      "final_page": "/adminpanel/crm/clients/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/directory/",
+      "final_page": "/adminpanel/crm/directory/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/crm/engagements/",
+      "final_page": "/adminpanel/crm/engagements/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/pm-overview/",
+      "final_page": "/adminpanel/pm-overview/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/manager/assign/",
+      "final_page": "/manager/assign/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/manager/manager_kanban/",
+      "final_page": "/manager/manager_kanban/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/overview/",
+      "final_page": "/overview/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/project/4/tasks/",
+      "final_page": "/projects/project/4/tasks/",
+      "status": 200,
+      "resolved_form_actions": 1
+    }
+  ],
+  "it": [
+    {
+      "page": "/adminpanel/activity/page-visits/",
+      "final_page": "/adminpanel/activity/page-visits/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/activity/security/",
+      "final_page": "/adminpanel/activity/security/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/it/",
+      "final_page": "/adminpanel/it/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/it/backups/",
+      "final_page": "/adminpanel/it/backups/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/it/recovery/",
+      "final_page": "/adminpanel/it/recovery/",
+      "status": 200,
+      "resolved_form_actions": 1
+    }
+  ],
+  "supervisor": [
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/supervisor-portal/dashboard/",
+      "final_page": "/adminpanel/supervisor-portal/dashboard/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/supervisor-portal/messages/",
+      "final_page": "/adminpanel/supervisor-portal/messages/",
+      "status": 200,
+      "resolved_form_actions": 0
+    }
+  ],
+  "manager": [
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/manager/assign/",
+      "final_page": "/manager/assign/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/manager/manager_book/",
+      "final_page": "/manager/manager_book/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/manager/manager_dashboard/",
+      "final_page": "/manager/manager_dashboard/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/manager/manager_elearning/",
+      "final_page": "/manager/manager_elearning/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/manager/manager_engagements/",
+      "final_page": "/manager/manager_engagements/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/manager/manager_ganttchart/",
+      "final_page": "/manager/manager_ganttchart/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/manager/manager_journal/",
+      "final_page": "/manager/manager_journal/",
+      "status": 200,
+      "resolved_form_actions": 3
+    },
+    {
+      "page": "/manager/manager_kanban/",
+      "final_page": "/manager/manager_kanban/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/manager/manager_templates/",
+      "final_page": "/manager/manager_templates/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/manager/my-projects/",
+      "final_page": "/manager/my-projects/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/project/7/tasks/",
+      "final_page": "/projects/project/7/tasks/",
+      "status": 200,
+      "resolved_form_actions": 1
+    }
+  ],
+  "financialadmin": [
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/engagements/",
+      "final_page": "/adminpanel/engagements/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/finance/",
+      "final_page": "/adminpanel/finance/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/finance/applied-bids/",
+      "final_page": "/adminpanel/finance/applied-bids/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/finance/projects/",
+      "final_page": "/adminpanel/finance/projects/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/manager/assign/",
+      "final_page": "/manager/assign/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/manager/financial-kanban/",
+      "final_page": "/manager/financial-kanban/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/manager/my-projects/",
+      "final_page": "/manager/my-projects/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/project/8/tasks/",
+      "final_page": "/projects/project/8/tasks/",
+      "status": 200,
+      "resolved_form_actions": 1
+    }
+  ],
+  "staff": [
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/",
+      "final_page": "/projects/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/projects/assignments/",
+      "final_page": "/projects/assignments/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/elearning/",
+      "final_page": "/projects/elearning/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/projects/my-projects/",
+      "final_page": "/projects/my-projects/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/project/9/tasks/",
+      "final_page": "/projects/project/9/tasks/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/projects/staff_kanban/",
+      "final_page": "/projects/staff_kanban/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/templates/",
+      "final_page": "/projects/templates/",
+      "status": 200,
+      "resolved_form_actions": 1
+    }
+  ],
+  "student": [
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/student_dashboard/",
+      "final_page": "/projects/student_dashboard/",
+      "status": 200,
+      "resolved_form_actions": 4
+    }
+  ],
+  "staff_superuser": [
+    {
+      "page": "/adminpanel/communique/",
+      "final_page": "/adminpanel/communique/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/adminpanel/communique/availability/",
+      "final_page": "/adminpanel/communique/availability/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/adminpanel/communique/messages/",
+      "final_page": "/adminpanel/communique/messages/",
+      "status": 200,
+      "resolved_form_actions": 4
+    },
+    {
+      "page": "/adminpanel/communique/templates/",
+      "final_page": "/adminpanel/communique/templates/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/",
+      "final_page": "/projects/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/projects/assignments/",
+      "final_page": "/projects/assignments/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/elearning/",
+      "final_page": "/projects/elearning/",
+      "status": 200,
+      "resolved_form_actions": 2
+    },
+    {
+      "page": "/projects/my-projects/",
+      "final_page": "/projects/my-projects/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/project/11/tasks/",
+      "final_page": "/projects/project/11/tasks/",
+      "status": 200,
+      "resolved_form_actions": 1
+    },
+    {
+      "page": "/projects/staff_kanban/",
+      "final_page": "/projects/staff_kanban/",
+      "status": 200,
+      "resolved_form_actions": 0
+    },
+    {
+      "page": "/projects/templates/",
+      "final_page": "/projects/templates/",
+      "status": 200,
+      "resolved_form_actions": 1
+    }
+  ]
+}

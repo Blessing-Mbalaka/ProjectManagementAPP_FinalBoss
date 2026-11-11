@@ -139,7 +139,16 @@ Forbidden: /projects/task/delete/1/
 .............Not Found: /projects/project/1/tasks/
 Not Found: /manager/add_task/1/
 Not Found: /manager/add_task/1/
-.............................................Not Found: /manager/update-task-status/2/
+.............................................Forbidden: /manager/add-paper/
+.............Forbidden: /manager/manager_journal/
+.Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance-readonly/
+...Method Not Allowed (GET): /projects/notification/read/2/
+Not Found: /projects/notification/read/3/
+.Forbidden: /adminpanel/api/messages/recipients/
+........Not Found: /manager/update-task-status/2/
 .Forbidden: /adminpanel/finance/
 Forbidden: /adminpanel/finance/
 Forbidden: /adminpanel/finance-readonly/
@@ -165,12 +174,12 @@ Forbidden: /adminpanel/crm/alerts/
 ...................................Not Found: /this-page-does-not-exist/
 ..
 ----------------------------------------------------------------------
-Ran 325 tests in 10.034s
+Ran 351 tests in 34.544s
 
 OK
 Destroying test database for alias 'default'...
 
-Found 325 test(s).
+Found 351 test(s).
 System check identified no issues (0 silenced).
 Completed: snapshot
 [PASS] Cost centre created with MOA amount
@@ -206,3 +215,34 @@ Creates: 0; Updates: 1; Warnings: 1
 Projects created: 0; Projects updated: 1; Tasks created: 0; Tasks updated: 0.
 Projects row 2, project_manager_username: Username "missing-manager" was not found.
 Projects row 2, lead_author_username: Author username "missing-author" was not found and will be skipped.
+POST DATA: {'paperTitle': 'Role-aware paper admin', 'paperStatus': 'draft', 'paperType': 'internal', 'currentVersion': '1.0', 'leadAuthor': 'admin', 'coAuthors': '', 'targetJournal': 'Journal', 'paperAbstract': 'Navigation evaluation', 'return_to': '/adminpanel/admin_journal/'}
+POST DATA: {'paperTitle': 'Role-aware paper manager', 'paperStatus': 'draft', 'paperType': 'internal', 'currentVersion': '1.0', 'leadAuthor': 'manager', 'coAuthors': '', 'targetJournal': 'Journal', 'paperAbstract': 'Navigation evaluation', 'return_to': '/manager/manager_journal/'}
+[MESSAGE SENT] ID: 1, From: 1, To: 9, Has Attachment: False
+[MESSAGE SENT] ID: 2, From: 2, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 3, From: 3, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 4, From: 4, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 5, From: 5, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 6, From: 6, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 7, From: 7, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 8, From: 8, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 9, From: 9, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 10, From: 11, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 1, From: 5, To: 1, Has Attachment: False
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0

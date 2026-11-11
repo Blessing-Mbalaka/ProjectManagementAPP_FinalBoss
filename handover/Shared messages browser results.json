@@ -1,0 +1,7 @@
+{
+  "actions": [
+    "Student shared messages opens assigned-supervisor chat; unavailable staff compose buttons hidden",
+    "IT New Message saves through shared API without leaving Communique Messages"
+  ],
+  "script_errors": []
+}
