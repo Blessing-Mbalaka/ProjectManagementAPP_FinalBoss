@@ -1,0 +1,38 @@
+{% extends 'adminpanel/index.html' %}
+{% block content %}
+<style>
+.it-page {max-width:1440px;margin:0 auto;padding:12px 8px 32px;color:#292231;}
+.it-page .it-heading {margin-bottom:24px;padding-right:48px;}
+.it-page h1 {font-size:1.85rem;font-weight:700;margin:0 0 8px;}
+.it-page h2,.it-page h4 {font-size:1.1rem;font-weight:650;margin:0;}
+.it-page .it-heading p,.it-page .form-text,.it-page .small {color:#645d6d;}
+.it-page .card {border:1px solid #e6e0e9;border-radius:12px;box-shadow:0 3px 12px #2d123408;overflow:hidden;background:#fff;}
+.it-page .card-header {padding:18px 22px;background:#faf8fb;border-bottom:1px solid #e6e0e9;}
+.it-page .card-body {padding:22px;}
+.it-page .it-stat {font-size:2rem;font-weight:700;margin:10px 0 18px;color:#4b195e;}
+.it-page .it-field {margin-bottom:18px;}
+.it-page label {display:block;font-weight:600;margin-bottom:6px;}
+.it-page .it-checkbox {display:flex;align-items:center;gap:10px;}
+.it-page .it-checkbox label {margin:0;}
+.it-page .it-checkbox input {margin:0;flex-shrink:0;}
+.it-page select[multiple] {min-height:150px;}
+.it-page .form-control,.it-page .form-select {border-radius:7px;border-color:#cfc6d5;}
+.it-page .errorlist {color:#a82032;padding-left:20px;}
+.it-page .badge {position:static;display:inline-block;white-space:normal;}
+.it-page code {overflow-wrap:anywhere;}
+.it-page .table {margin:0;min-width:720px;vertical-align:middle;}
+.it-page .table th {font-size:.8rem;color:#645d6d;background:#faf8fb;padding:14px;}
+.it-page .table td {padding:14px;}
+.it-page .it-empty {color:#645d6d;margin:0;}
+.it-page .it-activity {padding:12px 0;border-bottom:1px solid #eee8f1;overflow-wrap:anywhere;}
+.it-page .it-activity:last-child {border-bottom:0;margin-bottom:0;}
+.it-page .it-recovery {max-width:900px;}
+@media(max-width:767px){.it-page{padding:64px 0 24px}.it-page .card-body{padding:18px}.it-page h1{font-size:1.5rem}}
+</style>
+<div class="it-page">
+<header class="it-heading"><h1>{% block it_heading %}{% endblock %}</h1><p class="mb-0">{% block it_description %}{% endblock %}</p></header>
+{% if local_email_test %}<div class="alert alert-warning">Local email test mode — archives are captured in a test mailbox. No real email is sent.</div>{% endif %}
+{% for message in messages %}<div role="status" class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">{{ message }}</div>{% endfor %}
+{% block it_content %}{% endblock %}
+</div>
+{% endblock %}

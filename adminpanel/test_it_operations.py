@@ -178,7 +178,7 @@ class ITOperationsTests(TestCase):
         self.client.force_login(self.it)
 
     def test_it_dashboard_and_monitoring_access_without_business_admin_rights(self):
-        for name in ['it_dashboard', 'page_visit_audit', 'security_event_audit']:
+        for name in ['it_dashboard', 'it_backups', 'it_recovery', 'page_visit_audit', 'security_event_audit']:
             response = self.client.get(reverse(name))
             self.assertEqual(response.status_code, 200, name)
         page = self.client.get(reverse('it_dashboard'))
@@ -195,10 +195,33 @@ class ITOperationsTests(TestCase):
             user = U.objects.create_user('deny-' + role, role=role)
             self.client.force_login(user)
             self.assertEqual(self.client.get(reverse('it_dashboard')).status_code, 403)
+            self.assertEqual(self.client.get(reverse('it_backups')).status_code, 403)
+            self.assertEqual(self.client.get(reverse('it_recovery')).status_code, 403)
             self.assertEqual(self.client.post(reverse('it_backup_now')).status_code, 403)
             self.assertEqual(self.client.post(reverse('it_restore')).status_code, 403)
             self.assertEqual(self.client.post(reverse('it_backup_import')).status_code, 403)
             self.assertEqual(self.client.get(reverse('it_backup_download', args=['a' * 32])).status_code, 403)
+
+    def test_operations_pages_separate_backup_and_restore_forms(self):
+        overview = self.client.get(reverse('it_dashboard'))
+        backups = self.client.get(reverse('it_backups'))
+        recovery = self.client.get(reverse('it_recovery'))
+        self.assertNotContains(overview, 'name="recipients"')
+        self.assertNotContains(overview, 'name="archive"')
+        self.assertContains(backups, 'name="recipients"')
+        self.assertNotContains(backups, 'name="archive"')
+        self.assertContains(recovery, 'name="archive"')
+        self.assertNotContains(recovery, 'name="recipients"')
+        for response, name in [(overview, 'it_dashboard'), (backups, 'it_backups'), (recovery, 'it_recovery')]:
+            self.assertContains(response, 'aria-current="page" href="' + reverse(name) + '"')
+
+    def test_recovery_feedback_stays_on_recovery_page(self):
+        response = self.client.post(reverse('it_backup_import'))
+        self.assertRedirects(response, reverse('it_recovery'))
+        with patch('adminpanel.it_views.restore_backup') as restore:
+            response = self.client.post(reverse('it_restore'), {'password': 'wrong'})
+        self.assertRedirects(response, reverse('it_recovery'))
+        restore.assert_not_called()
 
     def test_it_can_resolve_system_security_event(self):
         event = SecurityEvent.objects.create(user=self.staff, event_type='login', reason='Local review')
@@ -207,7 +230,7 @@ class ITOperationsTests(TestCase):
         self.assertEqual(event.status, 'resolved')
 
     def test_schedule_and_worker_run_due_job_only_once(self):
-        response = self.client.post(reverse('it_dashboard'), {'enabled': 'on', 'frequency': 'daily', 'run_at': '02:30', 'weekday': '1', 'recipients': [self.it.pk]})
+        response = self.client.post(reverse('it_backups'), {'enabled': 'on', 'frequency': 'daily', 'run_at': '02:30', 'weekday': '1', 'recipients': [self.it.pk]})
         self.assertEqual(response.status_code, 302)
         job = BackupSchedule.objects.get(key='database')
         self.assertTrue(job.enabled)
@@ -223,11 +246,11 @@ class ITOperationsTests(TestCase):
         self.assertTrue((Path(self.temp.name) / 'worker-heartbeat').exists())
 
     def test_invalid_weekday_and_disabled_environment_refuse_enabling_schedule(self):
-        response = self.client.post(reverse('it_dashboard'), {'enabled': 'on', 'frequency': 'weekly', 'run_at': '02:30', 'weekday': '10', 'recipients': [self.it.pk]})
+        response = self.client.post(reverse('it_backups'), {'enabled': 'on', 'frequency': 'weekly', 'run_at': '02:30', 'weekday': '10', 'recipients': [self.it.pk]})
         self.assertEqual(response.status_code, 200)
         self.assertFalse(BackupSchedule.objects.get().enabled)
         with override_settings(DB_BACKUP_ENABLED=False):
-            response = self.client.post(reverse('it_dashboard'), {'enabled': 'on', 'frequency': 'daily', 'run_at': '02:30', 'weekday': '1', 'recipients': [self.it.pk]})
+            response = self.client.post(reverse('it_backups'), {'enabled': 'on', 'frequency': 'daily', 'run_at': '02:30', 'weekday': '1', 'recipients': [self.it.pk]})
         self.assertEqual(response.status_code, 200)
         self.assertFalse(BackupSchedule.objects.get().enabled)
 

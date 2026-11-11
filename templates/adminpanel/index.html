@@ -96,12 +96,14 @@
 
             <ul class="sidebar-menu">
                 {% if user.role == 'it' %}
-                <li><a class="nav-link" href="{% url 'it_dashboard' %}"><i class="bi bi-hdd-stack"></i><span>IT Operations</span></a></li>
-                <li><a class="nav-link" href="{% url 'security_event_audit' %}"><i class="bi bi-shield-check"></i><span>Security Alerts</span></a></li>
-                <li><a class="nav-link" href="{% url 'page_visit_audit' %}"><i class="bi bi-activity"></i><span>User Page Activity</span></a></li>
+                {% include 'adminpanel/partials/it_navigation.html' %}
+                <li><details class="sidebar-dropdown" open><summary class="nav-link sidebar-dropdown-toggle"><i class="bi bi-shield-check"></i><span>Monitoring</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i></summary><div class="sidebar-submenu">
+                <a class="nav-link{% if request.resolver_match.url_name == 'security_event_audit' %} active{% endif %}" href="{% url 'security_event_audit' %}"><i class="bi bi-shield-exclamation"></i><span>Security Alerts</span></a>
+                <a class="nav-link{% if request.resolver_match.url_name == 'page_visit_audit' %} active{% endif %}" href="{% url 'page_visit_audit' %}"><i class="bi bi-activity"></i><span>User Page Activity</span></a>
+                </div></details></li>
                 {% else %}
                 {% if user.role == 'admin' or user.is_superuser %}
-                <li><a class="nav-link" href="{% url 'it_dashboard' %}"><i class="bi bi-hdd-stack"></i><span>IT Operations</span></a></li>
+                {% include 'adminpanel/partials/it_navigation.html' %}
                 {% endif %}
 
                 {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' or user.role == 'overseer' %}

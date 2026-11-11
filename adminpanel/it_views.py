@@ -59,6 +59,34 @@ class BackupScheduleForm(forms.ModelForm):
 def it_dashboard(request):
     if not can_operate_system(request.user):
         return HttpResponseForbidden('Only IT and administrators can access operations.')
+    return render(request, 'adminpanel/it_dashboard.html', {
+        'open_security_count': SecurityEvent.objects.filter(is_suspicious=True, status='open').count(),
+        'recent_security': SecurityEvent.objects.filter(is_suspicious=True).select_related('user').order_by('-occurred_at')[:8],
+        'today_visits': PageVisitLog.objects.filter(visited_at__date=timezone.localdate()).count(),
+        'recent_visits': PageVisitLog.objects.select_related('user').order_by('-visited_at')[:8],
+    })
+
+
+def _recovery_context(request):
+    snapshots = []
+    try:
+        snapshots = list_backups()
+    except (BackupError, OSError):
+        messages.warning(request, 'Backup storage is unavailable. Check the private backup directory configuration.')
+    return {
+        'snapshots': snapshots,
+        'backups_enabled': settings.DB_BACKUP_ENABLED,
+        'restore_enabled': settings.DB_BACKUP_ENABLED and settings.DB_RESTORE_ENABLED and settings.DB_MAINTENANCE_MODE,
+        'local_email_test': settings.DB_BACKUP_ALLOW_TEST_EMAIL,
+        'restorable_snapshots': [row for row in snapshots if row['available_locally']],
+        'operations_timezone': timezone.get_current_timezone_name(),
+    }
+
+
+@login_required
+def it_backups(request):
+    if not can_operate_system(request.user):
+        return HttpResponseForbidden('Only IT and administrators can access backups.')
     schedule, _ = BackupSchedule.objects.get_or_create(key='database')
     form = BackupScheduleForm(request.POST or None, instance=schedule)
     if request.method == 'POST' and form.is_valid():
@@ -69,24 +97,19 @@ def it_dashboard(request):
         form.save_m2m()
         _audit('schedule_updated', request.user.username, enabled=schedule.enabled, frequency=schedule.frequency)
         messages.success(request, 'Backup schedule saved. The operations worker must be running to execute it.')
-        return redirect('it_dashboard')
-    snapshots = []
+        return redirect('it_backups')
     worker_active = bool(schedule.worker_heartbeat and 0 <= (timezone.now() - schedule.worker_heartbeat).total_seconds() < 90)
-    try:
-        snapshots = list_backups()
-    except (BackupError, OSError):
-        messages.warning(request, 'Backup storage is unavailable. Check the private backup directory configuration.')
-    return render(request, 'adminpanel/it_dashboard.html', {
-        'schedule_form': form, 'schedule': schedule, 'snapshots': snapshots,
-        'backups_enabled': settings.DB_BACKUP_ENABLED,
-        'restore_enabled': settings.DB_BACKUP_ENABLED and settings.DB_RESTORE_ENABLED and settings.DB_MAINTENANCE_MODE,
-        'worker_active': worker_active, 'local_email_test': settings.DB_BACKUP_ALLOW_TEST_EMAIL,
-        'restorable_snapshots': [row for row in snapshots if row['available_locally']], 'operations_timezone': timezone.get_current_timezone_name(),
-        'open_security_count': SecurityEvent.objects.filter(is_suspicious=True, status='open').count(),
-        'recent_security': SecurityEvent.objects.filter(is_suspicious=True).select_related('user').order_by('-occurred_at')[:8],
-        'today_visits': PageVisitLog.objects.filter(visited_at__date=timezone.localdate()).count(),
-        'recent_visits': PageVisitLog.objects.select_related('user').order_by('-visited_at')[:8],
+    return render(request, 'adminpanel/it_backups.html', {
+        **_recovery_context(request),
+        'schedule_form': form, 'schedule': schedule, 'worker_active': worker_active,
     })
+
+
+@login_required
+def it_recovery(request):
+    if not can_operate_system(request.user):
+        return HttpResponseForbidden('Only IT and administrators can access database recovery.')
+    return render(request, 'adminpanel/it_recovery.html', _recovery_context(request))
 
 
 @transaction.non_atomic_requests
@@ -102,7 +125,7 @@ def it_backup_now(request):
         messages.error(request, str(exc))
     except OSError:
         messages.error(request, 'Backup could not complete. Check configuration, storage and database tooling; another operation may be running.')
-    return redirect('it_dashboard')
+    return redirect('it_backups')
 
 
 @login_required
@@ -127,12 +150,12 @@ def it_restore(request):
     if not request.user.check_password(request.POST.get('password', '')):
         _audit('restore_password_denied', request.user.username)
         messages.error(request, 'Password confirmation failed. Nothing was restored.')
-        return redirect('it_dashboard')
+        return redirect('it_recovery')
     try:
         restore_backup(request.POST.get('backup_id', ''), request.user.username, request.POST.get('confirmation', ''))
     except (BackupError, OSError) as exc:
         messages.error(request, str(exc) if isinstance(exc, BackupError) else 'Restore failed. Check the private operations audit and server configuration.')
-        return redirect('it_dashboard')
+        return redirect('it_recovery')
     logout(request)
     messages.success(request, 'Database restored. Sign in again to verify the restored system.')
     return redirect('login')
@@ -146,10 +169,10 @@ def it_backup_import(request):
     upload = request.FILES.get('archive')
     if not upload:
         messages.error(request, 'Select the ZIP recovery archive from your backup email.')
-        return redirect('it_dashboard')
+        return redirect('it_recovery')
     try:
         record = import_backup_archive(upload, request.user.username)
         messages.success(request, 'Recovery archive verified. Select snapshot ' + record['id'] + ' and confirm the restore.')
     except BackupError as exc:
         messages.error(request, str(exc))
-    return redirect('it_dashboard')
+    return redirect('it_recovery')

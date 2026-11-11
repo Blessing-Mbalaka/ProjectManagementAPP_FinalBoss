@@ -1,0 +1,12 @@
+{% extends 'adminpanel/it_base.html' %}
+{% block title %}Restore Database{% endblock %}
+{% block it_heading %}Restore Database{% endblock %}
+{% block it_description %}Import an emailed recovery archive and confirm a controlled database restore.{% endblock %}
+{% block it_content %}
+<div class="it-recovery"><div class="card mb-4 border-warning"><div class="card-header"><h4>Restore database</h4></div><div class="card-body">
+<form method="post" enctype="multipart/form-data" action="{% url 'it_backup_import' %}">{% csrf_token %}<label class="form-label" for="recoveryArchive">Recovery archive from backup email</label><input class="form-control mb-2" id="recoveryArchive" name="archive" type="file" accept=".zip" required><button class="btn btn-outline-primary mb-3" type="submit">Import emailed backup</button></form>
+<p>A restore replaces current database data. A fresh safety backup must be emailed successfully before the restore proceeds. The selected backup must match this database and migration version. Sign in again after a successful restore.</p>
+{% if restore_enabled and restorable_snapshots %}<form method="post" action="{% url 'it_restore' %}">{% csrf_token %}<p><label for="restoreSnapshot">Backup snapshot</label><select class="form-select" id="restoreSnapshot" name="backup_id" required>{% for snapshot in restorable_snapshots %}<option value="{{ snapshot.id }}">{{ snapshot.created_at }} — {{ snapshot.id }}</option>{% endfor %}</select></p><p><label for="restoreConfirmation">Type RESTORE followed by a space and the selected snapshot ID</label><input class="form-control" id="restoreConfirmation" name="confirmation" autocomplete="off" required></p><p><label for="restorePassword">Your current password</label><input class="form-control" type="password" id="restorePassword" name="password" autocomplete="current-password" required></p><button class="btn btn-danger" type="submit">Restore selected database backup</button></form>{% else %}<div class="alert alert-warning">Import an emailed recovery archive first. The deployment operator must also enable restore and maintenance mode, and stop normal application traffic before recovery.</div>{% endif %}
+</div></div>
+</div>
+{% endblock %}

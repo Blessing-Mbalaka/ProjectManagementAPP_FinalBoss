@@ -9,48 +9,64 @@ C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_Fi
 ..............Not Found: /manager/update-task-status/1/
 ............Forbidden (CSRF cookie not set.): /adminpanel/it/backup/
 Forbidden (CSRF cookie not set.): /adminpanel/it/restore/
-.Forbidden: /adminpanel/it/
+..Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
 Forbidden: /adminpanel/it/backup/
 Forbidden: /adminpanel/it/restore/
 Forbidden: /adminpanel/it/import/
 Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
 Forbidden: /adminpanel/it/backup/
 Forbidden: /adminpanel/it/restore/
 Forbidden: /adminpanel/it/import/
 Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
 Forbidden: /adminpanel/it/backup/
 Forbidden: /adminpanel/it/restore/
 Forbidden: /adminpanel/it/import/
 Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
 Forbidden: /adminpanel/it/backup/
 Forbidden: /adminpanel/it/restore/
 Forbidden: /adminpanel/it/import/
 Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
 Forbidden: /adminpanel/it/backup/
 Forbidden: /adminpanel/it/restore/
 Forbidden: /adminpanel/it/import/
 Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
 Forbidden: /adminpanel/it/backup/
 Forbidden: /adminpanel/it/restore/
 Forbidden: /adminpanel/it/import/
 Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
 Forbidden: /adminpanel/it/backup/
 Forbidden: /adminpanel/it/restore/
 Forbidden: /adminpanel/it/import/
 Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
 Forbidden: /adminpanel/it/backup/
 Forbidden: /adminpanel/it/restore/
 Forbidden: /adminpanel/it/import/
 Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 .Forbidden: /users/register/
-.Method Not Allowed (GET): /adminpanel/it/restore/
+..Method Not Allowed (GET): /adminpanel/it/restore/
 Method Not Allowed (GET): /adminpanel/it/backup/
 ......Forbidden: /adminpanel/api/messages/broadcast/new/
 ......Forbidden (CSRF token missing.): /adminpanel/api/notifications/2/read/
@@ -122,12 +138,12 @@ Forbidden: /adminpanel/crm/alerts/
 ...................................Not Found: /this-page-does-not-exist/
 ..
 ----------------------------------------------------------------------
-Ran 280 tests in 20.400s
+Ran 282 tests in 31.663s
 
 OK
 Destroying test database for alias 'default'...
 
-Found 280 test(s).
+Found 282 test(s).
 System check identified no issues (0 silenced).
 Completed: snapshot
 [PASS] Cost centre created with MOA amount

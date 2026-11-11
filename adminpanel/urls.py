@@ -8,6 +8,8 @@ from .clock_views import clock_in, clock_out, get_clock_status, clock_history
 
 urlpatterns = [
     path('it/', it_views.it_dashboard, name='it_dashboard'),
+    path('it/backups/', it_views.it_backups, name='it_backups'),
+    path('it/recovery/', it_views.it_recovery, name='it_recovery'),
     path('it/backup/', it_views.it_backup_now, name='it_backup_now'),
     path('it/import/', it_views.it_backup_import, name='it_backup_import'),
     path('it/restore/', it_views.it_restore, name='it_restore'),

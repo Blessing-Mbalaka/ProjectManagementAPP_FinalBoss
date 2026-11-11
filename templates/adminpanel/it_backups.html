@@ -1,0 +1,17 @@
+{% extends 'adminpanel/it_base.html' %}
+{% block title %}Backups & Schedules{% endblock %}
+{% block it_heading %}Backups & Schedules{% endblock %}
+{% block it_description %}Choose email recipients, set a schedule and track database backups.{% endblock %}
+{% block it_content %}
+<div class="alert alert-light border mb-4"><strong>Scheduled backup worker:</strong> {% if worker_active %}<span class="badge bg-success">Active recently</span>{% else %}<span class="badge bg-warning text-dark">No recent heartbeat</span>{% endif %}<p class="small mb-0 mt-2">Schedules run while the operations worker or system cron is running. Times use {{ operations_timezone }}.</p></div><div class="row g-4 mb-4"><div class="col-lg-6"><div class="card h-100"><div class="card-header"><h4>Backup schedule</h4></div><div class="card-body">
+<form method="post">{% csrf_token %}{{ schedule_form.non_field_errors }}
+{% for field in schedule_form %}<div class="it-field {% if field.name == 'enabled' %}it-checkbox{% endif %}">{% if field.name == 'enabled' %}{{ field }} {{ field.label_tag }}{% else %}{{ field.label_tag }}{{ field }}{% endif %}{{ field.errors }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}</div>{% endfor %}<p class="small">Hourly runs at the next whole hour. Daily uses the selected time. Weekly also uses the selected weekday.</p><button type="submit" class="btn btn-primary">Save schedule</button></form>
+<hr><p>Next run: {{ schedule.next_run|default:'Not scheduled' }}<br>Last run: {{ schedule.last_run|default:'Never' }}<br>{{ schedule.last_result }}</p>
+</div></div></div><div class="col-lg-6"><div class="card h-100"><div class="card-header"><h4>Run a backup</h4></div><div class="card-body">
+<p>Capture the current application database and email its recovery archive to the configured users. Local database payloads are removed after the mail server accepts the email. Backups contain sensitive account and application data. Store downloaded copies securely.</p>
+{% if backups_enabled %}<form method="post" action="{% url 'it_backup_now' %}">{% csrf_token %}<button class="btn btn-primary" type="submit">Run backup now</button></form>{% else %}<div class="alert alert-warning">Backups are disabled in this environment.</div>{% endif %}
+<p class="small mt-3">Backups cover the database only. Uploaded media and Blob files require a separate backup policy.</p>
+</div></div></div></div>
+<div class="card mb-4"><div class="card-header"><h4>Backup history</h4></div><div class="card-body table-responsive"><table class="table table-hover"><thead><tr><th>Created</th><th>Snapshot</th><th>Size</th><th>Created by</th><th>Email status</th><th>Actions</th></tr></thead><tbody>{% for snapshot in snapshots %}<tr><td>{{ snapshot.created_at }}</td><td><code>{{ snapshot.id }}</code><br>{{ snapshot.reason }}</td><td>{{ snapshot.bytes|filesizeformat }}</td><td>{{ snapshot.actor }}</td><td>{{ snapshot.email_status|default:"Imported snapshot" }}</td><td>{% if snapshot.available_locally %}<a class="btn btn-outline-primary btn-sm" href="{% url 'it_backup_download' snapshot.id %}">Download backup</a>{% else %}Stored in recipient mailboxes{% endif %}</td></tr>{% empty %}<tr><td colspan="6">No backups yet.</td></tr>{% endfor %}</tbody></table></div></div>
+
+{% endblock %}

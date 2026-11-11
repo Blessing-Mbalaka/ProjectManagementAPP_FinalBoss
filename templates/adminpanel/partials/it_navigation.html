@@ -1,0 +1,5 @@
+<li><details class="sidebar-dropdown" open><summary class="nav-link sidebar-dropdown-toggle"><i class="bi bi-hdd-stack"></i><span>IT Operations</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i></summary><div class="sidebar-submenu">
+<a class="nav-link{% if request.resolver_match.url_name == 'it_dashboard' %} active{% endif %}" {% if request.resolver_match.url_name == 'it_dashboard' %}aria-current="page"{% endif %} href="{% url 'it_dashboard' %}"><i class="bi bi-grid-1x2"></i><span>Overview</span></a>
+<a class="nav-link{% if request.resolver_match.url_name == 'it_backups' %} active{% endif %}" {% if request.resolver_match.url_name == 'it_backups' %}aria-current="page"{% endif %} href="{% url 'it_backups' %}"><i class="bi bi-calendar-check"></i><span>Backups &amp; Schedules</span></a>
+<a class="nav-link{% if request.resolver_match.url_name == 'it_recovery' %} active{% endif %}" {% if request.resolver_match.url_name == 'it_recovery' %}aria-current="page"{% endif %} href="{% url 'it_recovery' %}"><i class="bi bi-arrow-counterclockwise"></i><span>Restore Database</span></a>
+</div></details></li>
