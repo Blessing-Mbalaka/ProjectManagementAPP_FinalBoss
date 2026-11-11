@@ -6,11 +6,61 @@ C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_Fi
   mw_instance = middleware(adapted_handler)
 ....Forbidden: /adminpanel/activity/page-visits/
 ...Not Found: /adminpanel/my-projects/task/2/update/
-.............Not Found: /manager/update-task-status/1/
-...........Forbidden: /adminpanel/api/messages/broadcast/new/
+..............Not Found: /manager/update-task-status/1/
+............Forbidden (CSRF cookie not set.): /adminpanel/it/backup/
+Forbidden (CSRF cookie not set.): /adminpanel/it/restore/
+.Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+.Forbidden: /users/register/
+.Method Not Allowed (GET): /adminpanel/it/restore/
+Method Not Allowed (GET): /adminpanel/it/backup/
+......Forbidden: /adminpanel/api/messages/broadcast/new/
 ......Forbidden (CSRF token missing.): /adminpanel/api/notifications/2/read/
 ...Not Found: /adminpanel/api/notifications/2/read/
-.............Forbidden: /adminpanel/activity/page-visits/
+..................Forbidden: /adminpanel/finance/update-expenditure/1/
+Forbidden: /adminpanel/finance/update-expenditure/1/
+....Forbidden: /adminpanel/edit-user/3/
+.Bad Request: /adminpanel/edit-user/3/
+..Forbidden: /users/register/
+....Forbidden: /adminpanel/activity/page-visits/
 ...........................................Bad Request: /manager/update-task-status/1/
 .Bad Request: /manager/edit-task/1/
 .Forbidden: /manager/assign/workbook/apply/
@@ -69,16 +119,17 @@ Forbidden: /adminpanel/crm/financials/
 Forbidden: /adminpanel/crm/reports/
 Forbidden: /adminpanel/crm/alerts/
 ..Not Found: /manager/update-task-status/1/
-........................Not Found: /this-page-does-not-exist/
+...................................Not Found: /this-page-does-not-exist/
 ..
 ----------------------------------------------------------------------
-Ran 242 tests in 6.690s
+Ran 280 tests in 20.400s
 
 OK
 Destroying test database for alias 'default'...
 
-Found 242 test(s).
+Found 280 test(s).
 System check identified no issues (0 silenced).
+Completed: snapshot
 [PASS] Cost centre created with MOA amount
 [PASS] MOA Outstanding calculated correctly: 30000.00
 [PASS] MOA Outstanding correctly negative when over budget: -5000.00

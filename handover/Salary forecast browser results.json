@@ -1,0 +1,9 @@
+{
+  "protectedPoolVisible": "pass",
+  "groupReleaseRequest": "pass",
+  "poolIdentifierPreserved": "pass",
+  "response": {
+    "success": true,
+    "message": "Released 1 forecast(s) to Monthly Expenditure Tracker"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "3caa0fb28ffd4705ac53cf01970ae414",
+  "dashboard": "pass",
+  "scheduleSave": "pass",
+  "manualBackup": "pass",
+  "emailAttachmentCaptured": "pass",
+  "serverPayloadRemoved": "pass",
+  "scheduledWorkerEmail": "pass",
+  "restoredMarkerRemoved": "pass",
+  "emailedSafetySnapshotContainsMarker": "pass",
+  "allSessionsInvalidated": "pass",
+  "scheduleDisabled": "pass",
+  "emailedArchiveImport": "pass",
+  "loginAfterRestore": "pass"
+}

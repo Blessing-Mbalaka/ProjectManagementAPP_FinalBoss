@@ -1,0 +1,9 @@
+{
+  "legacyDataBackfill": "pass",
+  "sqlSalaryAmountsMasked": "pass",
+  "historicalAuditRedacted": "pass",
+  "decryptedTotalCorrect": "pass",
+  "encryptedPayrollEmailRecovery": "pass",
+  "salaryReadableOnlyWithConfiguredKey": "pass",
+  "restoredSalaryRemainsEncrypted": "pass"
+}
