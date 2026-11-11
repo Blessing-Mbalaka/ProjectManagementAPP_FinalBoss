@@ -31,6 +31,9 @@ class StaffProjectTaskTests(TestCase):
         for user in [self.staff,self.peer,self.manager]:
             self.client.force_login(user)
             self.assertContains(self.client.get(reverse('project_tasks',args=[self.project.pk])),task.title)
+        self.client.force_login(self.manager)
+        self.assertContains(self.client.get(reverse('manager_kanban')),task.title)
+        self.assertContains(self.client.get(reverse('assign_projects'), {'project_id':self.project.pk}),task.title)
         self.assertIn(task,workable_tasks_for(self.manager))
         self.assertIn(task,workable_tasks_for(self.peer))
         self.assertNotIn(task,workable_tasks_for(self.staff))
