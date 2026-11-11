@@ -181,7 +181,9 @@ def _date_value(value, issue, *, field):
 def _can_manage_existing(actor, project):
     if actor.role in {"admin", "dean"}:
         return True
-    if actor.role == "centrehead":
+    if actor.role == "overseer" and project.project_type == "financial":
+        return False
+    if actor.role in {"centrehead", "overseer"}:
         return bool(actor.research_centre_id and actor.research_centre_id == project.research_centre_id)
     return project.created_by_id == actor.id or project.assigned_user_id == actor.id
 

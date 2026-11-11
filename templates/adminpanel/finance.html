@@ -29,7 +29,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"> Cost Centres Overview</h5>
             <div class="d-flex gap-2">
-                {% if user.role == 'financialadmin' or user.role == 'admin' or user.role == 'centrehead' %}
+                {% if user.role == 'financialadmin' or user.role == 'admin' or user.role == 'centrehead' or user.role == 'overseer' %}
                 <a class="btn btn-sm btn-outline-primary" href="{% url 'financial_projects' %}">
                     <i class="bi bi-briefcase me-1"></i> Track Client Bids
                 </a>

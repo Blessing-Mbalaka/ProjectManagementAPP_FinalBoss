@@ -60,8 +60,10 @@
           <i class="bi bi-people"></i> <span>Project Management</span>
         </a>
         <ul class="collapse list-unstyled ps-4 {% if current_url == 'manager_journal' or current_url == 'manager_book' or current_url == 'manager_ganttchart' or current_url == 'manager_engagements' %}show{% endif %}" id="projectSubmenu">
+          {% if user.role != 'financialadmin' %}
           <li><a href="{% url 'manager_journal' %}" class="nav-link {% if current_url == 'manager_journal' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i> <span>Paper</span></a></li>
           <li><a href="{% url 'manager_book' %}" class="nav-link {% if current_url == 'manager_book' %}active{% endif %}"><i class="bi bi-book"></i> <span>Books</span></a></li>
+          {% endif %}
           <li><a href="{% url 'manager_ganttchart' %}" class="nav-link {% if current_url == 'manager_ganttchart' %}active{% endif %}"><i class="bi bi-kanban"></i> <span>Gantt Chart</span></a></li>
           <li><a href="{% url 'manager_engagements' %}" class="nav-link {% if current_url == 'manager_engagements' %}active{% endif %}"><i class="bi bi-chat-square-text"></i> <span>Engagement Notes</span></a></li>
         </ul>

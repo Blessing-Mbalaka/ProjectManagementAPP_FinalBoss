@@ -28,7 +28,7 @@ def register_view(request):
             role = request.POST.get('role')
 
             # Prevent public self-registration into privileged roles
-            if role in ['admin', 'dean', 'centrehead', 'financialadmin']:
+            if role in ['admin', 'dean', 'centrehead', 'overseer', 'financialadmin']:
                 form.add_error(None, "You are not allowed to register with this role.")
                 return render(request, 'users/register.html', {'form': form})
 
@@ -80,7 +80,7 @@ def login_view(request):
 
 
 def _role_home_name(user):
-    if user.role in {'admin', 'dean', 'centrehead'}:
+    if user.role in {'admin', 'dean', 'centrehead', 'overseer'}:
         return 'overview'
     if user.role == 'supervisor':
         return 'supervisor_dashboard_portal'

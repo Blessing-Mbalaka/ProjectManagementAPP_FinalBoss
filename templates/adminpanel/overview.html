@@ -587,7 +587,7 @@ body{
         <h5 id="client-pipeline-heading">Client Opportunity Pipeline</h5>
         <p>Live summary of clients approached and bid outcomes.</p>
       </div>
-      {% if user.is_superuser or user.role == 'admin' or user.role == 'centrehead' or user.role == 'financialadmin' %}
+      {% if user.is_superuser or user.role == 'admin' or user.role == 'centrehead' or user.role == 'overseer' or user.role == 'financialadmin' %}
       <a href="{% url 'financial_projects' %}">Open pipeline <i class="bi bi-arrow-right"></i></a>
       {% endif %}
     </div>
@@ -654,7 +654,7 @@ body{
       </div>
     </div>
 
-    <div class="col-xl-3 col-md-6">
+{% if user.role != 'overseer' %}    <div class="col-xl-3 col-md-6">
       <div class="stat-card">
         <div class="stat-left">
           <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
@@ -666,7 +666,7 @@ body{
       </div>
     </div>
 
-    <div class="col-xl-3 col-md-6">
+{% endif %}    <div class="col-xl-3 col-md-6">
       <div class="stat-card">
         <div class="stat-left">
           <div class="stat-icon"><i class="bi bi-journal-text"></i></div>
@@ -785,15 +785,15 @@ body{
             </div>
           </a>
 
-          <a href="{% if user.role == 'dean' %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="quick-tile">
+{% if user.role != 'overseer' %}          <a href="{% if user.role == 'dean' %}{% url 'finance_readonly' %}{% else %}{% url 'finance' %}{% endif %}" class="quick-tile">
             <div><i class="bi bi-cash-stack"></i></div>
             <div>
               <h6>Finance</h6>
               <p>View budgets, cost centres, funding activity, and financial records.</p>
             </div>
-          </a>
+          </a>{% endif %}
 
-          {% if user.role == 'dean' or user.role == 'centrehead' %}
+          {% if user.role == 'dean' or user.role == 'centrehead' or user.role == 'overseer' %}
           <a href="{% url 'crm_tab' 'clients' %}" class="quick-tile">
             <div><i class="bi bi-people"></i></div>
             <div>

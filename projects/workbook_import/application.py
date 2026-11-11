@@ -167,6 +167,8 @@ def apply_workbook_preview(preview: WorkbookImportPreview, *, actor) -> ImportRe
     updated_projects = 0
     project_by_key = {}
     for row in preview.projects:
+        if actor.role == "overseer" and row.project_type == "financial":
+            raise PermissionDenied("Overseers cannot import financial projects.")
         existing = Project.objects.select_for_update().filter(import_key=row.import_key).first()
         if existing and not _can_manage_existing(actor, existing):
             raise PermissionDenied(f'You are no longer authorized to update project "{existing.name}".')

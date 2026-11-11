@@ -25,6 +25,8 @@ def project_centre_q(user_or_centre):
 
 
 def scope_projects_for_user(queryset, user):
+    if getattr(user, "role", None) == "overseer":
+        queryset = queryset.exclude(project_type="financial")
     if has_role(user, *INSTITUTIONAL_ROLES):
         return queryset
     if not user_centre_id(user):
@@ -67,7 +69,7 @@ def scope_chapters_for_user(queryset, user):
     """Managers inspect centre books; authors receive only their chapters."""
     if has_role(user, 'admin'):
         return queryset
-    if has_role(user, 'centrehead', 'manager'):
+    if has_role(user, 'centrehead', 'overseer', 'manager'):
         centre_id = user_centre_id(user)
         if not centre_id:
             return queryset.none()

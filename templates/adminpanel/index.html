@@ -95,7 +95,7 @@
             </div>
 
             <ul class="sidebar-menu">
-                {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' %}
+                {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' or user.role == 'overseer' %}
                 <li><a href="{% url 'overview' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
                 <!-- <li><a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li> -->
                 {% if user.role == 'dean' %}
@@ -109,10 +109,10 @@
                             <a href="{% url 'crm_tab' 'centres' %}" class="nav-link"><i class="bi bi-diagram-3"></i><span>Centres</span></a>
                             <a href="{% url 'crm_tab' 'engagements' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Engagements</span></a>
                             <a href="{% url 'crm_tab' 'directory' %}" class="nav-link"><i class="bi bi-journal-text"></i><span>Directory</span></a>
-                            <a href="{% url 'crm_tab' 'financials' %}" class="nav-link"><i class="bi bi-cash-stack"></i><span>Financials</span></a>
-                            <a href="{% url 'finance_readonly' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Detailed Finance Overview</span></a>
-                            <a href="{% url 'crm_tab' 'alerts' %}" class="nav-link"><i class="bi bi-exclamation-triangle"></i><span>Alerts</span></a>
-                            <a href="{% url 'crm_tab' 'reports' %}" class="nav-link"><i class="bi bi-bar-chart"></i><span>Reports</span></a>
+{% if user.role != 'overseer' %}                            <a href="{% url 'crm_tab' 'financials' %}" class="nav-link"><i class="bi bi-cash-stack"></i><span>Financials</span></a>{% endif %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'finance_readonly' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Detailed Finance Overview</span></a>{% endif %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'crm_tab' 'alerts' %}" class="nav-link"><i class="bi bi-exclamation-triangle"></i><span>Alerts</span></a>{% endif %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'crm_tab' 'reports' %}" class="nav-link"><i class="bi bi-bar-chart"></i><span>Reports</span></a>{% endif %}
                         </div>
                     </details>
                 </li>
@@ -124,27 +124,27 @@
                         </summary>
                         <div class="sidebar-submenu">
                             <a href="{% url 'pm_overview' %}" class="nav-link"><i class="bi bi-table"></i><span>Overview</span></a>
-                            {% if user.role == 'admin' or user.role == 'centrehead' %}
+                            {% if user.role == 'admin' or user.role == 'centrehead' or user.role == 'overseer' %}
                             <a href="{% url 'assign_projects' %}" class="nav-link"><i class="bi bi-folder-plus"></i><span>Manage &amp; Load Projects</span></a>
                             {% endif %}
-                            {% if user.role == 'admin' or user.role == 'centrehead' %}
-                            <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>
-                            <a href="{% url 'applied_bids' %}" class="nav-link"><i class="bi bi-send-check"></i><span>Applied Bids</span></a>
+                            {% if user.role == 'admin' or user.role == 'centrehead' or user.role == 'overseer' %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>{% endif %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'applied_bids' %}" class="nav-link"><i class="bi bi-send-check"></i><span>Applied Bids</span></a>{% endif %}
                             {% endif %}
                             <a href="{% url 'admin_kanban' %}" class="nav-link"><i class="bi bi-eye"></i><span>Team Monitoring Kanban</span></a>
-                            {% if user.role == 'centrehead' %}
+                            {% if user.role == 'centrehead' or user.role == 'overseer' %}
                             <a href="{% url 'manager_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>My Editable Kanban</span></a>
                             {% endif %}
                             {% if user.role == 'admin' %}
                             <a href="{% url 'admin_my_projects' %}" class="nav-link"><i class="bi bi-folder-check"></i><span>My Projects</span></a>
                             {% endif %}
-                            {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' %}
+                            {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' or user.role == 'overseer' %}
                             <a href="{% url 'admin_ganttchart' %}" class="nav-link"><i class="bi bi-graph-up"></i><span>Gantt Chart</span></a>
                             {% endif %}
                         </div>
                     </details>
                 </li>
-                {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' %}
+                {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' or user.role == 'overseer' %}
                 <li>
                     <details class="sidebar-dropdown">
                         <summary class="nav-link sidebar-dropdown-toggle">
@@ -164,7 +164,7 @@
                 {% if user.role == 'admin' %}
                 <li><a href="{% url 'manage_users' %}" class="nav-link"><i class="bi bi-people"></i><span>Manage Users</span></a></li>
                 {% endif %}
-                {% if user.is_superuser or user.role == 'admin' or user.role == 'centrehead' %}
+                {% if user.is_superuser or user.role == 'admin' or user.role == 'centrehead' or user.role == 'overseer' %}
                 <li><a href="{% url 'page_visit_audit' %}" class="nav-link"><i class="bi bi-activity"></i><span>User Page Activity</span></a></li>
                 <li><a href="{% url 'security_event_audit' %}" class="nav-link"><i class="bi bi-shield-exclamation"></i><span>Security Alerts</span></a></li>
                 {% endif %}
@@ -174,7 +174,7 @@
                 {% if user.role != 'dean' %}
                 <li><a href="{% url 'communique_section' 'templates' %}" class="nav-link"><i class="bi bi-file-earmark-word"></i><span>Templates</span></a></li>
                 {% endif %}
-                {% if user.role == 'centrehead' %}
+                {% if user.role == 'centrehead' or user.role == 'overseer' %}
                 <li>
                     <details class="sidebar-dropdown">
                         <summary class="nav-link sidebar-dropdown-toggle">
@@ -185,9 +185,9 @@
                             <a href="{% url 'crm_tab' 'centres' %}" class="nav-link"><i class="bi bi-diagram-3"></i><span>Centres</span></a>
                             <a href="{% url 'crm_tab' 'engagements' %}" class="nav-link"><i class="bi bi-kanban"></i><span>Engagements</span></a>
                             <a href="{% url 'crm_tab' 'directory' %}" class="nav-link"><i class="bi bi-journal-text"></i><span>Directory</span></a>
-                            <a href="{% url 'crm_tab' 'financials' %}" class="nav-link"><i class="bi bi-cash-stack"></i><span>Financials</span></a>
-                            <a href="{% url 'crm_tab' 'alerts' %}" class="nav-link"><i class="bi bi-exclamation-triangle"></i><span>Alerts</span></a>
-                            <a href="{% url 'crm_tab' 'reports' %}" class="nav-link"><i class="bi bi-bar-chart"></i><span>Reports</span></a>
+{% if user.role != 'overseer' %}                            <a href="{% url 'crm_tab' 'financials' %}" class="nav-link"><i class="bi bi-cash-stack"></i><span>Financials</span></a>{% endif %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'crm_tab' 'alerts' %}" class="nav-link"><i class="bi bi-exclamation-triangle"></i><span>Alerts</span></a>{% endif %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'crm_tab' 'reports' %}" class="nav-link"><i class="bi bi-bar-chart"></i><span>Reports</span></a>{% endif %}
                         </div>
                     </details>
                 </li>
@@ -199,18 +199,18 @@
                             <i class="bi bi-tools"></i><span>PM Tools</span><i class="bi bi-chevron-down sidebar-dropdown-chevron"></i>
                         </summary>
                         <div class="sidebar-submenu">
-                            <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>
-                            <a href="{% url 'applied_bids' %}" class="nav-link"><i class="bi bi-send-check"></i><span>Applied Bids</span></a>
-                            <a href="{% url 'financial_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>My Project Kanban</span></a>
+{% if user.role != 'overseer' %}                            <a href="{% url 'financial_projects' %}" class="nav-link"><i class="bi bi-briefcase"></i><span>Financial Projects</span></a>{% endif %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'applied_bids' %}" class="nav-link"><i class="bi bi-send-check"></i><span>Applied Bids</span></a>{% endif %}
+{% if user.role != 'overseer' %}                            <a href="{% url 'financial_kanban' %}" class="nav-link"><i class="bi bi-kanban"></i><span>My Project Kanban</span></a>{% endif %}
                             <a href="{% url 'assign_projects' %}" class="nav-link"><i class="bi bi-folder-plus"></i><span>Manage &amp; Load Projects</span></a>
                             <a href="{% url 'manager_engagements' %}" class="nav-link"><i class="bi bi-chat-square-text"></i><span>Engagement Notes</span></a>
                         </div>
                     </details>
                 </li>
-                <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
+{% if user.role != 'overseer' %}                <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>{% endif %}
                 {% elif user.role == 'dean' %}
                 {% else %}
-                <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>
+{% if user.role != 'overseer' %}                <li><a href="{% url 'finance' %}" class="nav-link"><i class="bi bi-wallet"></i><span>Finance</span></a></li>{% endif %}
                 {% endif %}
                 </ul>
 

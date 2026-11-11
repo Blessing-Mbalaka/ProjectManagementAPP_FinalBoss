@@ -38,7 +38,7 @@ from projects.workbook_import.workbook import XLSX_MIME, build_template_workbook
 
 User = get_user_model()
 
-PROJECT_WORKBOOK_ROLES = {'manager', 'centrehead', 'dean', 'admin', 'financialadmin'}
+PROJECT_WORKBOOK_ROLES = {'manager', 'centrehead', 'overseer', 'dean', 'admin', 'financialadmin'}
 
 
 def _can_use_project_workbooks(user):
@@ -343,7 +343,7 @@ def _kanban_projects_for(user):
     """Projects that can be selected from the user's editable Kanban."""
     scoped_projects = scope_projects_for_user(Project.objects.all(), user)
     assigned_project_ids = assigned_projects_for(user, scoped_projects).values('id')
-    if has_role(user, 'admin'):
+    if has_role(user, 'admin', 'centrehead'):
         return scoped_projects
     return scoped_projects.filter(
         Q(id__in=assigned_project_ids) | Q(created_by=user)
@@ -413,7 +413,7 @@ def manager_kanban(request):
 
 @login_required
 def financial_kanban(request):
-    if not has_role(request.user, 'admin', 'financialadmin'):
+    if not has_role(request.user, 'admin', 'centrehead', 'financialadmin'):
         return HttpResponseForbidden('This Kanban is reserved for Financial Admin project work.')
 
     request._financial_board = True
@@ -452,6 +452,8 @@ def assign_projects_view(request):
     project_team_users = User.objects.none()  
     task_form = None
     project_form = ProjectForm()
+    if request.user.role == "overseer":
+        project_form.fields["project_type"].choices = [(k,v) for k,v in Project.PROJECT_TYPES if k != "financial"]
 
     # Ensure the allocation list contains only users the actor may manage.
     eligible_team_users = User.objects.filter(is_active=True).exclude(role='student')
@@ -519,7 +521,7 @@ def create_project(request):
             with transaction.atomic():
                 project = form.save(commit=False)
                 project.created_by = request.user
-                if has_role(request.user, 'manager') and not has_role(request.user, 'admin', 'centrehead', 'financialadmin'):
+                if has_role(request.user, 'manager') and not has_role(request.user, 'admin', 'centrehead', 'overseer', 'financialadmin'):
                     project.assigned_user = request.user
                 project.research_centre = getattr(request.user, 'research_centre', None)
                 project.save()
@@ -1227,7 +1229,7 @@ def get_chapters(request, book_id):
 @login_required
 @require_POST
 def add_chapter(request, book_id):
-    if not has_role(request.user, 'admin', 'centrehead', 'manager'):
+    if not has_role(request.user, 'admin', 'centrehead', 'overseer', 'manager'):
         return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == "POST":
         data = json.loads(request.body)
@@ -1251,7 +1253,7 @@ def add_chapter(request, book_id):
 @login_required
 @require_POST
 def edit_chapter(request, chapter_id):
-    if not has_role(request.user, 'admin', 'centrehead', 'manager'):
+    if not has_role(request.user, 'admin', 'centrehead', 'overseer', 'manager'):
         return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == "POST":
         data = json.loads(request.body)
@@ -1274,7 +1276,7 @@ def edit_chapter(request, chapter_id):
 @login_required
 @require_POST
 def delete_chapter(request, chapter_id):
-    if not has_role(request.user, 'admin', 'centrehead', 'manager'):
+    if not has_role(request.user, 'admin', 'centrehead', 'overseer', 'manager'):
         return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == "POST":
         Chapter.objects.filter(id=chapter_id, book__in=scope_books_for_user(Book.objects.all(), request.user)).delete()
@@ -1286,7 +1288,7 @@ def delete_chapter(request, chapter_id):
 @login_required
 def bulk_assign_chapters(request, book_id):
     """Create/update chapter assignments in one atomic, validated request."""
-    if not has_role(request.user, 'admin', 'centrehead', 'manager'):
+    if not has_role(request.user, 'admin', 'centrehead', 'overseer', 'manager'):
         return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     book = get_object_or_404(scope_books_for_user(Book.objects.all(), request.user), id=book_id)
     try:

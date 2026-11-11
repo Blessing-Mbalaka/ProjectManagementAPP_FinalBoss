@@ -15,8 +15,8 @@
         <th>Code</th>
         <th>Research Centre</th>
         <th>Relationship Owner</th>
-        <th>Revenue</th>
-        <th>Pipeline</th>
+{% if user.role != 'overseer' %}        <th>Revenue</th>{% endif %}
+{% if user.role != 'overseer' %}        <th>Pipeline</th>{% endif %}
         <th></th>
       </tr>
     </thead>
@@ -49,8 +49,8 @@
             <span class="text-muted">Unassigned</span>
           {% endif %}
         </td>
-        <td>R {{ client.total_received|floatformat:2 }}</td>
-        <td>R {{ client.pipeline_value|floatformat:2 }}</td>
+{% if user.role != 'overseer' %}        <td>R {{ client.total_received|floatformat:2 }}</td>{% endif %}
+{% if user.role != 'overseer' %}        <td>R {{ client.pipeline_value|floatformat:2 }}</td>{% endif %}
         <td>
           <button class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#companyModal{{ client.id }}">
             View company

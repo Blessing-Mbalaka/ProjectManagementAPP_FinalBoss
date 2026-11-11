@@ -10,6 +10,8 @@ def has_role(user, *roles):
     if not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
         return False
     effective = {getattr(user, "role", None)}
+    if "overseer" in effective:
+        effective.add("centrehead")
     if getattr(user, "is_superuser", False):
         effective.add("admin")
     if getattr(user, 'pk', None):
@@ -29,15 +31,15 @@ def has_role(user, *roles):
 
 
 def can_manage_projects(user):
-    return has_role(user, "admin", "centrehead", "manager", "financialadmin")
+    return has_role(user, "admin", 'centrehead', 'overseer', "manager", "financialadmin")
 
 
 def can_manage_client_engagements(user):
-    return has_role(user, "admin", "centrehead", "manager", "financialadmin")
+    return has_role(user, "admin", 'centrehead', 'overseer', "manager", "financialadmin")
 
 
 def can_manage_publications(user):
     # Staff authors (including Raksha), supervisors/professors and project roles
     # may upload; students and finance-only accounts may not.
-    return has_role(user, "admin", "centrehead", "manager", "supervisor", "staff")
+    return has_role(user, "admin", 'centrehead', 'overseer', "manager", "supervisor", "staff")
 

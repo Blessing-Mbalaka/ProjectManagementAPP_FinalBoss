@@ -28,15 +28,17 @@ def workable_tasks_for(user, queryset=None):
 
     # Staff and authors see only work explicitly assigned to them.
     # Project-level visibility must never reveal another person's task list.
-    if not has_role(user, "admin", "centrehead", "manager", "financialadmin"):
+    if not has_role(user, "admin", 'centrehead', 'overseer', "manager", "financialadmin"):
         return personal_tasks_for(user, tasks)
 
-    if has_role(user, "admin"):
-        return tasks
+    if has_role(user, "centrehead"):
+        from projects.scope import scope_projects_for_user
+        return tasks.filter(project__in=scope_projects_for_user(Project.objects.all(), user))
 
     assigned_projects = assigned_projects_for(user)
+    financial_access = Q(project__project_type="financial") if has_role(user, "admin") else Q(pk__in=[])
     return tasks.filter(
-        Q(assigned_to=user)
+        financial_access | Q(assigned_to=user)
         | Q(created_by=user)
         | Q(project__in=assigned_projects)
     ).distinct()

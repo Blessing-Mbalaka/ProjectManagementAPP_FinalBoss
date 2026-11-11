@@ -14,7 +14,7 @@
         <th>Staff</th>
         <th>Clients</th>
         <th>Engagements</th>
-        <th>Revenue</th>
+{% if user.role != 'overseer' %}        <th>Revenue</th>{% endif %}
         <th>Estimated Profit</th>
         <th>KPI</th>
       </tr>
@@ -33,8 +33,8 @@
         <td>{{ centre.staff_count }}</td>
         <td>{{ centre.client_count }}</td>
         <td>{{ centre.engagement_count }}</td>
-        <td>R {{ centre.revenue|floatformat:2 }}</td>
-        <td>R {{ centre.estimated_profit|floatformat:2 }}</td>
+{% if user.role != 'overseer' %}        <td>R {{ centre.revenue|floatformat:2 }}</td>{% endif %}
+{% if user.role != 'overseer' %}        <td>R {{ centre.estimated_profit|floatformat:2 }}</td>{% endif %}
         <td>
           <div class="crm-progress"><div style="width: {{ centre.avg_progress }}%;"></div></div>
           <small>{{ centre.avg_progress }}%</small>

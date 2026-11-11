@@ -68,7 +68,7 @@
     </div>
     <form method="get" class="crm-filter">
       <label class="form-label mb-1">Research Centre</label>
-      <select name="centre" class="form-select" onchange="this.form.submit()" {% if user.role == 'centrehead' or user.role == 'admin' and user.research_centre %}disabled{% endif %}>
+      <select name="centre" class="form-select" onchange="this.form.submit()" {% if user.role == 'centrehead' or user.role == 'overseer' or user.role == 'admin' and user.research_centre %}disabled{% endif %}>
         <option value="">All centres</option>
         {% for centre in research_centres %}
           <option value="{{ centre.id }}" {% if selected_centre and selected_centre.id == centre.id %}selected{% endif %}>{{ centre.name }}</option>
@@ -80,16 +80,16 @@
   <div class="crm-metrics">
     <div class="crm-metric"><span>Clients</span><strong>{{ client_count }}</strong></div>
     <div class="crm-metric"><span>Active Engagements</span><strong>{{ active_engagement_count }}</strong></div>
-    <div class="crm-metric"><span>Revenue</span><strong>R {{ total_revenue|floatformat:2 }}</strong></div>
-    <div class="crm-metric"><span>Pipeline</span><strong>R {{ pipeline_value|floatformat:2 }}</strong></div>
+{% if user.role != 'overseer' %}    <div class="crm-metric"><span>Revenue</span><strong>R {{ total_revenue|floatformat:2 }}</strong></div>{% endif %}
+{% if user.role != 'overseer' %}    <div class="crm-metric"><span>Pipeline</span><strong>R {{ pipeline_value|floatformat:2 }}</strong></div>{% endif %}
   </div>
 
   <nav class="crm-tabs">
-    {% for key, label, icon in crm_tabs %}
+    {% for key, label, icon in crm_tabs %}{% if user.role != 'overseer' or key == 'clients' or key == 'centres' or key == 'engagements' or key == 'directory' or key == 'active_projects' %}
       <a href="{% url 'crm_tab' key %}{% if selected_centre %}?centre={{ selected_centre.id }}{% endif %}" class="{% if active_tab == key %}active{% endif %}">
         <i class="bi {{ icon }}"></i> {{ label }}
       </a>
-    {% endfor %}
+    {% endif %}{% endfor %}
   </nav>
 
   <div class="crm-panel">

@@ -390,9 +390,9 @@ FINANCE_EDITOR_ROLES = ['admin', 'centrehead', 'financialadmin']
 FORECAST_VIEW_ROLES = ['admin', 'dean', 'centrehead']
 FORECAST_EDITOR_ROLES = ['admin', 'centrehead']
 FINANCE_COST_CENTRE_ROLES = ['admin', 'financialadmin']
-ADMIN_VIEW_ROLES = ['admin', 'dean', 'centrehead']
-COMMUNIQUE_ROLES = ['staff', 'manager', 'admin', 'dean', 'centrehead', 'financialadmin', 'student', 'supervisor']
-CRM_ROLES = ['dean', 'centrehead']
+ADMIN_VIEW_ROLES = ['admin', 'dean', 'centrehead', 'overseer']
+COMMUNIQUE_ROLES = ['staff', 'manager', 'admin', 'dean', 'centrehead', 'overseer', 'financialadmin', 'student', 'supervisor']
+CRM_ROLES = ['dean', 'centrehead', 'overseer']
 
 
 def is_admin(user):
@@ -436,7 +436,7 @@ def get_accessible_cost_centre_ids(user):
     research_centre_id = get_user_research_centre_id(user)
     if role == 'admin' and not research_centre_id:
         return None
-    if role not in ['admin', 'centrehead', 'financialadmin']:
+    if role not in ['admin', 'centrehead', 'overseer', 'financialadmin']:
         return None
     if not research_centre_id:
         return []
@@ -476,11 +476,11 @@ def ensure_finance_editor(request, cost_centre=None):
         messages.error(request, "You do not have permission to change financial data.")
         return False
 
-    if request.user.role in ['admin', 'centrehead']:
+    if request.user.role in ['admin', 'centrehead', 'overseer']:
         research_centre_id = get_user_research_centre_id(request.user)
         if request.user.role == 'admin' and not research_centre_id:
             return True
-        if request.user.role == 'centrehead' and not research_centre_id:
+        if (request.user.role == 'centrehead' or request.user.role == 'overseer') and not research_centre_id:
             messages.error(request, "Your account is not assigned to a research centre.")
             return False
         if cost_centre is not None and cost_centre.research_centre_id != research_centre_id:
@@ -581,7 +581,7 @@ def app_kanban(request):
 
 
 @login_required
-@user_passes_test(lambda u: has_role(u, 'admin', 'dean', 'centrehead', 'manager'))
+@user_passes_test(lambda u: has_role(u, 'admin', 'dean', 'centrehead', 'overseer', 'manager'))
 def admin_ganttchart(request):
     base_projects = Project.objects.select_related('assigned_user', 'created_by').prefetch_related('tasks__assigned_to', 'tasks__subtasks')
     projects = base_projects if has_role(request.user, 'admin', 'dean') else manageable_projects_for(request.user, base_projects)
@@ -683,7 +683,7 @@ def register_users(request):
             role = request.POST.get('role')
 
             # Prevent anyone from trying to register as an admin
-            if role == 'admin':
+            if role in ['admin', 'dean', 'centrehead', 'overseer', 'financialadmin']:
                 form.add_error(None, "You are not allowed to register as an admin.")
                 return render(request, 'users/register.html', {'form': form})
 
@@ -706,14 +706,14 @@ def register_users(request):
 def overview(request):
     User = get_user_model()
     users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
-    if request.user.role == 'centrehead':
+    if (request.user.role == 'centrehead' or request.user.role == 'overseer'):
         users = users.filter(research_centre_id=request.user.research_centre_id)
 
     projects = Project.objects.prefetch_related(
         'tasks',
         'assignments__team_member__user'
     ).select_related('created_by', 'assigned_user')
-    if request.user.role == 'centrehead':
+    if (request.user.role == 'centrehead' or request.user.role == 'overseer'):
         centre_id = request.user.research_centre_id
         if centre_id:
             projects = projects.filter(
@@ -725,6 +725,8 @@ def overview(request):
         else:
             projects = projects.none()
 
+    if request.user.role == "overseer":
+        projects = projects.exclude(project_type="financial")
     progress_list, status_list, type_list = [], [], []
 
     for p in projects:
@@ -809,8 +811,8 @@ def overview(request):
         ),
     }
 
-    client_pipeline_visible = has_role(
-        request.user, 'admin', 'centrehead', 'dean', 'financialadmin'
+    client_pipeline_visible = request.user.role != 'overseer' and has_role(
+        request.user, 'admin', 'centrehead', 'overseer', 'dean', 'financialadmin'
     )
     client_pipeline = None
     if client_pipeline_visible:
@@ -1505,7 +1507,7 @@ def finance(request, section=None):
         return redirect('overview')
 
     scoped_cost_centre_ids = get_accessible_cost_centre_ids(request.user)
-    if scoped_cost_centre_ids == [] and request.user.role == 'centrehead':
+    if scoped_cost_centre_ids == [] and (request.user.role == 'centrehead' or request.user.role == 'overseer'):
         messages.error(request, "Your account is not assigned to a research centre with cost centres.")
         return redirect('communique')
 
@@ -1840,7 +1842,7 @@ def get_finance_scope_queryset(user):
     role = getattr(user, 'role', None)
     if role == 'admin' and not get_user_research_centre_id(user):
         return queryset
-    if role in ['admin', 'centrehead', 'financialadmin']:
+    if role in ['admin', 'centrehead', 'overseer', 'financialadmin']:
         queryset = queryset.filter(research_centre_id=get_user_research_centre_id(user))
     return queryset
 
@@ -1862,7 +1864,7 @@ def download_expense_import_template(request):
 
 @login_required
 def download_finance_summary_excel(request):
-    if request.user.role not in ['admin', 'centrehead', 'dean', 'financialadmin']:
+    if request.user.role not in ['admin', 'centrehead', 'overseer', 'dean', 'financialadmin']:
         messages.error(request, "You do not have permission to download finance data.")
         return redirect('overview')
 
@@ -3081,7 +3083,7 @@ def admin_kanban(request):
             selected_user_id = candidate_id
 
     return render(request, 'adminpanel/admin_kanban.html', {
-        'is_kanban_readonly': request.user.role in ['admin', 'dean', 'centrehead'],
+        'is_kanban_readonly': request.user.role in ['admin', 'dean', 'centrehead', 'overseer'],
         'board_users': board_users,
         'selected_user_id': selected_user_id,
     })
@@ -3112,6 +3114,8 @@ def pm_overview(request):
         'assignments__team_member',
     ).distinct().order_by('name')
 
+    if request.user.role == "overseer":
+        projects = projects.exclude(project_type="financial")
     project_list = list(projects)
     projects_by_user = defaultdict(list)
     for project in project_list:
@@ -3234,7 +3238,7 @@ def admin_my_task_update(request, task_id):
 
 
 def get_crm_selected_centre(request):
-    if request.user.role == 'centrehead':
+    if (request.user.role == 'centrehead' or request.user.role == 'overseer'):
         return ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)).first()
 
     centre_id = request.GET.get('centre')
@@ -3246,7 +3250,7 @@ def get_crm_selected_centre(request):
 def get_crm_scope(request):
     selected_centre = get_crm_selected_centre(request)
     centres = ResearchCentre.objects.all().order_by('name')
-    if request.user.role == 'centrehead':
+    if (request.user.role == 'centrehead' or request.user.role == 'overseer'):
         centres = centres.filter(id=get_user_research_centre_id(request.user))
 
     cost_centres = CostCentre.objects.select_related('research_centre').all().order_by('name')
@@ -3310,7 +3314,7 @@ def build_crm_context(request, active_tab):
             'name': cost_centre.name,
             'sector': cost_centre.research_centre.name if cost_centre.research_centre else 'Unassigned',
             'ownership': cost_centre.research_centre.name if cost_centre.research_centre else 'Institutional',
-            'lead': next((user for user in users if user.role == 'centrehead' and user.research_centre_id == cost_centre.research_centre_id), None),
+            'lead': next((user for user in users if (user.role == 'centrehead' or user.role == 'overseer') and user.research_centre_id == cost_centre.research_centre_id), None),
             'total_received': received,
             'total_spent': spent,
             'estimated_profit': received - spent,
@@ -3356,7 +3360,7 @@ def build_crm_context(request, active_tab):
         centres.append({
             'id': centre.id,
             'name': centre.name,
-            'director': next((user for user in centre_users if user.role == 'centrehead'), None),
+            'director': next((user for user in centre_users if (user.role == 'centrehead' or user.role == 'overseer')), None),
             'staff_count': len(centre_users),
             'client_count': len(centre_costs),
             'engagement_count': len(centre_projects),
@@ -3430,7 +3434,14 @@ def crm(request, tab='clients'):
     valid_tabs = {'clients', 'centres', 'engagements', 'directory', 'financials', 'active_projects', 'alerts', 'reports'}
     if tab not in valid_tabs:
         tab = 'clients'
-    return render(request, 'adminpanel/crm/crm.html', build_crm_logic_context(request, tab))
+    context = build_crm_logic_context(request, tab)
+    if request.user.role == 'overseer':
+        for key in ['total_revenue', 'total_spent', 'pipeline_value', 'estimated_profit', 'reporting', 'crm_chart_data', 'alerts', 'client_risk_alerts']:
+            context.pop(key, None)
+        for row in context.get('clients', []) + context.get('centres', []):
+            for key in ['total_received', 'total_spent', 'estimated_profit', 'pipeline_value', 'revenue']:
+                row.pop(key, None)
+    return render(request, 'adminpanel/crm/crm.html', context)
 
 
 @login_required
@@ -3871,6 +3882,8 @@ def admin_user_kanban(request, user_id):
     ).prefetch_related(
         'project__assignments__team_member__user'
     ).distinct()
+    if request.user.role == 'overseer':
+        tasks = tasks.exclude(project__project_type='financial')
 
     # Group by status
     task_data = {

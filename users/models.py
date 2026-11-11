@@ -25,6 +25,7 @@ class CustomUser(AbstractUser):
         ('admin', 'Admin'),
         ('dean', 'Dean'),
         ('centrehead', 'Centre Head'),
+        ('overseer', 'Overseer'),
         ('supervisor', 'Supervisor'),
         ('manager', 'Project Manager'),
         ('financialadmin', 'Financial Admin'),

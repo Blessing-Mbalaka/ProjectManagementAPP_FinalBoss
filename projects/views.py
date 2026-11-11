@@ -61,7 +61,7 @@ def dashboard(request):
 
 @login_required
 def weekly_reports(request):
-    can_review = has_role(request.user, 'admin', 'centrehead', 'manager')
+    can_review = has_role(request.user, 'admin', 'centrehead', 'overseer', 'manager')
     visible_projects = manageable_projects_for(request.user)
 
     if request.method == 'POST':

@@ -72,7 +72,7 @@ def _security_recipients(user=None):
     if user and user.research_centre_id:
         queryset = queryset | CustomUser.objects.filter(
             is_active=True,
-            role='centrehead',
+            role__in=['centrehead', 'overseer'],
             research_centre_id=user.research_centre_id,
         )
     return queryset.distinct()

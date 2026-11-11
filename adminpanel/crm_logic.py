@@ -62,7 +62,7 @@ def get_user_research_centre_id(user):
 
 
 def get_selected_centre(request):
-    if request.user.role == 'centrehead':
+    if (request.user.role == 'centrehead' or request.user.role == 'overseer'):
         return ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)).first()
     if request.user.role == 'admin' and get_user_research_centre_id(request.user):
         return ResearchCentre.objects.filter(id=get_user_research_centre_id(request.user)).first()
@@ -73,7 +73,7 @@ def get_selected_centre(request):
 def get_scope(request):
     selected_centre = get_selected_centre(request)
     research_centres = ResearchCentre.objects.all().order_by('name')
-    if request.user.role == 'centrehead':
+    if (request.user.role == 'centrehead' or request.user.role == 'overseer'):
         research_centres = research_centres.filter(id=get_user_research_centre_id(request.user))
     if request.user.role == 'admin' and get_user_research_centre_id(request.user):
         research_centres = research_centres.filter(id=get_user_research_centre_id(request.user))
@@ -93,6 +93,8 @@ def get_scope(request):
         conferences = conferences.filter(output_centre_q(selected_centre)).distinct()
         books = books.filter(created_by__research_centre=selected_centre)
 
+    if request.user.role == "overseer":
+        projects = projects.exclude(project_type="financial")
     return {
         'selected_centre': selected_centre,
         'research_centres': research_centres,
@@ -173,7 +175,7 @@ def build_clients(cost_centres, users):
             ],
             'sector': cost_centre.research_centre.name if cost_centre.research_centre else 'Unassigned',
             'ownership': cost_centre.research_centre.name if cost_centre.research_centre else 'Institutional',
-            'lead': next((user for user in users if user.role == 'centrehead' and user.research_centre_id == cost_centre.research_centre_id), None),
+            'lead': next((user for user in users if (user.role == 'centrehead' or user.role == 'overseer') and user.research_centre_id == cost_centre.research_centre_id), None),
             'total_received': received,
             'total_spent': spent,
             'estimated_profit': received - spent,
@@ -467,7 +469,7 @@ def build_context(request, active_tab):
         centres.append({
             'id': centre.id,
             'name': centre.name,
-            'director': next((user for user in centre_users if user.role == 'centrehead'), None),
+            'director': next((user for user in centre_users if (user.role == 'centrehead' or user.role == 'overseer')), None),
             'staff_count': len(centre_users),
             'client_count': len(centre_clients),
             'engagement_count': len(centre_engagements),
