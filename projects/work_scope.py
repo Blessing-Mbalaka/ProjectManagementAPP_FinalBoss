@@ -31,6 +31,9 @@ def workable_tasks_for(user, queryset=None):
     if not has_role(user, "admin", "centrehead", "manager", "financialadmin"):
         return personal_tasks_for(user, tasks)
 
+    if has_role(user, "admin"):
+        return tasks
+
     assigned_projects = assigned_projects_for(user)
     return tasks.filter(
         Q(assigned_to=user)

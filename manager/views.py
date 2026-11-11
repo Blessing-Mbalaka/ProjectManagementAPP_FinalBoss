@@ -343,6 +343,8 @@ def _kanban_projects_for(user):
     """Projects that can be selected from the user's editable Kanban."""
     scoped_projects = scope_projects_for_user(Project.objects.all(), user)
     assigned_project_ids = assigned_projects_for(user, scoped_projects).values('id')
+    if has_role(user, 'admin'):
+        return scoped_projects
     return scoped_projects.filter(
         Q(id__in=assigned_project_ids) | Q(created_by=user)
     ).distinct()
@@ -411,7 +413,7 @@ def manager_kanban(request):
 
 @login_required
 def financial_kanban(request):
-    if not has_role(request.user, 'financialadmin'):
+    if not has_role(request.user, 'admin', 'financialadmin'):
         return HttpResponseForbidden('This Kanban is reserved for Financial Admin project work.')
 
     request._financial_board = True
