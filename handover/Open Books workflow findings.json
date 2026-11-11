@@ -1,5 +1,5 @@
 {
-  "result": "OPEN functional gap",
+  "result": "RESOLVED - 12 November 2026",
   "page": "/adminpanel/admin_book/",
   "steps": [
     "Select Table View and local audit book",
@@ -13,5 +13,8 @@
     "saveChapter only mutates the in-memory books array",
     "showComments uses placeholder comments; postComment only updates the DOM"
   ],
-  "production_data_changed": false
+  "production_data_changed": false,
+  "original_result": "OPEN functional gap",
+  "resolution": "Chapter create/edit/delete and comments now persist to the database. Verified with role API tests and save/reload browser UAT.",
+  "verification": "Persistence browser results.json"
 }

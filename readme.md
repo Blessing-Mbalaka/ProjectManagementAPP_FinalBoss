@@ -197,7 +197,7 @@ python manage.py makemigrations --check --dry-run --settings=project_manage.sett
 python manage.py test --settings=project_manage.settings_test --noinput
 ```
 
-The latest recorded suite passed **351 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
+The latest recorded suite passed **361 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
 
 ## Render deployment
 
@@ -226,7 +226,13 @@ Workers and cron jobs are separate processes/services; the web start command doe
 
 Saves return to the current authorised workspace, including its relevant filters. Primary roles choose navigation and fallback destinations independently of additional permissions. Communique remains shared; its section returns, protected saves and Student supervisor-chat link follow the same rule.
 
-The latest audit covers 158 role/page visits, 201 rendered form destinations and browser journeys across all ten roles plus elevated Staff. Read the [evaluation and open findings](handover/Global%20role%20navigation%20evaluation.html) before release sign-off. The Books page still has non-persistent chapter controls and demo comments; the PM dashboard personal task list uses browser local storage. These are not covered by a blanket system approval.
+The latest audit covers 158 role/page visits, 201 rendered form destinations and browser journeys across all ten roles plus elevated Staff. Read the [role evaluation](handover/Global%20role%20navigation%20evaluation.html) and the later [persistence verification](handover/Persistence%20fixes%20and%20save-reload%20verification.html) before release sign-off. Book chapters and comments now save to the database, and Today's Tasks is an account-owned database list. The persistence changes passed save/reload browser checks across all ten roles plus elevated Staff, including expected read-only and denied cases.
+
+## Saved chapters, comments and personal tasks
+
+Migration `manager.0013_bookcomment_dashboardtask` adds the book discussion and personal task tables. Deploy it before serving the updated pages; the Render build already runs `migrate`. The change requires no new environment variable.
+
+Admin and PM book entry points share the same saved chapter controls. Chapter progress updates after saved edits and deletions. Comments record the authenticated author and are shared only within the permitted book scope. Today's Tasks stores personal completion and deletion in the database. An optional, confirmed import moves previous browser-only tasks into the current account; normal task saves do not use browser storage.
 
 ## Contributors
 

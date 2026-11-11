@@ -1,0 +1,49 @@
+Creating test database for alias 'default'...
+
+Destroying old test database for alias 'default'...
+
+C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_FinalBoss\.venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: C:\tmp\test_static\
+  mw_instance = middleware(adapted_handler)
+Forbidden: /manager/edit-chapter/1/
+Forbidden: /manager/delete-chapter/1/
+.Not Found: /manager/books/1/comments/
+Not Found: /manager/books/1/comments/
+.Forbidden: /manager/add-chapter/1/
+Forbidden: /manager/add-chapter/1/
+Forbidden: /manager/add-chapter/1/
+Forbidden: /manager/add-chapter/1/
+Forbidden: /manager/add-chapter/1/
+Forbidden: /manager/add-chapter/1/
+.Bad Request: /manager/add-chapter/1/
+Bad Request: /manager/add-chapter/1/
+Bad Request: /manager/add-chapter/1/
+Bad Request: /manager/add-chapter/1/
+Bad Request: /manager/add-chapter/1/
+Bad Request: /manager/add-chapter/1/
+Bad Request: /manager/add-chapter/1/
+Not Found: /manager/add-chapter/2/
+Method Not Allowed (GET): /manager/delete-chapter/1/
+.Bad Request: /manager/books/1/comments/
+Bad Request: /manager/books/1/comments/
+Bad Request: /manager/books/1/comments/
+Not Found: /manager/books/2/comments/
+Not Found: /manager/books/1/comments/
+.Bad Request: /manager/dashboard-tasks/
+..Forbidden (CSRF token missing.): /manager/dashboard-tasks/
+Forbidden (CSRF token missing.): /manager/add-chapter/1/
+Forbidden (CSRF token missing.): /manager/books/1/comments/
+.Not Found: /manager/dashboard-tasks/1/
+Bad Request: /manager/dashboard-tasks/
+Bad Request: /manager/dashboard-tasks/
+Bad Request: /manager/dashboard-tasks/
+Bad Request: /manager/dashboard-tasks/1/
+Method Not Allowed (GET): /manager/dashboard-tasks/1/
+..
+----------------------------------------------------------------------
+Ran 10 tests in 1.676s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 10 test(s).
+System check identified no issues (0 silenced).

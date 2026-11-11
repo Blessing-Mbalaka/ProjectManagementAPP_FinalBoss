@@ -1,0 +1,35 @@
+{
+  "admin": {
+    "chapter_changes": "saved, edited, deleted and reloaded"
+  },
+  "dean": {
+    "chapter_changes": "403; existing permission boundary preserved"
+  },
+  "centrehead": {
+    "chapter_changes": "saved, edited, deleted and reloaded"
+  },
+  "overseer": {
+    "chapter_changes": "saved, edited, deleted and reloaded"
+  },
+  "it": {
+    "chapter_changes": "403; existing permission boundary preserved"
+  },
+  "supervisor": {
+    "chapter_changes": "403; existing permission boundary preserved"
+  },
+  "manager": {
+    "chapter_changes": "saved, edited, deleted and reloaded"
+  },
+  "financialadmin": {
+    "chapter_changes": "403; existing permission boundary preserved"
+  },
+  "staff": {
+    "chapter_changes": "403; existing permission boundary preserved"
+  },
+  "student": {
+    "chapter_changes": "403; existing permission boundary preserved"
+  },
+  "staff_superuser": {
+    "chapter_changes": "saved, edited, deleted and reloaded"
+  }
+}

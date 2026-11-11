@@ -1,0 +1,78 @@
+{
+  "profiles": {
+    "admin": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "saved, reloaded, edited/completed, reloaded, validation preserved, deleted and reloaded",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    },
+    "dean": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "read only; no inaccessible mutation controls",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    },
+    "centrehead": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "saved, reloaded, edited/completed, reloaded, validation preserved, deleted and reloaded",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    },
+    "overseer": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "saved, reloaded, edited/completed, reloaded, validation preserved, deleted and reloaded",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    },
+    "it": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "books": "403; workspace not offered to role",
+      "script_errors": []
+    },
+    "supervisor": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "read only; no inaccessible mutation controls",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    },
+    "manager": {
+      "legacy_import": "confirmed and saved after reload",
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "saved, reloaded, edited/completed, reloaded, validation preserved, deleted and reloaded",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    },
+    "financialadmin": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "read only; no inaccessible mutation controls",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    },
+    "staff": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "read only; no inaccessible mutation controls",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    },
+    "student": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "books": "403; workspace not offered to role",
+      "script_errors": []
+    },
+    "staff_superuser": {
+      "personal_tasks": "created, reloaded, completed, reloaded, reopened, deleted and reloaded; account scoped",
+      "chapters": "saved, reloaded, edited/completed, reloaded, validation preserved, deleted and reloaded",
+      "comments": "saved under account author and reloaded from database",
+      "script_errors": []
+    }
+  },
+  "screenshots": [
+    "handover/screenshots/persistence-admin-chapter-reloaded.png",
+    "handover/screenshots/persistence-admin-comments-reloaded.png",
+    "handover/screenshots/persistence-pm-today-reloaded.png",
+    "handover/screenshots/persistence-manager-chapter-reloaded.png",
+    "handover/screenshots/persistence-manager-comments-reloaded.png",
+    "handover/screenshots/persistence-financialadmin-comments-reloaded.png"
+  ],
+  "production_data_changed": false
+}
