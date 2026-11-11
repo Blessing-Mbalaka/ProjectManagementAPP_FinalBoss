@@ -17,6 +17,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from .backup_service import BackupError, backup_directory, create_backup, get_backup, list_backups, next_backup_run, restore_backup, import_backup_archive, archive_payload, _audit
 from .models import BackupSchedule, PageVisitLog, SecurityEvent
+from .email_health import email_health
 
 
 class BackupScheduleForm(forms.ModelForm):
@@ -60,6 +61,7 @@ def it_dashboard(request):
     if not can_operate_system(request.user):
         return HttpResponseForbidden('Only IT and administrators can access operations.')
     return render(request, 'adminpanel/it_dashboard.html', {
+        'email_health': email_health(),
         'open_security_count': SecurityEvent.objects.filter(is_suspicious=True, status='open').count(),
         'recent_security': SecurityEvent.objects.filter(is_suspicious=True).select_related('user').order_by('-occurred_at')[:8],
         'today_visits': PageVisitLog.objects.filter(visited_at__date=timezone.localdate()).count(),
@@ -74,6 +76,7 @@ def _recovery_context(request):
     except (BackupError, OSError):
         messages.warning(request, 'Backup storage is unavailable. Check the private backup directory configuration.')
     return {
+        'email_health': email_health(),
         'snapshots': snapshots,
         'backups_enabled': settings.DB_BACKUP_ENABLED,
         'restore_enabled': settings.DB_BACKUP_ENABLED and settings.DB_RESTORE_ENABLED and settings.DB_MAINTENANCE_MODE,

@@ -33,6 +33,7 @@
 <header class="it-heading"><h1>{% block it_heading %}{% endblock %}</h1><p class="mb-0">{% block it_description %}{% endblock %}</p></header>
 {% if local_email_test %}<div class="alert alert-warning">Local email test mode — archives are captured in a test mailbox. No real email is sent.</div>{% endif %}
 {% for message in messages %}<div role="status" class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">{{ message }}</div>{% endfor %}
+{% if email_health.warning %}<div class="alert alert-warning" role="alert"><strong>IT warning — SMTP email</strong><p class="mb-1 mt-2">{{ email_health.warning }}</p><a href="{% url 'it_backups' %}" class="alert-link">Open backups and schedules</a></div>{% elif email_health.state == 'unverified' and not local_email_test %}<div class="alert alert-light border" role="status">SMTP settings are present; delivery has not been verified. Run a backup and check its attachment in the recipient mailbox.</div>{% endif %}
 {% block it_content %}{% endblock %}
 </div>
 {% endblock %}

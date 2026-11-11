@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from adminpanel.models import BackupSchedule
 from adminpanel.backup_service import BackupError, backup_directory, create_backup, next_backup_run
+from adminpanel.email_health import email_health
 
 
 class Command(BaseCommand):
@@ -24,6 +25,7 @@ class Command(BaseCommand):
         if not settings.DB_BACKUP_ENABLED:
             self.stdout.write('Database backups are disabled; no jobs executed.')
             return
+        email_health()
         now = timezone.now()
         (backup_directory() / 'worker-heartbeat').write_text(now.isoformat())
         heartbeat, _ = BackupSchedule.objects.get_or_create(key='database')

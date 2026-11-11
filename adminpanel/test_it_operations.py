@@ -33,6 +33,9 @@ class NativeSnapshotTests(SimpleTestCase):
         self.overrides = override_settings(DB_BACKUP_DIR=self.root / 'backups', DB_BACKUP_ENABLED=True, DB_RESTORE_ENABLED=True, DB_MAINTENANCE_MODE=True, DB_BACKUP_KEEP_LOCAL=True, DB_BACKUP_ALLOW_TEST_EMAIL=True, DEBUG=True, EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
         self.overrides.enable()
         self.addCleanup(self.overrides.disable)
+        status_patch = patch.object(service, 'update_email_status')
+        status_patch.start()
+        self.addCleanup(status_patch.stop)
         for name, value in [('_database', (self.config, 'sqlite3')), ('_schema', ['test.0001']), ('_email_recipients', ['backup@example.test'])]:
             mocker = patch.object(service, name, return_value=value)
             mocker.start()

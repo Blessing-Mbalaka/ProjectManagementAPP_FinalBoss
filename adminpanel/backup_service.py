@@ -18,6 +18,7 @@ from django.core.exceptions import ValidationError
 from django.db import connections
 from django.db.migrations.recorder import MigrationRecorder
 from django.utils import timezone
+from .email_health import configuration_problem, update_email_status
 
 
 class BackupError(Exception):
@@ -105,6 +106,9 @@ def operation_lock():
 def create_backup(actor='scheduler', reason='manual'):
     if not settings.DB_BACKUP_ENABLED:
         raise BackupError('Database backups are disabled in this environment.')
+    if configuration_problem():
+        update_email_status('not_configured')
+        raise BackupError('Configure SMTP email delivery before creating offsite backups. IT has been notified.')
     recipients = _email_recipients()
     config, engine = _database()
     with operation_lock() as root:
@@ -285,9 +289,12 @@ def _email_archive(record, path, recipients):
     try:
         sent = message.send(fail_silently=False)
     except Exception:
+        update_email_status('failed')
         raise BackupError('Backup email was not accepted. Check email delivery configuration; no completed backup is recorded.') from None
     if sent != 1:
+        update_email_status('failed')
         raise BackupError('Backup email was not accepted; no completed backup is recorded.')
+    update_email_status('accepted' if not settings.DB_BACKUP_ALLOW_TEST_EMAIL else 'unverified')
 
 
 def import_backup_archive(upload, actor):

@@ -950,6 +950,8 @@ class BackupSchedule(models.Model):
     last_run = models.DateTimeField(null=True, blank=True)
     last_result = models.CharField(max_length=255, blank=True)
     worker_heartbeat = models.DateTimeField(null=True, blank=True)
+    email_delivery_state = models.CharField(max_length=20, default='unverified', choices=[('unverified', 'Not verified'), ('not_configured', 'Not configured'), ('failed', 'Delivery failed'), ('accepted', 'Accepted by mail server')])
+    email_checked_at = models.DateTimeField(null=True, blank=True)
     recipients = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='database_backup_schedules')
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
     updated_at = models.DateTimeField(auto_now=True)
