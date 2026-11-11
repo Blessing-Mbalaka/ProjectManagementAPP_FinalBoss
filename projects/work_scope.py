@@ -41,6 +41,7 @@ def workable_tasks_for(user, queryset=None):
         financial_access | Q(assigned_to=user)
         | Q(created_by=user)
         | Q(project__in=assigned_projects)
+        | Q(project__created_by=user)
     ).distinct()
 
 
@@ -75,3 +76,10 @@ def inspectable_users_for(user):
     if has_role(user, "admin", "dean"):
         return users
     return users.none()
+
+
+def task_creation_projects_for(user):
+    """Project managers manage projects; staff contribute to allocated projects."""
+    if has_role(user, 'staff'):
+        return assigned_projects_for(user)
+    return manageable_projects_for(user)

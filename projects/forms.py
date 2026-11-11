@@ -1,7 +1,8 @@
 # projects/forms.py
 from django import forms
 from .models import DailyTask, StudentProfile, Submission, FeedbackReply, Meeting, ChatMessage, Project, Assignment, TeamMember, Task, WeeklyReport
-from django.contrib.auth import get_user_model 
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 
 # forms.py
 class DailyTaskForm(forms.ModelForm):
@@ -185,7 +186,7 @@ class TaskForm(forms.ModelForm):
             # Limit assignees to project team users
             team_user_ids = Assignment.objects.filter(project=self.project)\
                 .values_list('team_member__user_id', flat=True)
-            self.fields['assigned_to'].queryset = get_user_model().objects.filter(id__in=team_user_ids)
+            self.fields['assigned_to'].queryset = get_user_model().objects.filter(Q(id__in=team_user_ids) | Q(id=self.project.assigned_user_id), is_active=True)
         else:
             # If no project passed, make safe defaults
             self.fields['parent_task'].queryset = Task.objects.none()
@@ -196,6 +197,6 @@ class TaskForm(forms.ModelForm):
         if assigned_to and self.project:
             team_user_ids = Assignment.objects.filter(project=self.project)\
                 .values_list('team_member__user_id', flat=True)
-            if assigned_to.id not in team_user_ids:
+            if assigned_to.id not in team_user_ids and assigned_to.id != self.project.assigned_user_id:
                 raise forms.ValidationError("Selected user is not a member of this project.")
         return assigned_to

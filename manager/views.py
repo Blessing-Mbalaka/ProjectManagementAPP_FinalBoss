@@ -27,7 +27,7 @@ from django.shortcuts import render
 from adminpanel.models import CostCentre, EngagementLog, FinancialProject, Notification
 from adminpanel.notification_service import visible_notifications_for
 from projects.scope import scope_books_for_user, scope_chapters_for_user, scope_outputs_for_user, scope_projects_for_user
-from projects.work_scope import assigned_projects_for, can_update_task, manageable_projects_for, workable_tasks_for
+from projects.work_scope import task_creation_projects_for, assigned_projects_for, can_update_task, manageable_projects_for, workable_tasks_for
 from users.roles import can_manage_client_engagements, can_manage_projects, can_manage_publications, has_role
 from projects.assignment_notifications import notify_project_assignment
 from manager.publication_projects import sync_publication_project
@@ -618,9 +618,10 @@ def remove_assignment(request, assignment_id):
 
 @login_required
 def add_task(request, project_id):
-    if not can_manage_projects(request.user):
-        return HttpResponseForbidden('You are not authorized to manage project tasks.')
-    allowed_projects = manageable_projects_for(request.user)
+    staff_contributor = has_role(request.user, 'staff') and not can_manage_projects(request.user)
+    if not can_manage_projects(request.user) and not staff_contributor:
+        return HttpResponseForbidden('You are not authorized to create project tasks.')
+    allowed_projects = task_creation_projects_for(request.user)
     if has_role(request.user, 'financialadmin') and not has_role(request.user, 'admin'):
         allowed_projects = allowed_projects.filter(
             Q(assigned_user=request.user) | Q(created_by=request.user)
@@ -634,8 +635,13 @@ def add_task(request, project_id):
             task.created_by = request.user
             task.save()
             messages.success(request, 'Task created successfully!')
+            if staff_contributor:
+                return redirect('project_tasks', project_id=project.id)
             return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
         else:
+            if staff_contributor:
+                from projects.views import project_tasks
+                return project_tasks(request, project.id, task_form=form)
             # Form has errors - render the page with error messages displayed
             messages.error(request, 'Please fix the errors in the task form.')
             User = get_user_model()
@@ -664,6 +670,8 @@ def add_task(request, project_id):
             }
             return render(request, 'manager/assign.html', context)
     
+    if staff_contributor:
+        return redirect('project_tasks', project_id=project.id)
     return redirect('assign_projects')
 
 

@@ -42,7 +42,10 @@ RuntimeError: SMTP unavailable
 ..Forbidden: /projects/staff/create-task/
 Forbidden: /projects/task/delete/1/
 .........Forbidden: /projects/staff/create-task/
-.........................................Not Found: /manager/update-task-status/2/
+.............Not Found: /projects/project/1/tasks/
+Not Found: /manager/add_task/1/
+Not Found: /manager/add_task/1/
+.................................Not Found: /manager/update-task-status/2/
 .Forbidden: /adminpanel/finance/
 Forbidden: /adminpanel/finance/
 Forbidden: /adminpanel/finance-readonly/
@@ -68,12 +71,12 @@ Forbidden: /adminpanel/crm/alerts/
 ........................Not Found: /this-page-does-not-exist/
 ..
 ----------------------------------------------------------------------
-Ran 236 tests in 7.271s
+Ran 241 tests in 6.702s
 
 OK
 Destroying test database for alias 'default'...
 
-Found 236 test(s).
+Found 241 test(s).
 System check identified no issues (0 silenced).
 [PASS] Cost centre created with MOA amount
 [PASS] MOA Outstanding calculated correctly: 30000.00

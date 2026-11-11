@@ -540,3 +540,26 @@ def staff_templates(request):
         'template_categories': template_categories,
         'search_query': search_query,
     })
+
+
+@login_required
+def project_tasks(request, project_id, task_form=None):
+    from projects.forms import TaskForm
+    from projects.work_scope import task_creation_projects_for
+    project = get_object_or_404(task_creation_projects_for(request.user), pk=project_id)
+    form = task_form if task_form is not None else TaskForm(project=project)
+    for field in form.fields.values():
+        field.widget.attrs['class'] = 'form-select' if hasattr(field.widget, 'choices') else 'form-control'
+    return render(request, 'projects/project_tasks.html', {
+        'project': project,
+        'project_tasks': project.tasks.select_related('assigned_to', 'created_by').order_by('-created_at'),
+        'task_form': form,
+    })
+
+
+@login_required
+def staff_projects(request):
+    from projects.work_scope import task_creation_projects_for
+    return render(request, 'projects/staff_projects.html', {
+        'projects': task_creation_projects_for(request.user).select_related('assigned_user'),
+    })
