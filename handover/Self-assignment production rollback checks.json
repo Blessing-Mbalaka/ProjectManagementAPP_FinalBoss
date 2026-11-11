@@ -1,0 +1,69 @@
+{
+  "environment": "production PostgreSQL; each diagnostic transaction rolled back",
+  "checks": [
+    {
+      "role": "admin",
+      "response_status": 302,
+      "self_owner_and_lead": true,
+      "actual_creator_preserved": true,
+      "own_followup": true,
+      "pipeline_stage": "lead",
+      "task_status": "todo",
+      "task_progress": 0,
+      "admin_accounts_that_can_see_bid": 2,
+      "diagnostic_removed": true
+    },
+    {
+      "role": "financialadmin",
+      "response_status": 302,
+      "self_owner_and_lead": true,
+      "actual_creator_preserved": true,
+      "own_followup": true,
+      "pipeline_stage": "lead",
+      "task_status": "todo",
+      "task_progress": 0,
+      "admin_accounts_that_can_see_bid": 2,
+      "diagnostic_removed": true
+    },
+    {
+      "role": "admin",
+      "response_status": 302,
+      "self_owner_and_lead": true,
+      "actual_creator_preserved": true,
+      "own_followup": true,
+      "pipeline_stage": "lead",
+      "task_status": "todo",
+      "task_progress": 0,
+      "admin_accounts_that_can_see_bid": 2,
+      "diagnostic_removed": true
+    },
+    {
+      "role": "financialadmin",
+      "response_status": 302,
+      "self_owner_and_lead": true,
+      "actual_creator_preserved": true,
+      "own_followup": true,
+      "pipeline_stage": "lead",
+      "task_status": "todo",
+      "task_progress": 0,
+      "admin_accounts_that_can_see_bid": 2,
+      "diagnostic_removed": true
+    },
+    {
+      "role": "financialadmin",
+      "response_status": 302,
+      "self_owner_and_lead": true,
+      "actual_creator_preserved": true,
+      "own_followup": true,
+      "pipeline_stage": "lead",
+      "task_status": "todo",
+      "task_progress": 0,
+      "admin_accounts_that_can_see_bid": 2,
+      "diagnostic_removed": true
+    }
+  ],
+  "bid_count_before": 1,
+  "bid_count_after": 1,
+  "emails_sent": false,
+  "committed_diagnostic_records": 0
+}

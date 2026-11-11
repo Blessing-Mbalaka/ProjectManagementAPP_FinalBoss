@@ -1,0 +1,13 @@
+{
+  "invalidEmailShowsVisibleModalErrors": "pass",
+  "draftValuesRetained": "pass",
+  "saveOverlayDoesNotBlockCorrection": "pass",
+  "financeSelfCreatesWithoutContactDetails": "pass",
+  "adminSelfCreatesWithoutContactDetails": "pass",
+  "adminWithoutDefaultCentreChoosesCentre": "pass",
+  "selfCreatedBidStartsNewLead": "pass",
+  "ownTaskStartsTodo": "pass",
+  "financeMyProjectsVisibility": "pass",
+  "adminSeesFinanceSelfCreatedBid": "pass",
+  "javascriptErrors": []
+}
