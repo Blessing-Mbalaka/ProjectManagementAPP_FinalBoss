@@ -5,6 +5,10 @@
 {% block title %}Books{% endblock %}
 
 {% block content %}
+{{ books_json|json_script:"booksData" }}
+<style>
+#chaptersTable .status-badge { position:static; display:inline-block; width:auto; height:auto; border-radius:20px; white-space:nowrap; }
+</style>
             <link rel="stylesheet" href="{% static 'css/style.css' %}">
             <link rel="stylesheet" href="{% static 'css/books.css' %}">
             <div class="welcome-box">
@@ -117,6 +121,8 @@
 
                 <!-- Table View (Hidden by default) -->
                 <div id="tableView" style="display: none;">
+                    <label class="form-label" for="tableBookSelect">Book to view</label>
+                    <select class="form-select mb-3" id="tableBookSelect" aria-label="Book to view"><option value="">No books available</option></select>
                     <!-- Book Info Card -->
                     <div class="card mb-4">
                         <div class="card-body">
@@ -183,19 +189,7 @@
                                 </table>
                             </div>
 
-                            <!-- Pagination -->
-                            <nav aria-label="Chapter pagination" class="mt-4">
-                                <ul class="pagination justify-content-center">
-                                    <li class="page-item disabled">
-                                        <a class="page-link" href="#" tabindex="-1">Previous</a>
-                                    </li>
-                                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="#">Next</a>
-                                    </li>
-                                </ul>
-                            </nav>
+
                         </div>
                     </div>
                 </div>
@@ -474,7 +468,7 @@
             <script>
 
                 // Book data storage - loaded from database
-                let books = {{ books_json|safe }};
+                let books = JSON.parse(document.getElementById('booksData').textContent);
 
                 // DOM Elements
                 const kanbanBoard = document.getElementById('kanbanBoard');
@@ -502,6 +496,7 @@
                     renderKanbanBoard();
                     setupEventListeners();
                     updateCounts();
+                    document.getElementById('tableBookSelect').addEventListener('change', function () { showTableView(Number(this.value)); });
                 });
 
                 // Set up event listeners
@@ -526,9 +521,8 @@
                                 tableView.style.display = 'block';
 
                                 // If we have a selected book, show its chapters
-                                if (currentSelectedBook) {
-                                    renderBookChapters(currentSelectedBook);
-                                }
+                                const selected = currentSelectedBook || books[0];
+                                if (selected) showTableView(selected.id);
                             }
                         }
                     });
@@ -594,6 +588,11 @@
 
                 // Render the kanban board with books
                 function renderKanbanBoard() {
+                    const select = document.getElementById('tableBookSelect');
+                    select.replaceChildren();
+                    if (!books.length) select.add(new Option('No books available', ''));
+                    books.forEach(book => select.add(new Option(book.title, String(book.id))));
+                    if (currentSelectedBook && books.some(book => book.id === currentSelectedBook.id)) select.value = String(currentSelectedBook.id);
                     // Clear all columns first
                     document.querySelectorAll('.kanban-column > div:first-child + div').forEach(column => {
                         column.innerHTML = '';
@@ -623,7 +622,7 @@
                     }
 
                     // Calculate progress percentage
-                    const progressPercent = Math.round((book.chapters.completed / book.chapters.total) * 100);
+                    const progressPercent = Math.round((book.chapters.completed / Math.max(1, book.chapters.total)) * 100);
 
                     card.innerHTML = `
                 <div class="kanban-card-header">
@@ -977,7 +976,7 @@
                     const dueDate = book.dueDate ? new Date(book.dueDate).toLocaleDateString() : 'Not set';
 
                     // Calculate progress
-                    const progressPercent = Math.round((book.chapters.completed / book.chapters.total) * 100);
+                    const progressPercent = Math.round((book.chapters.completed / Math.max(1, book.chapters.total)) * 100);
 
                     // Set modal title
                     document.getElementById('detailsModalTitle').textContent = book.title;
@@ -1062,7 +1061,11 @@
                     if (!book) return;
 
                     // Switch to table view
-                    document.querySelector('#viewTabs .nav-link[data-view="table"]').click();
+                    currentSelectedBook = book;
+                    kanbanBoard.style.display = 'none';
+                    tableView.style.display = 'block';
+                    document.querySelectorAll('#viewTabs .nav-link').forEach(tab => tab.classList.toggle('active', tab.dataset.view === 'table'));
+                    document.getElementById('tableBookSelect').value = String(book.id);
 
                     // Set the book info in the table view header
                     document.getElementById('selectedBookTitle').textContent = book.title;
@@ -1071,7 +1074,7 @@
                     document.getElementById('selectedBookDueDate').textContent = book.dueDate ? new Date(book.dueDate).toLocaleDateString() : 'Not set';
 
                     // Update progress bar
-                    const progressPercent = Math.round((book.chapters.completed / book.chapters.total) * 100);
+                    const progressPercent = Math.round((book.chapters.completed / Math.max(1, book.chapters.total)) * 100);
                     const progressBar = document.getElementById('selectedBookProgress');
                     progressBar.style.width = `${progressPercent}%`;
                     progressBar.setAttribute('aria-valuenow', progressPercent);
