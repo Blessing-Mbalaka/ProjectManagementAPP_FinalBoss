@@ -67,7 +67,7 @@ def scope_books_for_user(queryset, user):
 
 def scope_chapters_for_user(queryset, user):
     """Managers inspect centre books; authors receive only their chapters."""
-    if has_role(user, 'admin'):
+    if has_role(user, 'admin', 'dean'):
         return queryset
     if has_role(user, 'centrehead', 'overseer', 'manager'):
         centre_id = user_centre_id(user)

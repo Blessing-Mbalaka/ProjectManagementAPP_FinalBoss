@@ -1,3 +1,4 @@
+from django.views.decorators.csrf import ensure_csrf_cookie
 # views.py in manager app
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -33,6 +34,7 @@ from users.navigation import workspace_return_url, workspace_base, role_home_nam
 from urllib.parse import parse_qs, urlsplit
 from django.urls import resolve
 from projects.assignment_notifications import notify_project_assignment
+from .persistence_views import get_chapters, add_chapter, edit_chapter, delete_chapter
 from manager.publication_projects import sync_publication_project
 from projects.workbook_import.application import WorkbookImportError, apply_workbook_preview
 from projects.workbook_import.tokens import PreviewTokenError, sign_preview, unsign_preview
@@ -108,6 +110,7 @@ def _normalize_client_label(label):
 
 
 @login_required
+@ensure_csrf_cookie
 def manager_dashboard(request):
     now = timezone.now()
     base_qs = visible_notifications_for(request.user)
@@ -122,6 +125,7 @@ def manager_dashboard(request):
     return render(request, 'manager/manager_dashboard.html', {
         'my_notifications': my_notifications,
         'new_notifications_count': new_count,
+        'workspace_base_template': workspace_base(request.user),
     })
 
 
@@ -1185,12 +1189,8 @@ def edit_paper_ajax(request, paper_id):
 
 @login_required
 def manager_book(request):
-    books = scope_books_for_user(Book.objects.all(), request.user).order_by('-created_at')
-    return render(request, 'manager/manager_book.html', {
-        'workspace_base_template': workspace_base(request.user),
-        'books': books,
-        'unlinked_publication_count': books.filter(project__isnull=True).count(),
-    })
+    from adminpanel.views import admin_book
+    return admin_book(request)
 
 
 @csrf_exempt
@@ -1222,6 +1222,8 @@ def add_book(request):
 @csrf_exempt
 @login_required
 def edit_book(request, book_id):
+    if not can_manage_publications(request.user):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     try:
         book = scope_books_for_user(Book.objects.all(), request.user).get(id=book_id)
         if request.method == 'POST':
@@ -1251,89 +1253,12 @@ def edit_book(request, book_id):
 @csrf_exempt
 @login_required
 def delete_book(request, book_id):
+    if not can_manage_publications(request.user):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == 'POST':
         scope_books_for_user(Book.objects.filter(id=book_id), request.user).delete()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'message': 'Invalid method'})
-
-
-@csrf_exempt
-@login_required
-def get_chapters(request, book_id):
-    book = get_object_or_404(scope_books_for_user(Book.objects.all(), request.user), id=book_id)
-    chapters = scope_chapters_for_user(Chapter.objects.filter(book=book), request.user).select_related('assigned_author').order_by("chapter_number")
-    chapter_list = [
-        {
-            "id": c.id,
-            "book_id": c.book_id,
-            "chapter_number": c.chapter_number,
-            "title": c.title,
-            "author": c.author,
-            "assigned_author_id": c.assigned_author_id,
-            "assigned_author": (c.assigned_author.get_full_name() or c.assigned_author.username) if c.assigned_author else c.author,
-            "editor": c.editor,
-            "status": c.status,
-            "last_updated": c.last_updated.strftime("%Y-%m-%d %H:%M")
-        } for c in chapters
-    ]
-    return JsonResponse({"chapters": chapter_list})
-
-@login_required
-@require_POST
-def add_chapter(request, book_id):
-    if not has_role(request.user, 'admin', 'centrehead', 'overseer', 'manager'):
-        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
-    if request.method == "POST":
-        data = json.loads(request.body)
-        book = scope_books_for_user(Book.objects.all(), request.user).get(id=book_id)
-        author_lookup = {'id': data.get('assigned_author_id')} if data.get('assigned_author_id') else {'username__iexact': str(data.get('author', '')).strip()}
-        assigned_author = get_object_or_404(User, is_active=True, **author_lookup)
-        chapter = Chapter.objects.create(
-            book=book,
-            chapter_number=data["chapter_number"],
-            title=data["title"],
-            author=assigned_author.get_full_name() or assigned_author.username,
-            assigned_author=assigned_author,
-            editor=data.get("editor", ""),
-            status=data["status"]
-        )
-        print("Chapter created:", chapter.title)
-
-        return JsonResponse({"success": True, "id": chapter.id})
-    return JsonResponse({"success": False, "error": "Invalid request method"})
-
-@login_required
-@require_POST
-def edit_chapter(request, chapter_id):
-    if not has_role(request.user, 'admin', 'centrehead', 'overseer', 'manager'):
-        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
-    if request.method == "POST":
-        data = json.loads(request.body)
-        try:
-            chapter = Chapter.objects.get(id=chapter_id, book__in=scope_books_for_user(Book.objects.all(), request.user))
-            chapter.chapter_number = data["chapter_number"]
-            chapter.title = data["title"]
-            author_lookup = {'id': data.get('assigned_author_id')} if data.get('assigned_author_id') else {'username__iexact': str(data.get('author', '')).strip()}
-            assigned_author = get_object_or_404(User, is_active=True, **author_lookup)
-            chapter.assigned_author = assigned_author
-            chapter.author = assigned_author.get_full_name() or assigned_author.username
-            chapter.editor = data.get("editor", "")
-            chapter.status = data["status"]
-            chapter.save()
-            return JsonResponse({"success": True})
-        except Chapter.DoesNotExist:
-            return JsonResponse({"success": False, "error": "Chapter not found"})
-    return JsonResponse({"success": False, "error": "Invalid request method"})
-
-@login_required
-@require_POST
-def delete_chapter(request, chapter_id):
-    if not has_role(request.user, 'admin', 'centrehead', 'overseer', 'manager'):
-        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
-    if request.method == "POST":
-        Chapter.objects.filter(id=chapter_id, book__in=scope_books_for_user(Book.objects.all(), request.user)).delete()
-        return JsonResponse({"success": True})
-    return JsonResponse({"success": False, "error": "Invalid request"})
 
 
 @require_POST
@@ -1367,6 +1292,7 @@ def bulk_assign_chapters(request, book_id):
     from django.db import transaction
     saved = []
     with transaction.atomic():
+        book = Book.objects.select_for_update().get(pk=book.pk)
         for row, author, status in validated_rows:
             chapter, _created = Chapter.objects.update_or_create(
                 book=book,
@@ -1380,6 +1306,8 @@ def bulk_assign_chapters(request, book_id):
                 },
             )
             saved.append(chapter.id)
+        from .persistence_views import update_chapter_progress
+        update_chapter_progress(book)
     return JsonResponse({'success': True, 'saved': len(saved), 'chapter_ids': saved})
 
 

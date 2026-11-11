@@ -3924,28 +3924,24 @@ def delete_conference(request, conference_id):
     return redirect('admin_conferences')
 
 @login_required
+@ensure_csrf_cookie
 def admin_book(request):
     from manager.models import Book, Chapter
+    from manager.persistence_views import chapter_rows, can_edit_chapters, chapter_authors, can_discuss_book, accessible_books
+    from users.navigation import workspace_base
     
     # Fetch all books with their chapters
-    books = scope_books_for_user(Book.objects.prefetch_related('chapters'), request.user).order_by('-created_at')
+    if not can_manage_publications(request.user) and request.user.role not in {'dean', 'financialadmin'}:
+        return HttpResponseForbidden('This book workspace is not available for your role.')
+    books = accessible_books(request.user).prefetch_related('chapters').order_by('-created_at')
     
     # Convert to JSON-friendly format for template
     books_data = []
     for book in books:
-        chapters = book.chapters.all().order_by('chapter_number')
-        chapters_list = [{
-            'id': ch.id,
-            'number': ch.chapter_number,
-            'title': ch.title,
-            'author': ch.author,
-            'editor': ch.editor or '',
-            'status': ch.status,
-            'lastUpdated': ch.last_updated.strftime('%Y-%m-%d %H:%M')
-        } for ch in chapters]
-        
+        chapters_list = chapter_rows(book, request.user)
         books_data.append({
             'id': book.id,
+            'canDiscuss': bool(can_discuss_book(request.user, book)),
             'title': book.title,
             'status': book.status,
             'author': book.lead_author,
@@ -3960,6 +3956,11 @@ def admin_book(request):
         })
     
     return render(request, 'adminpanel/admin_book.html', {
+        'workspace_base_template': workspace_base(request.user),
+        'can_edit_chapters': can_edit_chapters(request.user),
+        'can_edit_books': can_manage_publications(request.user),
+        'chapter_authors': chapter_authors(request.user),
+        'unlinked_publication_count': books.filter(project__isnull=True).count(),
         'can_create_publications': can_manage_publications(request.user),
         'books_json': books_data,
         'book_status_choices': Book.STATUS_CHOICES,
@@ -3970,6 +3971,8 @@ def admin_book(request):
 @login_required
 def update_book_status(request, book_id):
     """Update the status of a book via kanban drag-and-drop"""
+    if not can_manage_publications(request.user):
+        return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     if request.method == 'POST':
         try:
             data = json.loads(request.body)

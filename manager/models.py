@@ -1,3 +1,4 @@
+from django.utils import timezone
 # models.py in projects app
 from django.db import models
 from django.conf import settings
@@ -385,3 +386,24 @@ class ChangeLog(models.Model):
             content_type=content_type,
             object_id=object_id
         ).order_by('-changed_at')[:limit]
+
+
+class BookComment(models.Model):
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    text = models.TextField(max_length=10000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at', 'pk']
+
+
+class DashboardTask(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dashboard_tasks')
+    title = models.CharField(max_length=255)
+    completed = models.BooleanField(default=False)
+    work_date = models.DateField(default=timezone.localdate, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at', 'pk']

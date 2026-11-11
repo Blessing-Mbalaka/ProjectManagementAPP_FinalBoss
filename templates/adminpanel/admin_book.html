@@ -1,4 +1,4 @@
-{% extends 'adminpanel/index.html' %}
+{% extends workspace_base_template|default:'adminpanel/index.html' %}
 {% load static %}
 {% csrf_token %}
 
@@ -6,8 +6,10 @@
 
 {% block content %}
 {{ books_json|json_script:"booksData" }}
+<div id="book-save-feedback" role="status" class="alert" hidden></div>
+{% if unlinked_publication_count %}<p class="alert alert-warning">Project setup pending for {{ unlinked_publication_count }} book(s).</p>{% endif %}
 <style>
-#chaptersTable .status-badge { position:static; display:inline-block; width:auto; height:auto; border-radius:20px; white-space:nowrap; }
+#chaptersTable .status-badge, #bookDetailsContent .status-badge { position:static; display:inline-block; width:auto; height:auto; border-radius:20px; white-space:nowrap; }
 </style>
             <link rel="stylesheet" href="{% static 'css/style.css' %}">
             <link rel="stylesheet" href="{% static 'css/books.css' %}">
@@ -154,7 +156,7 @@
                                     <button class="btn btn-outline-secondary" id="printSummaryBtn" disabled>
                                         <i class="bi bi-printer"></i> Print Summary
                                     </button>
-                                    <button class="btn btn-primary ms-2" id="addChapterBtn">
+                                    <button class="btn btn-primary ms-2" id="addChapterBtn" {% if not can_edit_chapters %}hidden{% endif %}>
                                         <i class="bi bi-plus-circle"></i> Add Chapter
                                     </button>
                                 </div>
@@ -381,7 +383,9 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="chapterAuthor" class="form-label">Author</label>
-                                        <input type="text" class="form-control" id="chapterAuthor" required>
+                                        <input type="text" class="form-control" id="chapterAuthor" maxlength="255">
+                                        <label for="chapterAssignedAuthor" class="form-label mt-2">Assign to a system author (optional)</label>
+                                        <select id="chapterAssignedAuthor" class="form-select"><option value="">External or unassigned author</option>{% for person in chapter_authors %}<option value="{{ person.pk }}">{{ person.get_full_name|default:person.username }}</option>{% endfor %}</select>
                                     </div>
                                     <div class="mb-3">
                                         <label for="chapterEditor" class="form-label">Editor</label>
@@ -421,17 +425,12 @@
                                     <!-- Comments will be added dynamically -->
                                 </div>
 
-                                <form id="commentForm">
+                                <form id="commentForm"><div id="comment-save-feedback" role="status"></div>
                                     <div class="mb-3">
                                         <label for="newComment" class="form-label">Add New Comment</label>
-                                        <textarea class="form-control" id="newComment" rows="3" required></textarea>
+                                        <textarea class="form-control" id="newComment" rows="3" maxlength="10000" required></textarea>
                                     </div>
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <button type="button" class="btn btn-outline-secondary">
-                                                <i class="bi bi-paperclip"></i> Attach File
-                                            </button>
-                                        </div>
+                                    <div class="d-flex justify-content-end">
                                         <div>
                                             <button type="button" class="btn btn-secondary me-2"
                                                 data-bs-dismiss="modal">Cancel</button>
@@ -467,7 +466,10 @@
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
 
+                function escapeHTML(value) { const node = document.createElement('span'); node.textContent = value == null ? '' : String(value); return node.innerHTML; }
                 // Book data storage - loaded from database
+                const canEditBooks = {{ can_edit_books|yesno:'true,false' }};
+                const canEditChapters = {{ can_edit_chapters|yesno:'true,false' }};
                 let books = JSON.parse(document.getElementById('booksData').textContent);
 
                 // DOM Elements
@@ -611,7 +613,7 @@
 
                     const card = document.createElement('div');
                     card.className = 'kanban-card';
-                    card.draggable = true;
+                    card.draggable = canEditBooks;
                     card.dataset.id = book.id;
 
                     // Format due date
@@ -626,13 +628,13 @@
 
                     card.innerHTML = `
                 <div class="kanban-card-header">
-                    <span class="kanban-card-title">${book.title}</span>
+                    <span class="kanban-card-title">${escapeHTML(book.title)}</span>
                     <button class="btn btn-sm btn-outline-secondary" onclick="showBookDetails(${book.id})">
                         <i class="bi bi-three-dots-vertical"></i>
                     </button>
                 </div>
                 <div class="kanban-card-meta">
-                    <div>${book.author}</div>
+                    <div>${escapeHTML(book.author)}</div>
                     <div>${dueDateText}</div>
                 </div>
                 <div class="progress mb-2" style="height: 5px;">
@@ -641,14 +643,14 @@
                 </div>
                 <div class="kanban-card-footer">
                     <span>${book.chapters.completed}/${book.chapters.total} chapters</span>
-                    <div class="kanban-card-actions">
+                    ${canEditBooks ? `<div class="kanban-card-actions">
                         <button class="btn btn-sm btn-outline-primary" title="Edit" onclick="showEditBookForm(${book.id}, event)">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="confirmDeleteBook(${book.id}, event)">
                             <i class="bi bi-trash"></i>
                         </button>
-                    </div>
+                    </div>` : ''}
                 </div>
             `;
 
@@ -910,7 +912,7 @@
                     // Set up the confirmation modal
                     document.getElementById('confirmationModalTitle').textContent = 'Delete Book';
                     document.getElementById('confirmationModalBody').innerHTML = `
-                Are you sure you want to delete the book <strong>"${book.title}"</strong>? This action cannot be undone.
+                Are you sure you want to delete the book <strong>"${escapeHTML(book.title)}"</strong>? This action cannot be undone.
             `;
 
                     // Set up the confirm button
@@ -985,11 +987,11 @@
                     document.getElementById('bookDetailsContent').innerHTML = `
                 <div class="row mb-4">
                     <div class="col-md-8">
-                        <p class="lead">${book.description}</p>
+                        <p class="lead">${escapeHTML(book.description)}</p>
                         <div class="row">
                             <div class="col-md-6">
                                 <h6>Lead Author</h6>
-                                <p>${book.author}</p>
+                                <p>${escapeHTML(book.author)}</p>
                             </div>
                             <div class="col-md-6">
                                 <h6>Publisher</h6>
@@ -1047,9 +1049,9 @@
                 <button type="button" class="btn btn-primary" onclick="showTableView(${book.id})">
                     <i class="bi bi-table"></i> View Full Chapters Table
                 </button>
-                <button type="button" class="btn btn-outline-primary" onclick="showComments(${book.id})">
+                ${book.canDiscuss ? `<button type="button" class="btn btn-outline-primary" onclick="showComments(${book.id})">
                     <i class="bi bi-chat-left-text"></i> Comments
-                </button>
+                </button>` : ''}
             `;
 
                     bookDetailsModal.show();
@@ -1113,18 +1115,18 @@
 
                         row.innerHTML = `
                     <td>${chapter.number}</td>
-                    <td>${chapter.title}</td>
-                    <td>${chapter.author}</td>
-                    <td>${chapter.editor || '-'}</td>
+                    <td>${escapeHTML(chapter.title)}</td>
+                    <td>${escapeHTML(chapter.author)}</td>
+                    <td>${escapeHTML(chapter.editor || '-')}</td>
                     <td><span class="status-badge status-${statusClass}">${chapter.status}</span></td>
                     <td>${new Date(chapter.lastUpdated).toLocaleDateString()}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="editChapter(${book.id}, ${chapter.id})">
+                        ${canEditChapters ? `<button class="btn btn-sm btn-outline-primary" aria-label="Edit chapter" onclick="editChapter(${book.id}, ${chapter.id})">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteChapter(${book.id}, ${chapter.id})">
+                        <button class="btn btn-sm btn-outline-danger" aria-label="Delete chapter" onclick="confirmDeleteChapter(${book.id}, ${chapter.id})">
                             <i class="bi bi-trash"></i>
-                        </button>
+                        </button>` : ''}
                     </td>
                 `;
 
@@ -1146,6 +1148,7 @@
                     document.getElementById('chapterNumber').value = chapter.number;
                     document.getElementById('chapterTitle').value = chapter.title;
                     document.getElementById('chapterAuthor').value = chapter.author;
+                    document.getElementById('chapterAssignedAuthor').value = chapter.assigned_author_id || '';
                     document.getElementById('chapterEditor').value = chapter.editor || '';
                     document.getElementById('chapterStatus').value = chapter.status;
 
@@ -1166,7 +1169,7 @@
                     // Set up the confirmation modal
                     document.getElementById('confirmationModalTitle').textContent = 'Delete Chapter';
                     document.getElementById('confirmationModalBody').innerHTML = `
-                Are you sure you want to delete chapter ${chapter.number}: <strong>"${chapter.title}"</strong>? This action cannot be undone.
+                Are you sure you want to delete chapter ${chapter.number}: <strong>"${escapeHTML(chapter.title)}"</strong>? This action cannot be undone.
             `;
 
                     // Set up the confirm button
@@ -1179,135 +1182,93 @@
                     confirmationModal.show();
                 }
 
-                // Delete a chapter
-                function deleteChapter(bookId, chapterId) {
-                    const bookIndex = books.findIndex(b => b.id === bookId);
-                    if (bookIndex === -1) return;
-
-                    // Remove the chapter
-                    books[bookIndex].chapters.list = books[bookIndex].chapters.list.filter(c => c.id !== chapterId);
-
-                    // Update completed chapters count if needed
-                    const completedChapters = books[bookIndex].chapters.list.filter(c => c.status === 'Completed').length;
-                    books[bookIndex].chapters.completed = completedChapters;
-
-                    // Re-render the kanban board to update progress
-                    renderKanbanBoard();
-
-                    // If this is the current selected book in table view, update the table
-                    if (currentSelectedBook && currentSelectedBook.id === bookId) {
-                        renderBookChapters(books[bookIndex]);
-                    }
+                function bookFeedback(message, failed = false) {
+                    const box = document.getElementById('book-save-feedback');
+                    box.textContent = message;
+                    box.className = 'alert ' + (failed ? 'alert-danger' : 'alert-success');
+                    box.hidden = false;
                 }
-
-                // Save a chapter (add new or update existing)
-                function saveChapter() {
-                    if (!chapterForm.checkValidity()) {
-                        chapterForm.reportValidity();
-                        return;
-                    }
-
-                    const bookId = parseInt(document.getElementById('chapterBookId').value);
-                    const chapterId = parseInt(document.getElementById('chapterId').value) || null;
-                    const bookIndex = books.findIndex(b => b.id === bookId);
-
-                    if (bookIndex === -1) return;
-
-                    const chapterData = {
-                        id: chapterId || Date.now(), // Use existing ID or generate a new one
-                        number: parseInt(document.getElementById('chapterNumber').value),
+                async function bookRequest(url, data) {
+                    const options = data === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': (document.cookie.split('; ').find(item => item.startsWith('csrftoken='))?.split('=')[1] || '')}, body: JSON.stringify(data)};
+                    const response = await fetch(url, options);
+                    let result;
+                    try { result = await response.json(); } catch (_) { throw new Error('Unable to save. Please reload and try again.'); }
+                    if (!response.ok || !result.success) throw new Error(result.error || 'The update could not be saved.');
+                    return result;
+                }
+                function savedChapters(bookId, result) {
+                    const book = books.find(b => b.id === bookId);
+                    book.chapters.list = result.chapters;
+                    book.chapters.completed = result.completed_chapters;
+                    book.chapters.total = result.total_chapters;
+                    renderKanbanBoard();
+                    if (currentSelectedBook && currentSelectedBook.id === bookId) showTableView(bookId);
+                }
+                async function deleteChapter(bookId, chapterId) {
+                    try {
+                        const result = await bookRequest(`/manager/delete-chapter/${chapterId}/`, {});
+                        savedChapters(bookId, result);
+                        bookFeedback('Chapter deleted.');
+                    } catch (error) { bookFeedback(error.message, true); }
+                }
+                async function saveChapter() {
+                    if (!chapterForm.reportValidity()) return;
+                    const button = document.getElementById('saveChapterBtn');
+                    if (button.disabled) return;
+                    button.disabled = true;
+                    const bookId = Number(document.getElementById('chapterBookId').value);
+                    const id = document.getElementById('chapterId').value;
+                    const payload = {chapter_number: document.getElementById('chapterNumber').value,
                         title: document.getElementById('chapterTitle').value,
                         author: document.getElementById('chapterAuthor').value,
-                        editor: document.getElementById('chapterEditor').value || null,
-                        status: document.getElementById('chapterStatus').value,
-                        lastUpdated: new Date().toISOString().split('T')[0] // Today's date in YYYY-MM-DD format
-                    };
-
-                    if (chapterId) {
-                        // Update existing chapter
-                        const chapterIndex = books[bookIndex].chapters.list.findIndex(c => c.id === chapterId);
-                        if (chapterIndex !== -1) {
-                            books[bookIndex].chapters.list[chapterIndex] = chapterData;
-                        }
-                    } else {
-                        // Add new chapter
-                        books[bookIndex].chapters.list.push(chapterData);
-                    }
-
-                    // Update completed chapters count
-                    const completedChapters = books[bookIndex].chapters.list.filter(c => c.status === 'Completed').length;
-                    books[bookIndex].chapters.completed = completedChapters;
-
-                    // Re-render the kanban board to update progress
-                    renderKanbanBoard();
-
-                    // If this is the current selected book in table view, update the table
-                    if (currentSelectedBook && currentSelectedBook.id === bookId) {
-                        renderBookChapters(books[bookIndex]);
-                    }
-
-                    chapterModal.hide();
+                        assigned_author_id: document.getElementById('chapterAssignedAuthor').value,
+                        editor: document.getElementById('chapterEditor').value,
+                        status: document.getElementById('chapterStatus').value};
+                    let errorBox = document.getElementById('chapter-save-error');
+                    if (!errorBox) { errorBox = document.createElement('div'); errorBox.id = 'chapter-save-error'; errorBox.className = 'alert alert-danger'; errorBox.setAttribute('role','alert'); chapterForm.prepend(errorBox); }
+                    errorBox.hidden = true;
+                    try {
+                        const result = await bookRequest(id ? `/manager/edit-chapter/${id}/` : `/manager/add-chapter/${bookId}/`, payload);
+                        savedChapters(bookId, result);
+                        chapterModal.hide();
+                        bookFeedback('Chapter saved.');
+                    } catch (error) { errorBox.textContent = error.message; errorBox.hidden = false; }
+                    finally { button.disabled = false; }
                 }
-
-                // Show comments for a book
-                function showComments(bookId) {
-                    const book = books.find(b => b.id === bookId);
-                    if (!book) return;
-
-                    // Set up the comments modal
-                    document.getElementById('commentsModalLabel').textContent = `Comments for "${book.title}"`;
-
-                    // In a real app, we would fetch comments from a server
-                    // For this demo, we'll use some placeholder comments
-                    const commentsContainer = document.getElementById('commentsContainer');
-                    commentsContainer.innerHTML = `
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2">
-                            <h6 class="card-title mb-0">John Smith</h6>
-                            <small class="text-muted">2 days ago</small>
-                        </div>
-                        <p class="card-text">Great progress on the first few chapters! The content is well-structured and easy to follow.</p>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2">
-                            <h6 class="card-title mb-0">Editor Team</h6>
-                            <small class="text-muted">1 week ago</small>
-                        </div>
-                        <p class="card-text">Please review chapter 3 for technical accuracy. We've noticed a few potential issues with the examples.</p>
-                    </div>
-                </div>
-            `;
-
-                    commentsModal.show();
+                let discussionBookId = null;
+                function renderComments(comments) {
+                    const container = document.getElementById('commentsContainer');
+                    container.replaceChildren();
+                    if (!comments.length) container.textContent = 'No comments yet.';
+                    comments.forEach(comment => {
+                        const card = document.createElement('div'); card.className = 'card mb-3';
+                        const body = document.createElement('div'); body.className = 'card-body';
+                        const author = document.createElement('strong'); author.textContent = comment.author;
+                        const date = document.createElement('small'); date.className = 'text-muted ms-3'; date.textContent = new Date(comment.created_at).toLocaleString();
+                        const text = document.createElement('p'); text.className = 'card-text'; text.style.whiteSpace = 'pre-wrap'; text.textContent = comment.text;
+                        body.append(author, date, text); card.append(body); container.append(card);
+                    });
                 }
-
-                // Post a new comment
-                function postComment() {
-                    const commentText = document.getElementById('newComment').value.trim();
-                    if (!commentText) return;
-
-                    // In a real app, we would send this to a server
-                    // For this demo, we'll just add it to the UI
-                    const commentsContainer = document.getElementById('commentsContainer');
-                    const newComment = document.createElement('div');
-                    newComment.className = 'card mb-3';
-                    newComment.innerHTML = `
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <h6 class="card-title mb-0">You</h6>
-                        <small class="text-muted">Just now</small>
-                    </div>
-                    <p class="card-text">${commentText}</p>
-                </div>
-            `;
-
-                    commentsContainer.prepend(newComment);
-
-                    // Clear the comment field
+                async function showComments(bookId) {
+                    discussionBookId = bookId;
+                    bookDetailsModal.hide();
+                    document.getElementById('commentsModalLabel').textContent = 'Comments for ' + books.find(b => b.id === bookId).title;
+                    document.getElementById('commentsContainer').textContent = 'Loading comments...';
                     document.getElementById('newComment').value = '';
+                    commentsModal.show();
+                    try { const result = await bookRequest(`/manager/books/${bookId}/comments/`); if (discussionBookId === bookId) renderComments(result.comments); }
+                    catch (error) { document.getElementById('commentsContainer').textContent = error.message; }
+                }
+                async function postComment() {
+                    const field = document.getElementById('newComment');
+                    const text = field.value.trim(); if (!text || !discussionBookId) return;
+                    const button = document.querySelector('#commentForm [type="submit"]');
+                    if (button.disabled) return; button.disabled = true;
+                    try {
+                        const result = await bookRequest(`/manager/books/${discussionBookId}/comments/`, {text});
+                        renderComments(result.comments); field.value = ''; document.getElementById('comment-save-feedback').textContent = 'Comment saved.'; bookFeedback('Comment saved.');
+                    } catch (error) { document.getElementById('comment-save-feedback').textContent = error.message; bookFeedback(error.message, true); }
+                    finally { button.disabled = false; }
                 }
 
                 // Generate chapter rows for book details modal
@@ -1330,8 +1291,8 @@
                         rows += `
                     <tr>
                         <td>${chapter.number}</td>
-                        <td>${chapter.title}</td>
-                        <td>${chapter.author}</td>
+                        <td>${escapeHTML(chapter.title)}</td>
+                        <td>${escapeHTML(chapter.author)}</td>
                         <td><span class="status-badge status-${statusClass}">${chapter.status}</span></td>
                         <td>${new Date(chapter.lastUpdated).toLocaleDateString()}</td>
                     </tr>
@@ -1343,6 +1304,7 @@
 
                 // Setup drag and drop functionality
                 function setupDragAndDrop() {
+                    if (!canEditBooks) return;
                     const columns = document.querySelectorAll('.kanban-column');
 
                     let draggedCard = null;

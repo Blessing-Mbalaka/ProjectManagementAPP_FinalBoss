@@ -1,4 +1,4 @@
-{% extends 'manager/home.html' %}
+{% extends workspace_base_template|default:'manager/home.html' %}
 {% load static %}
 
 {% block title %}PM Dashboard{% endblock %}
@@ -591,32 +591,13 @@
         <div class="dashboard-box">
             <div class="content-box">
                 <h5>Today's Tasks</h5>
-                <div class="task-input-container">
-                    <input type="text" class="task-input" placeholder="New task...">
-                    <button class="btn btn-primary btn-sm" id="add-task-btn">Add</button>
-                </div>
-                <div id="tasks-list">
-                    <div class="task-item">
-                        <span>Complete project proposal</span>
-                        <div class="task-actions">
-                            <i class="bi-check-circle text-success" title="Mark as done"></i>
-                            <i class="bi-trash text-danger" title="Delete"></i>
-                        </div>
-                    </div>
-                    <div class="task-item">
-                        <span>Review team submissions</span>
-                        <div class="task-actions">
-                            <i class="bi-check-circle text-success" title="Mark as done"></i>
-                            <i class="bi-trash text-danger" title="Delete"></i>
-                        </div>
-                    </div>
-                    <div class="task-item">
-                        <span>Client meeting at 2pm</span>
-                        <div class="task-actions">
-                            <i class="bi-check-circle text-success" title="Mark as done"></i>
-                            <i class="bi-trash text-danger" title="Delete"></i>
-                        </div>
-                    </div>
+                <div id="dashboard-personal-tasks" data-list-url="{% url 'dashboard_tasks' %}" data-account="{{ user.username }}">
+                    <form id="dashboard-task-form" class="task-input-container" data-no-save-feedback>
+                        <input type="text" name="title" class="task-input" placeholder="New task..." maxlength="255" aria-label="Task title" required>
+                        <button class="btn btn-primary btn-sm" id="add-task-btn" type="submit">Add</button>
+                    </form>
+                    <div id="dashboard-task-feedback" role="status"></div><button type="button" id="import-legacy-tasks" class="btn btn-sm btn-outline-secondary" hidden>Import previous browser tasks</button>
+                    <div id="tasks-list">Loading tasks...</div>
                 </div>
             </div>
             <div class="content-box">
@@ -683,139 +664,5 @@
     <!-- JavaScript Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-        // The shared layout owns sidebar controls.
-        // Task Management
-        document.getElementById('add-task-btn').addEventListener('click', function () {
-            const taskInput = document.querySelector('.task-input');
-            const taskText = taskInput.value.trim();
-
-            if (taskText) {
-                const taskId = 'task-' + Date.now();
-                const taskItem = document.createElement('div');
-                taskItem.className = 'task-item';
-                taskItem.id = taskId;
-                taskItem.innerHTML = `
-                    <span>${taskText}</span>
-                    <div class="task-actions">
-                        <i class="bi-check-circle text-success" title="Mark as done" onclick="completeTask('${taskId}')"></i>
-                        <i class="bi-trash text-danger" title="Delete" onclick="removeTask('${taskId}')"></i>
-                    </div>
-                `;
-                document.getElementById('tasks-list').appendChild(taskItem);
-                taskInput.value = '';
-                saveTasks();
-            }
-        });
-
-        // Allow pressing Enter to add task
-        document.querySelector('.task-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                document.getElementById('add-task-btn').click();
-            }
-        });
-
-        // Complete task with animation
-        function completeTask(taskId) {
-            const taskItem = document.getElementById(taskId);
-            taskItem.style.textDecoration = 'line-through';
-            taskItem.style.opacity = '0.6';
-
-            // Create confetti effect
-            createConfetti();
-
-            // Remove task after animation
-            setTimeout(() => {
-                taskItem.remove();
-                saveTasks();
-            }, 1000);
-        }
-
-        // Remove task
-        function removeTask(taskId) {
-            document.getElementById(taskId).remove();
-            saveTasks();
-        }
-
-        // Save tasks to localStorage
-        function saveTasks() {
-            const tasks = [];
-            document.querySelectorAll('#tasks-list .task-item').forEach(task => {
-                tasks.push({
-                    text: task.querySelector('span').textContent,
-                    completed: task.style.textDecoration === 'line-through'
-                });
-            });
-            localStorage.setItem('dashboard-tasks', JSON.stringify(tasks));
-        }
-
-        // Load tasks from localStorage
-        function loadTasks() {
-            const savedTasks = JSON.parse(localStorage.getItem('dashboard-tasks')) || [];
-            const tasksList = document.getElementById('tasks-list');
-            tasksList.innerHTML = '';
-
-            savedTasks.forEach(task => {
-                const taskId = 'task-' + Date.now();
-                const taskItem = document.createElement('div');
-                taskItem.className = 'task-item';
-                taskItem.id = taskId;
-                taskItem.innerHTML = `
-                    <span>${task.text}</span>
-                    <div class="task-actions">
-                        <i class="bi-check-circle text-success" title="Mark as done" onclick="completeTask('${taskId}')"></i>
-                        <i class="bi-trash text-danger" title="Delete" onclick="removeTask('${taskId}')"></i>
-                    </div>
-                `;
-
-                if (task.completed) {
-                    taskItem.style.textDecoration = 'line-through';
-                    taskItem.style.opacity = '0.6';
-                }
-
-                tasksList.appendChild(taskItem);
-            });
-        }
-
-        // Confetti animation
-        function createConfetti() {
-            const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c'];
-
-            for (let i = 0; i < 50; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.top = '100vh';
-                confetti.style.width = Math.random() * 10 + 5 + 'px';
-                confetti.style.height = Math.random() * 10 + 5 + 'px';
-                confetti.style.animationDuration = Math.random() * 1 + 0.5 + 's';
-                document.body.appendChild(confetti);
-
-                // Remove confetti after animation
-                setTimeout(() => {
-                    confetti.remove();
-                }, 1000);
-            }
-        }
-
-        // Initialize on load
-        window.addEventListener('load', function () {
-            loadTasks();
-
-            // Initialize sidebar state based on screen size
-            if (window.innerWidth <= 768) {
-                sidebar.classList.remove('collapsed');
-                sidebar.classList.remove('show');
-                mainContent.classList.remove('expanded');
-            }
-        });
-
-        // Handle window resize
-        window.addEventListener('resize', function () {
-            if (window.innerWidth > 768) {
-                sidebar.classList.remove('show');
-            }
-        });
-    </script>
+    <script src="{% static 'js/pm-today-tasks.js' %}"></script>
 {% endblock %}

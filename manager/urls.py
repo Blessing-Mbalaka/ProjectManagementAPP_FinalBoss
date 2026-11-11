@@ -1,10 +1,13 @@
 from django.urls import path
 from . import views
-from . import api_views
+from . import api_views, persistence_views
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('dashboard-tasks/', persistence_views.dashboard_tasks, name='dashboard_tasks'),
+    path('dashboard-tasks/<int:task_id>/', persistence_views.dashboard_task_update, name='dashboard_task_update'),
+    path('books/<int:book_id>/comments/', persistence_views.book_comments, name='book_comments'),
     path('my-projects/', views.my_projects, name='my_projects'),
     path('my-projects/task/<int:task_id>/update/', views.my_project_task_update, name='my_project_task_update'),
     path('manager_dashboard/', views.manager_dashboard, name='manager_dashboard'),
