@@ -197,7 +197,7 @@ python manage.py makemigrations --check --dry-run --settings=project_manage.sett
 python manage.py test --settings=project_manage.settings_test --noinput
 ```
 
-The latest recorded suite passed **361 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
+The latest recorded suite passed **362 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
 
 ## Render deployment
 
@@ -227,6 +227,8 @@ Workers and cron jobs are separate processes/services; the web start command doe
 Saves return to the current authorised workspace, including its relevant filters. Primary roles choose navigation and fallback destinations independently of additional permissions. Communique remains shared; its section returns, protected saves and Student supervisor-chat link follow the same rule.
 
 The latest audit covers 158 role/page visits, 201 rendered form destinations and browser journeys across all ten roles plus elevated Staff. Read the [role evaluation](handover/Global%20role%20navigation%20evaluation.html) and the later [persistence verification](handover/Persistence%20fixes%20and%20save-reload%20verification.html) before release sign-off. Book chapters and comments now save to the database, and Today's Tasks is an account-owned database list. The persistence changes passed save/reload browser checks across all ten roles plus elevated Staff, including expected read-only and denied cases.
+
+Admin financial-bid assignment also has a PostgreSQL regression check. It locks the bid independently of the optional cost-centre join. Production record 10 was verified with the corrected request in a rollback-only transaction; no live assignment or notification was persisted. See [the production verification record](handover/Financial%20assignment%20PostgreSQL%20verification.json).
 
 ## Saved chapters, comments and personal tasks
 

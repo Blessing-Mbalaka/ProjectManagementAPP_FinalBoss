@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -154,6 +155,39 @@ class FinancialWorkspaceTests(TestCase):
         self.client.post(reverse('assign_financial_project', args=[self.record.pk]), {'owner_id': self.other.pk})
         self.task.refresh_from_db()
         self.assertEqual((self.task.status, self.task.progress), ('in_progress', 33))
+
+    def test_assignment_postgres_lock_excludes_nullable_cost_centre_join(self):
+        from django.db.models.query import QuerySet
+        from django.db.backends.postgresql.base import DatabaseWrapper
+
+        admin = get_user_model().objects.create_user('postgres-assignment-admin', role='admin', research_centre=self.centre)
+        self.assertIsNone(self.record.cost_centre_id)
+        captured = []
+        original = QuerySet.select_for_update
+
+        def capture(queryset, *args, **kwargs):
+            locked = original(queryset, *args, **kwargs)
+            if queryset.model is FinancialProject:
+                captured.append(locked)
+            return locked
+
+        self.client.force_login(admin)
+        with patch.object(QuerySet, 'select_for_update', capture):
+            response = self.client.post(reverse('assign_financial_project', args=[self.record.pk]), {'owner_id': self.other.pk})
+        self.assertRedirects(response, reverse('financial_projects'))
+        # Compile the actual view query with PostgreSQL's compiler without
+        # opening a production connection. SQLite does not emit row locks.
+        postgres = DatabaseWrapper({'NAME': 'compile-only', 'OPTIONS': {}}, alias='compile-only')
+        postgres.get_autocommit = lambda: False
+        postgres.pg_version = 150000
+        self.assertEqual(len(captured), 1)
+        sql, _ = captured[0].filter(pk=self.record.pk).query.get_compiler(connection=postgres).as_sql()
+        self.assertIn('LEFT OUTER JOIN "adminpanel_costcentre"', sql)
+        self.assertIn('FOR UPDATE OF "adminpanel_financialproject"', sql)
+        self.assertNotIn('FOR UPDATE OF "adminpanel_costcentre"', sql)
+        self.record.refresh_from_db()
+        self.project.refresh_from_db()
+        self.assertEqual((self.record.owner_id, self.project.assigned_user_id), (self.other.pk, self.other.pk))
 
     def test_financial_admin_cannot_delegate_to_peer_or_manipulate_creation_owner(self):
         self.assertEqual(self.client.post(reverse('assign_financial_project', args=[self.record.pk]), {'owner_id': self.other.pk}).status_code, 403)

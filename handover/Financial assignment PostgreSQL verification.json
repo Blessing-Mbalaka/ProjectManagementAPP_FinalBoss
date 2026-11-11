@@ -1,0 +1,25 @@
+{
+  "verified_date": "2026-11-12",
+  "original_failure": {
+    "database_vendor": "postgresql",
+    "record_id": 10,
+    "cost_centre_is_null": true,
+    "persisted_changes": false,
+    "original_query_error": "NotSupportedError",
+    "detail": "FOR UPDATE cannot be applied to the nullable side of an outer join"
+  },
+  "fixed_request_rollback_verification": {
+    "database_vendor": "postgresql",
+    "record_id": 10,
+    "assignee_role": "financialadmin",
+    "response_status": 302,
+    "reassignment_exercised": true,
+    "linked_owner_and_project_lead_match": true,
+    "followup_assignment_and_start_status_verified": true,
+    "financial_kanban_and_my_projects_scope_verified": true,
+    "repeat_assignment_preserves_progress": true,
+    "production_snapshot_restored": true,
+    "notifications_or_email_sent": false,
+    "persisted_changes": false
+  }
+}

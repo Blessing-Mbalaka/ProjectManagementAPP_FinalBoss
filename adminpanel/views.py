@@ -1378,12 +1378,15 @@ def assign_financial_project(request, project_id):
     if not has_role(request.user, 'admin'):
         return HttpResponseForbidden('Only administrators can assign financial bids.')
     with transaction.atomic():
-        record = get_object_or_404(financial_projects_for(request.user).select_for_update(), pk=project_id)
+        # The optional cost-centre relation is a LEFT JOIN. PostgreSQL must
+        # lock only the bid row, not the nullable side of that join.
+        record = get_object_or_404(financial_projects_for(request.user).select_for_update(of=('self',)), pk=project_id)
         owner_id = request.POST.get('owner_id', '')
         if not owner_id.isdecimal():
             return HttpResponseBadRequest('Choose a valid financial assignee.')
         owners = CustomUser.objects.filter(is_active=True, research_centre_id=record.research_centre_id).filter(Q(role='financialadmin') | Q(pk=request.user.pk))
         owner = get_object_or_404(owners, pk=owner_id)
+        record.project = get_object_or_404(Project.objects.select_for_update(), pk=record.project_id)
         if record.owner_id != owner.pk or record.project.assigned_user_id != owner.pk:
             record.owner = owner
             record.save(update_fields=['owner', 'updated_at'])
