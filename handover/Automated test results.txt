@@ -1,0 +1,110 @@
+Creating test database for alias 'default'...
+
+Destroying old test database for alias 'default'...
+
+C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_FinalBoss\.venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: C:\tmp\test_static\
+  mw_instance = middleware(adapted_handler)
+....Forbidden: /adminpanel/activity/page-visits/
+...Not Found: /adminpanel/my-projects/task/2/update/
+.............Not Found: /manager/update-task-status/1/
+...........Forbidden: /adminpanel/api/messages/broadcast/new/
+........Not Found: /adminpanel/api/notifications/2/read/
+.............Forbidden: /adminpanel/activity/page-visits/
+...........................................Bad Request: /manager/update-task-status/1/
+.Bad Request: /manager/edit-task/1/
+.Forbidden: /manager/assign/workbook/apply/
+.Forbidden: /manager/assign/workbook/apply/
+..Forbidden: /manager/assign/workbook/template/
+Forbidden: /manager/assign/workbook/template/
+....................Email delivery failed for recipient fake-address@example.invalid
+Traceback (most recent call last):
+  File "C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_FinalBoss\users\email_service.py", line 30, in send_html_email_safely
+    message.send(fail_silently=False)
+  File "C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_FinalBoss\.venv\Lib\site-packages\django\core\mail\message.py", line 307, in send
+    return self.get_connection(fail_silently).send_messages([self])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Bjmba\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Bjmba\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Bjmba\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: SMTP unavailable
+....Forbidden: /projects/task/delete/1/
+............Forbidden: /manager/manager_journal/
+..Not Found: /manager/add-task/2/
+.Email skipped because recipient address is invalid: ''
+...Email skipped because recipient address is invalid: ''
+........Method Not Allowed (GET): /adminpanel/clock-in/
+.....Email skipped because recipient address is invalid: ''
+..Forbidden: /projects/staff/create-task/
+Forbidden: /projects/task/delete/1/
+.........Forbidden: /projects/staff/create-task/
+.........................................Not Found: /manager/update-task-status/2/
+.Forbidden: /adminpanel/finance/
+Forbidden: /adminpanel/finance/
+Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance/projects/
+Forbidden: /adminpanel/finance/projects/
+Forbidden: /adminpanel/finance/applied-bids/
+Forbidden: /adminpanel/finance/applied-bids/
+Forbidden: /manager/financial-kanban/
+Forbidden: /manager/financial-kanban/
+Forbidden: /adminpanel/finance/export-summary/
+Forbidden: /adminpanel/finance/export-summary/
+Forbidden: /adminpanel/finance/add-cost-centre/
+Forbidden: /adminpanel/finance/add-cost-centre/
+Forbidden: /adminpanel/finance/add-expenditure/
+Forbidden: /adminpanel/finance/add-expenditure/
+Forbidden: /adminpanel/crm/reports/data/
+Forbidden: /adminpanel/crm/reports/data/
+Forbidden: /adminpanel/crm/financials/
+Forbidden: /adminpanel/crm/reports/
+Forbidden: /adminpanel/crm/alerts/
+..Not Found: /manager/update-task-status/1/
+........................Not Found: /this-page-does-not-exist/
+..
+----------------------------------------------------------------------
+Ran 236 tests in 7.271s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 236 test(s).
+System check identified no issues (0 silenced).
+[PASS] Cost centre created with MOA amount
+[PASS] MOA Outstanding calculated correctly: 30000.00
+[PASS] MOA Outstanding correctly negative when over budget: -5000.00
+[PASS] MOA defaults to 0.00 when not provided
+[PASS] Total received calculated correctly from payments
+[PASS] Total remaining calculated correctly
+[PASS] Multiple payments summed correctly
+[PASS] Payment created successfully
+[PASS] Payment updates total_received
+[PASS] Cost centre added via view with MOA amount
+[PASS] Cost centre added without MOA amount
+[PASS] MOA amount edited successfully via view
+[PASS] Finance view includes MOA data
+[PASS] Phase 1: Cost centre created with MOA
+[PASS] Phase 2: Payments added, MOA calculations correct
+[PASS] Phase 3: MOA amount edited, outstanding recalculated
+[PASS] Phase 4: Finance view shows correct MOA data
+
+[SUCCESS] Complete workflow test PASSED [SUCCESS]
+Created: 3; Updated: 0; Failed: 0
+Created: 1; Updated: 0; Failed: 0
+Created: 0; Updated: 1; Failed: 0
+Dry run complete. Valid rows: 1. No records written.
+Created: 1; Updated: 0; Failed: 0
+Created: 0; Updated: 1; Failed: 0
+Projects row 2, lead_author_username: Author username "missing-author" was not found and will be skipped.
+Creates: 1; Updates: 0; Warnings: 1
+Projects created: 1; Projects updated: 0; Tasks created: 0; Tasks updated: 0.
+Projects row 2, lead_author_username: Author username "missing-author" was not found and will be skipped.
+Creates: 0; Updates: 1; Warnings: 1
+Projects created: 0; Projects updated: 1; Tasks created: 0; Tasks updated: 0.
+Projects row 2, project_manager_username: Username "missing-manager" was not found.
+Projects row 2, lead_author_username: Author username "missing-author" was not found and will be skipped.

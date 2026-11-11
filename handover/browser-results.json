@@ -1,0 +1,116 @@
+[
+  {
+    "role": "admin",
+    "url": "http://127.0.0.1:8766/overview/",
+    "status": 200,
+    "buttons": [
+      "\n                    \n                ",
+      "\n    \n    0\n  "
+    ]
+  },
+  {
+    "role": "centrehead",
+    "url": "http://127.0.0.1:8766/overview/",
+    "status": 200,
+    "buttons": [
+      "\n                    \n                ",
+      "\n    \n    0\n  "
+    ]
+  },
+  {
+    "role": "overseer",
+    "url": "http://127.0.0.1:8766/overview/",
+    "status": 200,
+    "buttons": [
+      "\n                    \n                ",
+      "\n    \n    0\n  "
+    ]
+  },
+  {
+    "role": "manager",
+    "url": "http://127.0.0.1:8766/manager/assign/",
+    "status": 200,
+    "buttons": [
+      "\n             Back to Dashboard\n        ",
+      "\n                             Download Template\n                        ",
+      "\n                             Upload Workbook\n                        ",
+      "\n                             New Project\n                        ",
+      "\n                             New Book Project\n                        ",
+      "View"
+    ]
+  },
+  {
+    "role": "manager",
+    "url": "http://127.0.0.1:8766/manager/manager_kanban/",
+    "status": 200,
+    "buttons": [
+      "\n        \n      ",
+      "\n    \n    0\n  ",
+      "Add Task"
+    ]
+  },
+  {
+    "role": "financialadmin",
+    "url": "http://127.0.0.1:8766/adminpanel/finance/projects/",
+    "status": 200,
+    "buttons": [
+      "\n                    \n                ",
+      "\n    \n    0\n  ",
+      " My task Kanban",
+      " Applied bids",
+      " Engagement history",
+      " Add financial project"
+    ]
+  },
+  {
+    "role": "financialadmin",
+    "url": "http://127.0.0.1:8766/manager/financial-kanban/",
+    "status": 200,
+    "buttons": [
+      "\n        \n      ",
+      "\n    \n    0\n  "
+    ]
+  },
+  {
+    "role": "staff",
+    "url": "http://127.0.0.1:8766/dashboard/",
+    "status": 200,
+    "buttons": [
+      "\n        \n      ",
+      "\n    \n    0\n  ",
+      "View",
+      "Add to day",
+      "\n        \n    "
+    ]
+  },
+  {
+    "role": "dean",
+    "url": "http://127.0.0.1:8766/overview/",
+    "status": 200,
+    "buttons": [
+      "\n                    \n                ",
+      "\n    \n    0\n  "
+    ]
+  },
+  {
+    "role": "student",
+    "url": "http://127.0.0.1:8766/projects/student_dashboard/",
+    "status": 200,
+    "buttons": [
+      "\n            \n        ",
+      "\n                    \n                ",
+      "Update Profile",
+      "\n                 New Submission\n            ",
+      "\n                 Request Meeting\n            ",
+      "\n                            \n                        "
+    ]
+  },
+  {
+    "role": "supervisor",
+    "url": "http://127.0.0.1:8766/adminpanel/supervisor-portal/dashboard/",
+    "status": 200,
+    "buttons": [
+      "\n                    \n                "
+    ]
+  }
+]

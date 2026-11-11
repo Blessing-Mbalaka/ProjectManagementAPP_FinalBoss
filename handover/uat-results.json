@@ -1,0 +1,8 @@
+{
+  "projectCreation": "pass",
+  "teamAssignment": "pass",
+  "taskCreation": "pass",
+  "workspace": "http://127.0.0.1:8766/manager/assign/?project_id=306",
+  "staffUpdate": "pass",
+  "reloadPersistence": "pass"
+}
