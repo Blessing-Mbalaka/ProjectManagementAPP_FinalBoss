@@ -15,7 +15,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse
 from urllib.parse import urlencode
 
-from adminpanel.models import Notification, SecurityEvent
+from adminpanel.models import Notification, NotificationReceipt, SecurityEvent
 from adminpanel.security_service import device_label, masked_ip, record_failed_login, record_login
 
 logger = logging.getLogger(__name__)
@@ -114,6 +114,18 @@ def security_event_review(request, event_id):
             event.status = 'confirmed'
             event.reviewed_at = timezone.now()
             event.save(update_fields=['status', 'reviewed_at'])
+            # Dismiss the matching personal alert as part of the same confirmation.
+            local_time = timezone.localtime(event.occurred_at).strftime('%d %b %Y at %H:%M')
+            alerts = request.user.notifications_received.filter(
+                title='Was this you? Security activity detected',
+                body=f'{event.reason} on {local_time}. Open Account Security to confirm it or secure your account.',
+            )
+            for alert in alerts:
+                NotificationReceipt.objects.update_or_create(
+                    notification=alert, user=request.user,
+                    defaults={'read_at': timezone.now()},
+                )
+            messages.success(request, 'Activity confirmed. You can continue working.')
             requested_next = request.POST.get('next') or request.GET.get('next')
             safe_destination = None
             if requested_next and url_has_allowed_host_and_scheme(
