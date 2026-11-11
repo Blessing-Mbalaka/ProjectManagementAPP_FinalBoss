@@ -1226,6 +1226,15 @@ def sync_financial_project_task(financial_project):
 def financial_projects(request):
     if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
         return HttpResponseForbidden('You are not authorized to view financial projects.')
+    return render_financial_projects(request)
+
+
+def render_financial_projects(request, *, form=None, open_form=False, status=200):
+    form = form if form is not None else FinancialProjectForm()
+    for name in form.errors:
+        if name in form.fields:
+            form.fields[name].widget.attrs['aria-invalid'] = 'true'
+            form.fields[name].widget.attrs['class'] = form.fields[name].widget.attrs.get('class', '') + ' is-invalid'
     records = financial_projects_for(request.user)
     grouped = {key: [] for key, _ in FinancialProject.STAGE_CHOICES}
     for record in records:
@@ -1236,7 +1245,12 @@ def financial_projects(request):
         for key, label in FinancialProject.STAGE_CHOICES
     ]
     return render(request, 'adminpanel/financial_projects.html', {
-        'financial_project_form': FinancialProjectForm(),
+        'financial_project_form': form,
+        'open_new_bid_modal': open_form,
+        'selected_new_bid_owner': int(request.POST['owner_id']) if request.POST.get('owner_id', '').isdecimal() else request.user.pk,
+        'can_choose_financial_centre': has_role(request.user, 'admin') and not request.user.research_centre_id,
+        'financial_project_centres': ResearchCentre.objects.order_by('name'),
+        'selected_new_bid_centre': int(request.POST['research_centre_id']) if request.POST.get('research_centre_id', '').isdecimal() else request.user.research_centre_id,
         'financial_project_columns': columns,
         'financial_project_counts': counts,
         'financial_project_total': sum(counts.values()),
@@ -1245,7 +1259,7 @@ def financial_projects(request):
         'can_convert_financial_project': can_manage_cost_centres(request.user),
         'can_assign_financial_project': has_role(request.user, 'admin'),
         'financial_assignees': CustomUser.objects.filter(is_active=True, role='financialadmin').order_by('first_name', 'username'),
-    })
+    }, status=status)
 
 
 @login_required
@@ -1283,9 +1297,18 @@ def applied_bids(request):
 def add_financial_project(request):
     if not has_role(request.user, *FINANCIAL_PROJECT_ROLES):
         return HttpResponseForbidden('You are not authorized to create financial projects.')
-    if not getattr(request.user, 'research_centre_id', None):
-        messages.error(request, 'Your account must be assigned to a research centre before creating a bid.')
-        return redirect('financial_projects')
+    form = FinancialProjectForm(request.POST)
+    form.is_valid()
+    centre = request.user.research_centre
+    if centre is None and has_role(request.user, 'admin'):
+        centre_id = request.POST.get('research_centre_id', '')
+        centre = ResearchCentre.objects.filter(pk=centre_id).first() if centre_id.isdecimal() else None
+        if centre is None:
+            form.add_error(None, 'Choose a research centre for this financial project.')
+    elif centre is None:
+        form.add_error(None, 'Ask Admin to assign a research centre to your account before creating a financial project.')
+    if form.errors:
+        return render_financial_projects(request, form=form, open_form=True, status=400)
 
     owner = request.user
     owner_id = request.POST.get('owner_id')
@@ -1294,14 +1317,7 @@ def add_financial_project(request):
             return HttpResponseForbidden('Only administrators can assign a bid to another account.')
         if not owner_id.isdecimal():
             return HttpResponseBadRequest('Choose a valid financial assignee.')
-        owner = get_object_or_404(CustomUser, pk=owner_id, is_active=True, role='financialadmin', research_centre_id=request.user.research_centre_id)
-
-    form = FinancialProjectForm(request.POST)
-    if not form.is_valid():
-        for field_errors in form.errors.values():
-            for error in field_errors:
-                messages.error(request, error)
-        return redirect('financial_projects')
+        owner = get_object_or_404(CustomUser, pk=owner_id, is_active=True, role='financialadmin', research_centre_id=centre.pk)
 
     with transaction.atomic():
         starting_stage = 'submitted' if form.cleaned_data.get('applied_date') else 'lead'
@@ -1312,13 +1328,13 @@ def add_financial_project(request):
             status='in-progress' if starting_stage == 'submitted' else 'planning',
             created_by=request.user,
             assigned_user=owner,
-            research_centre=request.user.research_centre,
+            research_centre=centre,
             due_date=form.cleaned_data.get('bid_deadline'),
         )
         record = form.save(commit=False)
         record.project = project
         record.owner = owner
-        record.research_centre = request.user.research_centre
+        record.research_centre = centre
         record.stage = starting_stage
         record.save()
         Task.objects.create(

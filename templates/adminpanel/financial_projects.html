@@ -50,7 +50,6 @@
     <div class="hero-actions">
       <a class="btn btn-light" href="{% url 'financial_kanban' %}"><i class="bi bi-kanban me-1"></i> My task Kanban</a>
       <a class="btn btn-light" href="{% url 'applied_bids' %}"><i class="bi bi-send-check me-1"></i> Applied bids</a>
-      <a class="btn btn-outline-light" href="{% url 'financial_kanban' %}"><i class="bi bi-kanban me-1"></i> My Work Kanban</a>
       <a class="btn btn-outline-light" href="{% url 'financial_engagements' %}"><i class="bi bi-chat-square-text me-1"></i> Engagement history</a>
       <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#newBidModal"><i class="bi bi-plus-lg me-1"></i> Add financial project</button>
     </div>
@@ -58,10 +57,11 @@
 
   {% if messages %}
     <div class="mt-3">
-      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>{% endfor %}
+      {% for message in messages %}<div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} mb-2">{{ message }}</div>{% endfor %}
     </div>
   {% endif %}
 
+  {% if financial_project_form.errors %}<div class="alert alert-danger mt-3" role="alert"><strong>Financial project was not created.</strong> Your entries have been kept. Correct the details in the open form and save again.</div>{% endif %}
   <section class="metric-grid" aria-label="Financial project summary">
     <div class="metric"><strong>{{ financial_project_total }}</strong><span>Active and closed client opportunities</span></div>
     <div class="metric"><strong>{{ financial_project_won }}</strong><span>Won bids awaiting or holding cost-centre details</span></div>
@@ -176,42 +176,47 @@
 </main>
 
 <div class="modal fade" id="newBidModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><form class="modal-content tracked-form" method="post" action="{% url 'add_financial_project' %}">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><form id="financialBidForm" class="modal-content tracked-form" method="post" action="{% url 'add_financial_project' %}" novalidate>
     {% csrf_token %}
     <div class="modal-header"><h5 class="modal-title">Add financial project</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body row g-3">
-      {% if can_assign_financial_project %}<div class="col-12"><label class="form-label" for="newBidAssignee">Assign this bid to</label><select name="owner_id" id="newBidAssignee" class="form-select"><option value="{{ user.pk }}">{{ user.get_full_name|default:user.username }} (me)</option>{% for person in financial_assignees %}{% if person.research_centre_id == user.research_centre_id %}<option value="{{ person.pk }}">{{ person.get_full_name|default:person.username }}</option>{% endif %}{% endfor %}</select><div class="form-text">Delegated bid work starts in the assignee's To Do column.</div></div>{% endif %}
+      {% if financial_project_form.errors %}
+      <div class="col-12"><div class="alert alert-danger" id="newBidErrors" role="alert" tabindex="-1"><strong>Bid not saved. Please correct these details:</strong><ul class="mb-0 mt-2">{% for error in financial_project_form.non_field_errors %}<li>{{ error }}</li>{% endfor %}{% for field in financial_project_form %}{% for error in field.errors %}<li><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ error }}</a></li>{% endfor %}{% endfor %}</ul></div></div>
+      {% endif %}
+      {% if can_choose_financial_centre %}<div class="col-12"><label class="form-label" for="newBidCentre">Research centre (required)</label><select name="research_centre_id" id="newBidCentre" class="form-select" required><option value="">Choose a research centre</option>{% for centre in financial_project_centres %}<option value="{{ centre.pk }}" {% if selected_new_bid_centre == centre.pk %}selected{% endif %}>{{ centre.name }}</option>{% endfor %}</select></div>{% endif %}
+      {% if can_assign_financial_project %}<div class="col-12"><label class="form-label" for="newBidAssignee">Assign this bid to</label><select name="owner_id" id="newBidAssignee" class="form-select"><option value="{{ user.pk }}" data-self="true" {% if selected_new_bid_owner == user.pk %}selected{% endif %}>{{ user.get_full_name|default:user.username }} (me)</option>{% for person in financial_assignees %}{% if can_choose_financial_centre or person.research_centre_id == user.research_centre_id %}<option value="{{ person.pk }}" data-centre="{{ person.research_centre_id }}" {% if selected_new_bid_owner == person.pk %}selected{% endif %}>{{ person.get_full_name|default:person.username }}</option>{% endif %}{% endfor %}</select><div class="form-text">Choose yourself or a Financial Admin. The follow-up task starts in To Do at 0%.</div></div>{% else %}<div class="col-12"><div class="alert alert-info mb-0">This bid and its follow-up task will be assigned to you. Admin can see the work in their financial overview.</div></div>{% endif %}
+      <div class="col-12"><p class="small text-muted mb-0">Project / bid title and client / trading name are required. Contact details are optional and can be added later.</p></div>
       <div class="col-12"><h6 class="text-uppercase text-muted border-bottom pb-2">1 · Company details</h6></div>
-      <div class="col-md-6"><label class="form-label">Project / bid title</label>{{ financial_project_form.project_name }}</div>
-      <div class="col-md-6"><label class="form-label">Client / trading name</label>{{ financial_project_form.client_name }}</div>
-      <div class="col-md-6"><label class="form-label">Registered company name</label>{{ financial_project_form.company_name }}</div>
-      <div class="col-md-3"><label class="form-label">Registration number</label>{{ financial_project_form.company_registration_number }}</div>
-      <div class="col-md-3"><label class="form-label">Industry</label>{{ financial_project_form.industry }}</div>
-      <div class="col-md-4"><label class="form-label">Company website</label>{{ financial_project_form.company_website }}</div>
-      <div class="col-md-4"><label class="form-label">Company email</label>{{ financial_project_form.company_email }}</div>
-      <div class="col-md-4"><label class="form-label">Company phone</label>{{ financial_project_form.company_phone }}</div>
-      <div class="col-12"><label class="form-label">Company address</label>{{ financial_project_form.company_address }}</div>
+      <div class="col-md-6"><label class="form-label">Project / bid title</label>{{ financial_project_form.project_name }}{% if financial_project_form.project_name.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.project_name.errors }}</div>{% endif %}</div>
+      <div class="col-md-6"><label class="form-label">Client / trading name</label>{{ financial_project_form.client_name }}{% if financial_project_form.client_name.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.client_name.errors }}</div>{% endif %}</div>
+      <div class="col-md-6"><label class="form-label">Registered company name</label>{{ financial_project_form.company_name }}{% if financial_project_form.company_name.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.company_name.errors }}</div>{% endif %}</div>
+      <div class="col-md-3"><label class="form-label">Registration number</label>{{ financial_project_form.company_registration_number }}{% if financial_project_form.company_registration_number.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.company_registration_number.errors }}</div>{% endif %}</div>
+      <div class="col-md-3"><label class="form-label">Industry</label>{{ financial_project_form.industry }}{% if financial_project_form.industry.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.industry.errors }}</div>{% endif %}</div>
+      <div class="col-md-4"><label class="form-label">Company website</label>{{ financial_project_form.company_website }}{% if financial_project_form.company_website.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.company_website.errors }}</div>{% endif %}</div>
+      <div class="col-md-4"><label class="form-label">Company email</label>{{ financial_project_form.company_email }}{% if financial_project_form.company_email.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.company_email.errors }}</div>{% endif %}</div>
+      <div class="col-md-4"><label class="form-label">Company phone</label>{{ financial_project_form.company_phone }}{% if financial_project_form.company_phone.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.company_phone.errors }}</div>{% endif %}</div>
+      <div class="col-12"><label class="form-label">Company address</label>{{ financial_project_form.company_address }}{% if financial_project_form.company_address.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.company_address.errors }}</div>{% endif %}</div>
 
       <div class="col-12 mt-4"><h6 class="text-uppercase text-muted border-bottom pb-2">2 · Primary contact</h6></div>
-      <div class="col-md-3"><label class="form-label">Contact person</label>{{ financial_project_form.contact_name }}</div>
-      <div class="col-md-3"><label class="form-label">Role / position</label>{{ financial_project_form.contact_role }}</div>
-      <div class="col-md-3"><label class="form-label">Contact email</label>{{ financial_project_form.contact_email }}</div>
-      <div class="col-md-3"><label class="form-label">Contact phone</label>{{ financial_project_form.contact_phone }}</div>
+      <div class="col-md-3"><label class="form-label">Contact person</label>{{ financial_project_form.contact_name }}{% if financial_project_form.contact_name.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.contact_name.errors }}</div>{% endif %}</div>
+      <div class="col-md-3"><label class="form-label">Role / position</label>{{ financial_project_form.contact_role }}{% if financial_project_form.contact_role.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.contact_role.errors }}</div>{% endif %}</div>
+      <div class="col-md-3"><label class="form-label">Contact email</label>{{ financial_project_form.contact_email }}{% if financial_project_form.contact_email.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.contact_email.errors }}</div>{% endif %}</div>
+      <div class="col-md-3"><label class="form-label">Contact phone</label>{{ financial_project_form.contact_phone }}{% if financial_project_form.contact_phone.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.contact_phone.errors }}</div>{% endif %}</div>
 
       <div class="col-12 mt-4"><h6 class="text-uppercase text-muted border-bottom pb-2">3 · Bid and follow-up</h6></div>
-      <div class="col-md-3"><label class="form-label">Bid reference</label>{{ financial_project_form.bid_reference }}</div>
-      <div class="col-md-3"><label class="form-label">Estimated value</label>{{ financial_project_form.estimated_value }}</div>
-      <div class="col-md-2"><label class="form-label">Bid deadline</label>{{ financial_project_form.bid_deadline }}</div>
-      <div class="col-md-2"><label class="form-label">Applied date</label>{{ financial_project_form.applied_date }}</div>
-      <div class="col-md-2"><label class="form-label">Next follow-up</label>{{ financial_project_form.next_follow_up_date }}</div>
-      <div class="col-12"><label class="form-label">Summary and next action</label>{{ financial_project_form.summary }}</div>
+      <div class="col-md-3"><label class="form-label">Bid reference</label>{{ financial_project_form.bid_reference }}{% if financial_project_form.bid_reference.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.bid_reference.errors }}</div>{% endif %}</div>
+      <div class="col-md-3"><label class="form-label">Estimated value</label>{{ financial_project_form.estimated_value }}{% if financial_project_form.estimated_value.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.estimated_value.errors }}</div>{% endif %}</div>
+      <div class="col-md-2"><label class="form-label">Bid deadline</label>{{ financial_project_form.bid_deadline }}{% if financial_project_form.bid_deadline.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.bid_deadline.errors }}</div>{% endif %}</div>
+      <div class="col-md-2"><label class="form-label">Applied date</label>{{ financial_project_form.applied_date }}{% if financial_project_form.applied_date.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.applied_date.errors }}</div>{% endif %}</div>
+      <div class="col-md-2"><label class="form-label">Next follow-up</label>{{ financial_project_form.next_follow_up_date }}{% if financial_project_form.next_follow_up_date.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.next_follow_up_date.errors }}</div>{% endif %}</div>
+      <div class="col-12"><label class="form-label">Summary and next action</label>{{ financial_project_form.summary }}{% if financial_project_form.summary.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.summary.errors }}</div>{% endif %}</div>
 
       <div class="col-12 mt-4"><h6 class="text-uppercase text-muted border-bottom pb-2">4 · Initial engagement minutes</h6></div>
-      <div class="col-md-4"><label class="form-label">Engagement date</label>{{ financial_project_form.initial_engagement_date }}</div>
-      <div class="col-md-4"><label class="form-label">Contact method</label>{{ financial_project_form.initial_contact_method }}</div>
-      <div class="col-12"><label class="form-label">Minutes / discussion notes</label>{{ financial_project_form.initial_engagement_minutes }}</div>
+      <div class="col-md-4"><label class="form-label">Engagement date</label>{{ financial_project_form.initial_engagement_date }}{% if financial_project_form.initial_engagement_date.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.initial_engagement_date.errors }}</div>{% endif %}</div>
+      <div class="col-md-4"><label class="form-label">Contact method</label>{{ financial_project_form.initial_contact_method }}{% if financial_project_form.initial_contact_method.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.initial_contact_method.errors }}</div>{% endif %}</div>
+      <div class="col-12"><label class="form-label">Minutes / discussion notes</label>{{ financial_project_form.initial_engagement_minutes }}{% if financial_project_form.initial_engagement_minutes.errors %}<div class="invalid-feedback d-block">{{ financial_project_form.initial_engagement_minutes.errors }}</div>{% endif %}</div>
     </div>
-    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-warning" type="submit">Create and assign to me</button></div>
+    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button id="createFinancialBid" class="btn btn-warning" type="submit">{% if selected_new_bid_owner == user.pk %}Create and assign to me{% else %}Create and assign{% endif %}</button></div>
   </form></div>
 </div>
 
@@ -225,6 +230,36 @@
     const button = form.querySelector('[type="submit"]');
     if (button) { button.disabled = true; button.dataset.originalText = button.textContent; button.textContent = 'Saving…'; }
   }));
+
+  const assignee = document.getElementById('newBidAssignee');
+  const centre = document.getElementById('newBidCentre');
+  const createButton = document.getElementById('createFinancialBid');
+  const updateAssignee = () => {
+    if (centre && assignee) {
+      assignee.querySelectorAll('option[data-centre]').forEach(option => { option.disabled = option.dataset.centre !== centre.value; option.hidden = option.disabled; });
+      if (assignee.selectedOptions[0]?.disabled) assignee.value = assignee.options[0].value;
+    }
+    if (createButton) createButton.textContent = !assignee || assignee.selectedOptions[0]?.dataset.self === 'true' ? 'Create and assign to me' : 'Create and assign';
+  };
+  assignee?.addEventListener('change', updateAssignee);
+  centre?.addEventListener('change', updateAssignee);
+  updateAssignee();
+  window.addEventListener('pageshow', () => {
+    overlay.classList.remove('show');
+    document.querySelectorAll('.tracked-form [data-original-text]').forEach(button => { button.disabled = false; button.textContent = button.dataset.originalText; delete button.dataset.originalText; });
+    updateAssignee();
+  });
+  {% if open_new_bid_modal %}
+  document.addEventListener('DOMContentLoaded', () => {
+    const element = document.getElementById('newBidModal');
+    element.addEventListener('shown.bs.modal', () => {
+      const errors = document.getElementById('newBidErrors');
+      errors?.scrollIntoView({block: 'start'});
+      errors?.focus({preventScroll: true});
+    }, {once: true});
+    bootstrap.Modal.getOrCreateInstance(element).show();
+  });
+  {% endif %}
 
   let dragged = null;
   const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;

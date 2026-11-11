@@ -155,11 +155,3 @@ class FinancialProjectForm(forms.ModelForm):
         if value is not None and value < 0:
             raise forms.ValidationError('Estimated value cannot be negative.')
         return value
-
-    def clean(self):
-        cleaned = super().clean()
-        if not (cleaned.get('contact_email') or '').strip() and not (cleaned.get('contact_phone') or '').strip():
-            message = 'Add at least one contact method: email address or phone number.'
-            self.add_error('contact_email', message)
-            self.add_error('contact_phone', message)
-        return cleaned

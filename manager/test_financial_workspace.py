@@ -229,3 +229,69 @@ class FinancialWorkspaceTests(TestCase):
         self.assertTemplateUsed(response, 'adminpanel/index.html')
         self.assertFalse(Task.objects.filter(title='Rejected task').exists())
         self.assertNotContains(response, 'href="' + reverse('manager_dashboard') + '"')
+
+    def test_financial_admin_self_assigns_title_and_client_only_and_admin_sees_it(self):
+        response = self.client.post(reverse('add_financial_project'), {'project_name': 'Self assigned draft', 'client_name': 'Early client lead'})
+        self.assertRedirects(response, reverse('financial_projects'))
+        bid = FinancialProject.objects.get(project__name='Self assigned draft')
+        task = bid.project.tasks.get(import_key='financial-bid-follow-up')
+        self.assertEqual((bid.owner_id, bid.project.assigned_user_id, bid.project.created_by_id, task.assigned_to_id), (self.finance.pk,) * 4)
+        self.assertEqual((bid.stage, task.status, task.progress), ('lead', 'todo', 0))
+        self.assertContains(self.client.get(reverse('my_projects')), bid.project.name)
+        self.assertContains(self.client.get(reverse('financial_kanban')), task.title)
+        admin = get_user_model().objects.create_user('self-assignment-overseer', role='admin', research_centre=self.centre)
+        self.client.force_login(admin)
+        self.assertContains(self.client.get(reverse('financial_projects')), bid.project.name)
+        self.assertContains(self.client.get(reverse('financial_kanban')), task.title)
+
+    def test_admin_can_self_assign_with_own_centre(self):
+        admin = get_user_model().objects.create_user('self-assign-admin', role='admin', research_centre=self.centre)
+        self.client.force_login(admin)
+        response = self.client.post(reverse('add_financial_project'), {'project_name': 'Admin self assigned draft', 'client_name': 'Admin client', 'owner_id': admin.pk})
+        self.assertRedirects(response, reverse('financial_projects'))
+        bid = FinancialProject.objects.get(project__name='Admin self assigned draft')
+        self.assertEqual((bid.owner_id, bid.project.assigned_user_id, bid.project.created_by_id), (admin.pk,) * 3)
+
+    def test_admin_without_default_centre_can_choose_one_and_self_assign(self):
+        admin = get_user_model().objects.create_user('centreless-self-admin', role='admin')
+        self.client.force_login(admin)
+        payload = {'project_name': 'Admin chosen centre draft', 'client_name': 'Chosen centre client'}
+        page = self.client.post(reverse('add_financial_project'), payload)
+        self.assertContains(page, 'Choose a research centre for this financial project.', status_code=400)
+        self.assertTrue(page.context['open_new_bid_modal'])
+        self.assertFalse(Project.objects.filter(name=payload['project_name']).exists())
+        response = self.client.post(reverse('add_financial_project'), dict(payload, research_centre_id=self.centre.pk))
+        self.assertRedirects(response, reverse('financial_projects'))
+        bid = FinancialProject.objects.get(project__name=payload['project_name'])
+        self.assertEqual((bid.owner_id, bid.research_centre_id, bid.project.research_centre_id), (admin.pk, self.centre.pk, self.centre.pk))
+
+    def test_invalid_fields_keep_form_values_and_visible_errors(self):
+        payload = {'project_name': 'Keep this draft title', 'client_name': 'Keep this client', 'contact_email': 'not-an-email'}
+        page = self.client.post(reverse('add_financial_project'), payload)
+        self.assertContains(page, 'Bid not saved.', status_code=400)
+        self.assertContains(page, 'Enter a valid email address.', status_code=400)
+        self.assertTrue(page.context['open_new_bid_modal'])
+        self.assertEqual(page.context['financial_project_form']['project_name'].value(), payload['project_name'])
+        self.assertEqual(page.context['financial_project_form']['client_name'].value(), payload['client_name'])
+        self.assertFalse(Project.objects.filter(name=payload['project_name']).exists())
+
+    def test_duplicate_name_is_reported_inside_form_without_losing_client(self):
+        page = self.client.post(reverse('add_financial_project'), {'project_name': self.project.name, 'client_name': 'Preserve duplicate draft client'})
+        self.assertContains(page, 'A project with this name already exists.', status_code=400)
+        self.assertEqual(page.context['financial_project_form']['client_name'].value(), 'Preserve duplicate draft client')
+        self.assertEqual(Project.objects.filter(name=self.project.name).count(), 1)
+
+    def test_invalid_admin_delegation_form_preserves_selected_assignee(self):
+        admin = get_user_model().objects.create_user('invalid-draft-admin', role='admin', research_centre=self.centre)
+        self.client.force_login(admin)
+        page = self.client.post(reverse('add_financial_project'), {'project_name': 'Preserved delegation', 'client_name': 'Delegated draft', 'contact_email': 'invalid', 'owner_id': self.finance.pk})
+        self.assertEqual(page.status_code, 400)
+        self.assertEqual(page.context['selected_new_bid_owner'], self.finance.pk)
+        self.assertContains(page, 'id="createFinancialBid"', status_code=400)
+
+    def test_centreless_finance_gets_clear_error_instead_of_silent_redirect(self):
+        self.finance.research_centre = None
+        self.finance.save(update_fields=['research_centre'])
+        page = self.client.post(reverse('add_financial_project'), {'project_name': 'Missing centre draft', 'client_name': 'Missing centre client', 'research_centre_id': self.centre.pk})
+        self.assertContains(page, 'Ask Admin to assign a research centre to your account', status_code=400)
+        self.assertFalse(Project.objects.filter(name='Missing centre draft').exists())
