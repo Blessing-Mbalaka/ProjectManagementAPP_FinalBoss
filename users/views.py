@@ -7,6 +7,7 @@ from django.contrib.auth.views import PasswordResetView
 import logging
 from .forms import CustomUserCreationForm, CustomLoginForm, StrictPasswordResetForm
 from .models import CustomUser
+from .navigation import role_home_name
 from projects.models import StudentProfile
 from django.conf import settings
 from django.http import HttpResponseForbidden
@@ -82,19 +83,7 @@ def login_view(request):
 
 
 def _role_home_name(user):
-    if user.role == 'it':
-        return 'it_dashboard'
-    if user.role in {'admin', 'dean', 'centrehead', 'overseer'}:
-        return 'overview'
-    if user.role == 'supervisor':
-        return 'supervisor_dashboard_portal'
-    if user.role == 'manager':
-        return 'manager_dashboard'
-    if user.role == 'financialadmin':
-        return 'finance'
-    if user.role == 'student':
-        return 'student_dashboard'
-    return 'dashboard'
+    return role_home_name(user)
 
 
 @login_required

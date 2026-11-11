@@ -158,7 +158,7 @@
     <div class="mb-3 text-end">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
     </div>
-    {% include 'manager/partials/task_modal.html' with form_url='manager_create_task' task_types=task_types project_id=projects.0.id %}
+    {% include 'manager/partials/task_modal.html' with form_url='manager_create_task' project_id=kanban_task_project.pk %}
 {% elif not has_tasks %}
     <div class="alert alert-info mb-4" role="status">
         <i class="bi bi-info-circle me-2"></i>
@@ -226,6 +226,7 @@
                                     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editTaskModal{{ task.id }}">Edit</button>
                                     <form method="POST" action="{% url 'manager_delete_task' task.id %}" class="d-inline">
                                         {% csrf_token %}
+                                        <input type="hidden" name="return_to" value="{{ task_return_url }}">
                                         <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                     </form>
                                 </div>

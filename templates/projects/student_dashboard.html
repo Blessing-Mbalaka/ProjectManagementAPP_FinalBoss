@@ -35,7 +35,7 @@
         }
 
         body {
-            background-image: url(./images/2.png);
+            background-image: url("{% static 'img/2.png' %}");
             color: var(--text-primary);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -291,7 +291,7 @@
                 <li><a href="#submissions-section" class="nav-link"><i class="bi bi-upload"></i> <span>Submissions</span></a></li>
                 <li><a href="#feedback-section" class="nav-link"><i class="bi bi-chat-square-text"></i> <span>Feedback</span></a></li>
                 <li><a href="#notifications-section" class="nav-link"><i class="bi bi-bell"></i> <span>Notifications</span>
-                        <span class="notification-badge badge bg-danger rounded-pill" id="notificationCount">3</span>
+                        <span class="notification-badge badge bg-danger rounded-pill" id="notificationCount">{{ unread_notification_count }}</span>
                     </a></li>
                 <li><a href="#meetings-section" class="nav-link"><i class="bi bi-calendar-check"></i> <span>Meetings</span></a></li>
                 <li><a href="#chat-section" class="nav-link"><i class="bi bi-chat-dots"></i> <span>Chat</span></a></li>
@@ -518,14 +518,15 @@
         <div class="card-body">
             <div class="list-group">
                 {% for notif in notifications %}
-                <a href="{% url 'mark_notification_read' notif.id %}"
-                    class="list-group-item list-group-item-action">
+                <form method="post" action="{% url 'student_mark_notification_read' notif.id %}" class="list-group-item">
+                    {% csrf_token %}
                     <div class="d-flex w-100 justify-content-between">
                         <h6 class="mb-1">{{ notif.title }}</h6>
                         <small>{{ notif.created_at|date:"M d, Y H:i" }}</small>
                     </div>
-                    <p class="mb-1">{{ notif.message }}</p>
-                </a>
+                    <p class="mb-1">{{ notif.body }}</p>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Mark as read</button>
+                </form>
                 {% empty %}
                 <div class="text-muted text-center">No notifications yet.</div>
                 {% endfor %}
@@ -706,292 +707,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Student Dashboard JavaScript
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize data
-    
-            loadSubmissions();
-            loadMeetings();
-            loadNotifications();
-            
-            // Event listeners
-
-            document.getElementById('submitDocumentBtn').addEventListener('click', submitDocument);
-            document.getElementById('submitMeetingBtn').addEventListener('click', requestMeeting);
-            document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
-            
-            // Sidebar toggle functionality
-            document.getElementById('toggleBtn').addEventListener('click', toggleSidebar);
-            document.getElementById('mobileMenuBtn').addEventListener('click', toggleMobileMenu);
-        });
-
-
-        // Load submissions
-        function loadSubmissions() {
-            const tableBody = document.getElementById('submissionsTable');
-            tableBody.innerHTML = '';
-            
-            if (submissions.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No submissions yet</td></tr>';
-                return;
-            }
-            
-            submissions.forEach(sub => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${sub.date}</td>
-                    <td>${sub.type}</td>
-                    <td>${sub.title}</td>
-                    <td><span class="badge ${getStatusBadgeClass(sub.status)}">${sub.status}</span></td>
-                    <td>${sub.feedback ? '<i class="bi bi-check-circle-fill text-success"></i>' : '<i class="bi bi-clock text-warning"></i>'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewSubmission('${sub.id}')">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                        ${sub.feedback ? `<button class="btn btn-sm btn-outline-success ms-1" onclick="viewFeedback('${sub.id}')">
-                            <i class="bi bi-chat-square-text"></i>
-                        </button>` : ''}
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }
-
-        function getStatusBadgeClass(status) {
-            switch(status) {
-                case 'Approved': return 'bg-success';
-                case 'Feedback Provided': return 'bg-info';
-                case 'Pending Review': return 'bg-warning';
-                default: return 'bg-secondary';
-            }
-        }
-
-        // Submit document
-        function submitDocument() {
-            const documentType = document.getElementById('documentType').value;
-            const documentTitle = document.getElementById('documentTitle').value;
-            const documentFile = document.getElementById('documentFile').files[0];
-            const documentNotes = document.getElementById('documentNotes').value;
-            
-            if (!documentType || !documentTitle || !documentFile) {
-                alert('Please fill all required fields');
-                return;
-            }
-            
-            // In a real app, you would upload the file to the server
-            // For this demo, we'll just add it to our submissions array
-            
-            const newSubmission = {
-                id: 'SUB' + (submissions.length + 1).toString().padStart(3, '0'),
-                date: new Date().toISOString().split('T')[0],
-                type: documentType,
-                title: documentTitle,
-                file: documentFile.name,
-                status: 'Pending Review',
-                feedback: false,
-                notes: documentNotes
-            };
-            
-            submissions.unshift(newSubmission);
-            
-            // Close modal and refresh submissions
-            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
-            loadSubmissions();
-            
-            // Show success message
-            alert('Document submitted successfully!');
-        }
-
-        // Load meetings
-        function loadMeetings() {
-            const tableBody = document.getElementById('meetingsTable');
-            tableBody.innerHTML = '';
-            
-            if (meetings.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No meetings scheduled</td></tr>';
-                return;
-            }
-            
-            meetings.forEach(meeting => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${meeting.date}</td>
-                    <td>${meeting.time}</td>
-                    <td>${meeting.purpose}</td>
-                    <td><span class="badge ${getMeetingStatusBadgeClass(meeting.status)}">${meeting.status}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewMeeting('${meeting.id}')">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                        ${meeting.status === 'Pending' ? `<button class="btn btn-sm btn-outline-danger ms-1" onclick="cancelMeeting('${meeting.id}')">
-                            <i class="bi bi-x-circle"></i>
-                        </button>` : ''}
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }
-
-        function getMeetingStatusBadgeClass(status) {
-            switch(status) {
-                case 'Confirmed': return 'bg-success';
-                case 'Pending': return 'bg-warning';
-                case 'Completed': return 'bg-info';
-                case 'Cancelled': return 'bg-danger';
-                default: return 'bg-secondary';
-            }
-        }
-
-        // Request meeting
-        function requestMeeting() {
-            const meetingDate = document.getElementById('meetingDate').value;
-            const meetingTime = document.getElementById('meetingTime').value;
-            const meetingDuration = document.getElementById('meetingDuration').value;
-            const meetingPurpose = document.getElementById('meetingPurpose').value;
-            const meetingMode = document.getElementById('meetingMode').value;
-            
-            if (!meetingDate || !meetingTime || !meetingDuration || !meetingPurpose) {
-                alert('Please fill all required fields');
-                return;
-            }
-            
-            // In a real app, you would send this to the server
-            // For this demo, we'll just add it to our meetings array
-            
-            const newMeeting = {
-                id: 'MTG' + (meetings.length + 1).toString().padStart(3, '0'),
-                date: meetingDate,
-                time: meetingTime,
-                duration: meetingDuration,
-                purpose: meetingPurpose,
-                mode: meetingMode,
-                status: 'Pending'
-            };
-            
-            meetings.unshift(newMeeting);
-            
-            // Close modal and refresh meetings
-            bootstrap.Modal.getInstance(document.getElementById('meetingModal')).hide();
-            loadMeetings();
-            
-            // Show success message
-            alert('Meeting request sent successfully!');
-        }
-
-        // Load notifications
-        function loadNotifications() {
-            const notificationContainer = document.querySelector('#notifications-section .list-group');
-            notificationContainer.innerHTML = '';
-            
-            if (notifications.length === 0) {
-                notificationContainer.innerHTML = '<div class="text-center text-muted py-3">No notifications</div>';
-                return;
-            }
-            
-            // Update notification count
-            const unreadCount = notifications.filter(n => !n.read).length;
-            document.getElementById('notificationCount').textContent = unreadCount;
-            
-            notifications.forEach(notification => {
-                const notificationItem = document.createElement('a');
-                notificationItem.href = '#';
-                notificationItem.className = `list-group-item list-group-item-action ${notification.read ? '' : 'active'}`;
-                notificationItem.innerHTML = `
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">${notification.title}</h6>
-                        <small class="text-muted">${formatNotificationDate(notification.date)}</small>
-                    </div>
-                    <p class="mb-1">${notification.message}</p>
-                `;
-                notificationItem.addEventListener('click', () => markAsRead(notification.id));
-                notificationContainer.appendChild(notificationItem);
-            });
-        }
-
-        function formatNotificationDate(dateString) {
-            // Simple date formatting - in a real app you might use a library like moment.js
-            return dateString.split(' ')[0];
-        }
-
-        function markAsRead(notificationId) {
-            const notification = notifications.find(n => n.id === notificationId);
-            if (notification) {
-                notification.read = true;
-                loadNotifications();
-            }
-        }
-
-        // Chat functionality
-        function sendMessage() {
-            const messageInput = document.getElementById('chatInput');
-            const message = messageInput.value.trim();
-            
-            if (message) {
-                const chatContainer = document.getElementById('chatMessages');
-                
-                // Add message to chat
-                const messageElement = document.createElement('div');
-                messageElement.className = 'chat-message student-message';
-                messageElement.innerHTML = `
-                    <p>${message}</p>
-                    <small class="text-muted d-block text-end">You - ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
-                `;
-                chatContainer.appendChild(messageElement);
-                
-                // Clear input
-                messageInput.value = '';
-                
-                // Scroll to bottom
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                // In a real app, you would send this message to the server
-                // and then receive it back to display in the chat
-            }
-        }
-
-        // View functions (would be implemented fully in a real app)
-        function viewSubmission(id) {
-            alert(`View submission ${id}`);
-        }
-
-        function viewFeedback(id) {
-            alert(`View feedback for submission ${id}`);
-        }
-
-        function viewMeeting(id) {
-            alert(`View meeting ${id}`);
-        }
-
-        function cancelMeeting(id) {
-            if (confirm('Are you sure you want to cancel this meeting?')) {
-                const meeting = meetings.find(m => m.id === id);
-                if (meeting) {
-                    meeting.status = 'Cancelled';
-                    loadMeetings();
-                }
-            }
-        }
-
-        // Sidebar functions
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            
+    (() => {
+        // Data and submissions are rendered by the server; only navigation is local.
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const toggle = document.getElementById('toggleBtn');
+        toggle.addEventListener('click', () => {
             sidebar.classList.toggle('collapsed');
             mainContent.classList.toggle('expanded');
-            
-            // Change icon
-            const toggleBtn = document.getElementById('toggleBtn');
-            if (sidebar.classList.contains('collapsed')) {
-                toggleBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
-            } else {
-                toggleBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
-            }
-        }
-
-        function toggleMobileMenu() {
-            document.getElementById('sidebar').classList.toggle('show');
-        }
+            toggle.querySelector('i').className = sidebar.classList.contains('collapsed') ? 'bi bi-chevron-right' : 'bi bi-chevron-left';
+        });
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => sidebar.classList.toggle('show'));
+    })();
     </script>
     <script src="{% static 'js/table-tooltips.js' %}"></script>
     <style>

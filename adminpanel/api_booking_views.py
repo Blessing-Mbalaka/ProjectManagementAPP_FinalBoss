@@ -426,7 +426,7 @@ def delete_availability(request, availability_id):
 
 # ============== STAFF MESSAGING API ENDPOINTS ==============
 
-MESSAGE_ROLES = ('staff', 'manager', 'admin', 'centrehead', 'overseer', 'dean', 'financialadmin', 'supervisor')
+MESSAGE_ROLES = ('it', 'staff', 'manager', 'admin', 'centrehead', 'overseer', 'dean', 'financialadmin', 'supervisor')
 
 
 def _can_send_staff_messages(user):

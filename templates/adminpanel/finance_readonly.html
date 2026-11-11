@@ -392,13 +392,13 @@
 
     const costCentreLabels = [
         {% for cc in cost_centres %}
-            "{{ cc.name }}",
+            "{{ cc.name|escapejs }}",
         {% endfor %}
     ];
 
     const totalSpentData = [
         {% for cc in cost_centres %}
-            {{ cc.total_spent }},
+            {{ cc.total_spent|default_if_none:"0"|floatformat:"2u" }},
         {% endfor %}
     ];
 
@@ -433,13 +433,13 @@ const barChart = new Chart(ctx, {
 
 const categoryLabels = [
         {% for c in category_totals %}
-            "{{ c.category }}",
+            "{{ c.category|escapejs }}",
         {% endfor %}
     ];
 
     const categoryData = [
         {% for c in category_totals %}
-            {{ c.total }},
+            {{ c.total|default_if_none:"0"|floatformat:"2u" }},
         {% endfor %}
     ];
 
@@ -474,13 +474,13 @@ const pieChart = new Chart(pieCtx, {
 
     const monthlyLabels = [
         {% for m in monthly_totals %}
-            "{{ m.month }}",
+            "{{ m.month|escapejs }}",
         {% endfor %}
     ];
 
     const monthlyData = [
         {% for m in monthly_totals %}
-            {{ m.total }},
+            {{ m.total|default_if_none:"0"|floatformat:"2u" }},
         {% endfor %}
     ];
 

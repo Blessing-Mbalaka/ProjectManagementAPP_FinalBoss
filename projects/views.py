@@ -21,10 +21,11 @@ from django.utils.dateparse import parse_date
 from django.utils import timezone
 from adminpanel.models import Notification
 from adminpanel.media_service import MediaService
-from adminpanel.notification_service import unread_count_for, visible_notifications_for
+from adminpanel.notification_service import mark_read, unread_count_for, visible_notifications_for
 from .scope import scope_projects_for_user
 from .work_scope import assigned_projects_for, workable_tasks_for, manageable_projects_for
 from users.roles import can_manage_projects, has_role
+from users.navigation import workspace_return_url, workspace_base, personal_projects_name, task_board_name
 from .daily_work import complete_daily_work, reopen_daily_work
 
 
@@ -101,6 +102,7 @@ def weekly_reports(request):
         report_rows.append({'report': report, 'team_tasks': team_tasks})
 
     return render(request, 'projects/weekly_reports.html', {
+        'workspace_base_template': workspace_base(request.user),
         'form': form,
         'report_rows': report_rows,
         'can_review_reports': can_review,
@@ -160,6 +162,7 @@ def staff_kanban(request):
     projects = assigned_projects_for(request.user)
     
     return render(request, 'projects/staff_kanban.html', {
+        'workspace_base_template': workspace_base(request.user),
         'grouped_tasks': grouped_tasks,
         'task_types': TASK_TYPES,
         'projects': projects
@@ -174,6 +177,7 @@ def staff_create_task(request):
 @login_required
 def edit_task(request, task_id):
     task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
+    return_url = workspace_return_url(request, task_board_name(request.user), family='tasks', project=task.project)
 
     if request.method == 'POST':
         valid_statuses = {value for value, _label in Task.STATUS_CHOICES}
@@ -181,7 +185,7 @@ def edit_task(request, task_id):
         if new_status not in valid_statuses:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
-            return redirect('staff_kanban')
+            return redirect(return_url)
         task.status = new_status
         task.comments = request.POST.get('comments', '').strip()
         task.save(update_fields=['status', 'comments', 'progress'])
@@ -198,9 +202,9 @@ def edit_task(request, task_id):
                 },
             })
 
-        return redirect('staff_kanban')
+        return redirect(return_url)
 
-    return redirect('staff_kanban')
+    return redirect(return_url)
 
 @require_POST
 @login_required
@@ -238,7 +242,10 @@ def ganttchart(request):
     else:
         tasks = Task.objects.filter(assigned_to=request.user)
 
-    return render(request, 'projects/ganttchart.html', {'tasks': tasks})
+    return render(request, 'projects/ganttchart.html', {
+        'workspace_base_template': workspace_base(request.user),
+        'tasks': tasks,
+    })
 
 
 def is_student(user):
@@ -377,11 +384,12 @@ def submit_feedback_reply(request, submission_id):
 
 @login_required
 @user_passes_test(is_student)
+@require_POST
 def mark_notification_read(request, notif_id):
-    notif = get_object_or_404(Notification, id=notif_id, recipients=request.user)
-    # Note: Notification model uses 'is_pinned' not 'is_read'
-    # This endpoint acknowledges the notification without database changes
-    return redirect('student_dashboard')
+    notification = get_object_or_404(visible_notifications_for(request.user), pk=notif_id)
+    mark_read(request.user, notification)
+    return redirect(reverse('student_dashboard') + '#notifications-section')
+
 
 @login_required
 @user_passes_test(is_student)
@@ -398,58 +406,26 @@ def submit_meeting_request(request):
 @user_passes_test(is_student_or_supervisor)
 def send_chat_message(request):
     if request.method == 'POST':
-        print(f"\n=== SEND CHAT MESSAGE DEBUG ===")
-        print(f"Sender: {request.user} (ID: {request.user.id}, Role: {request.user.role})")
-        print(f"Request POST data: {request.POST}")
-        
-        form = ChatForm(request.POST)
-        print(f"Form valid: {form.is_valid()}")
-        
+        form = ChatForm(request.POST, request.FILES)
         if form.is_valid():
             message = form.save(commit=False)
             message.sender = request.user
-            print(f"Message content: '{message.message}'")
-            
-            # Set recipient based on user role
             if request.user.role == 'student':
-                # Students can only message their supervisor
-                student_profile = StudentProfile.objects.get(user=request.user)
-                message.recipient = student_profile.supervisor
-                print(f"Student -> Supervisor: Recipient set to {message.recipient} (ID: {message.recipient.id if message.recipient else 'None'})")
-            else:  # admin/supervisor
-                # Supervisor messages the student they're viewing
+                profile = get_object_or_404(StudentProfile, user=request.user)
+                message.recipient = profile.supervisor
+            else:
                 student_id = request.POST.get('student_id')
-                print(f"Student ID from POST: {student_id}")
-                
                 if student_id:
-                    student = CustomUser.objects.get(id=student_id)
-                    print(f"Student found: {student} (ID: {student.id})")
-                    
-                    # Permission check: Supervisor can only message students they supervise
-                    student_profile = StudentProfile.objects.get(user=student)
-                    print(f"Student's supervisor: {student_profile.supervisor} (ID: {student_profile.supervisor.id if student_profile.supervisor else 'None'})")
-                    print(f"Current supervisor: {request.user} (ID: {request.user.id})")
-                    
-                    if student_profile.supervisor == request.user:
-                        message.recipient = student
-                        print(f"✓ Permission granted - Recipient set to {message.recipient}")
-                    else:
-                        # Reject message if not authorized
-                        message.recipient = None
-                        print(f"✗ Permission denied - Supervisor not authorized for this student")
-                else:
-                    print(f"✗ No student_id provided in POST")
-            
+                    profile = get_object_or_404(StudentProfile, user_id=student_id, supervisor=request.user)
+                    message.recipient = profile.user
             if message.recipient:
                 message.save()
-                print(f"✓ Message SAVED (ID: {message.id})")
+                messages.success(request, 'Message sent.')
             else:
-                print(f"✗ Message NOT saved - No recipient set")
+                messages.error(request, 'No supervisor or student recipient is assigned. Your message was not sent.')
         else:
-            print(f"✗ Form errors: {form.errors}")
-        
-        print(f"=== END DEBUG ===\n")
-    
+            messages.error(request, 'Your message was not sent. Please check the message and attachment.')
+
     # Redirect based on user role
     if request.user.role == 'student':
         return redirect('student_dashboard')
@@ -473,7 +449,7 @@ def delete_project(request, project_id):
     if request.method == 'POST':
         project.delete()
         messages.success(request, 'Project deleted successfully!')
-        return redirect('dashboard')
+        return redirect(workspace_return_url(request, personal_projects_name(request.user), family='projects'))
     return render(request, 'projects/confirm_delete.html', {'project': project})
 
 @login_required
@@ -482,7 +458,7 @@ def remove_assignment(request, assignment_id):
     if request.method == 'POST':
         assignment.delete()
         messages.success(request, f'{assignment.team_member} removed from the project!')
-        return redirect('project_detail', project_id=assignment.project.id)
+        return redirect(workspace_return_url(request, personal_projects_name(request.user), family='projects'))
     return render(request, 'projects/confirm_remove.html', {'assignment': assignment})
 
 @login_required
@@ -514,6 +490,7 @@ def staff_elearning(request):
         )
 
     return render(request, 'projects/elearning.html', {
+        'workspace_base_template': workspace_base(request.user),
         'resources': resources,
         'resource_types': resource_types,
         'selected_type': selected_type,
@@ -537,6 +514,7 @@ def staff_templates(request):
         template_categories[category].append(t)
 
     return render(request, 'projects/templates.html', {
+        'workspace_base_template': workspace_base(request.user),
         'template_categories': template_categories,
         'search_query': search_query,
     })
@@ -553,8 +531,9 @@ def project_tasks(request, project_id, task_form=None):
     for field in form.fields.values():
         field.widget.attrs['class'] = 'form-select' if hasattr(field.widget, 'choices') else 'form-control'
     return render(request, 'projects/project_tasks.html', {
-        'project_tasks_base_template': 'adminpanel/index.html' if request.user.role in {'financialadmin', 'admin', 'centrehead', 'overseer'} else 'manager/home.html' if request.user.role == 'manager' else 'base.html',
-        'project_tasks_back_url': reverse('my_projects') if can_manage_projects(request.user) else reverse('staff_projects'),
+        'project_tasks_base_template': workspace_base(request.user),
+        'project_tasks_back_url': reverse(personal_projects_name(request.user)),
+        'task_return_url': reverse('project_tasks', args=[project.pk]),
         'project': project,
         'project_tasks': project.tasks.select_related('assigned_to', 'created_by').order_by('-created_at'),
         'task_form': form,
@@ -565,5 +544,6 @@ def project_tasks(request, project_id, task_form=None):
 def staff_projects(request):
     from projects.work_scope import task_creation_projects_for
     return render(request, 'projects/staff_projects.html', {
+        'workspace_base_template': workspace_base(request.user),
         'projects': task_creation_projects_for(request.user).select_related('assigned_user'),
     })

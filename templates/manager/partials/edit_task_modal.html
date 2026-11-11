@@ -3,6 +3,7 @@
     <div class="modal-content">
       <form method="POST" action="{% url 'edit_task' task.id %}" class="kanban-edit-form" data-task-id="{{ task.id }}">
         {% csrf_token %}
+        <input type="hidden" name="return_to" value="{{ task_return_url }}">
         <div class="modal-header">
           <h5 class="modal-title" id="editTaskModalLabel{{ task.id }}">Edit Task</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

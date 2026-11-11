@@ -74,6 +74,15 @@
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || form.dataset.noSaveFeedback !== undefined) return;
     if ((form.method || 'get').toLowerCase() === 'get') return;
+    // Let shared save endpoints return to the page actually used, independent
+    // of additional account permissions. The server validates this URL.
+    if (new URL(form.action, window.location.href).origin === window.location.origin && !form.elements.namedItem('return_to')) {
+      const destination = document.createElement('input');
+      destination.type = 'hidden';
+      destination.name = 'return_to';
+      destination.value = window.location.pathname + window.location.search + window.location.hash;
+      form.appendChild(destination);
+    }
     if (form.classList.contains('kanban-edit-form') || form.classList.contains('staff-kanban-edit-form')) return;
 
     const submitter = event.submitter || form.querySelector('[type="submit"]');

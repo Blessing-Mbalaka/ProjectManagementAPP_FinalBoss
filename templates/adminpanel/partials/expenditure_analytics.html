@@ -81,10 +81,12 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ all_expenditures|json_script:"analytics-expenditures" }}
+{{ cost_centres|json_script:"analytics-cost-centres" }}
 <script>
     let analyticsChart = null;
-    let allExpenditures = {{ all_expenditures|safe }};
-    let costCentres = {{ cost_centres|safe }};
+    let allExpenditures = JSON.parse(document.getElementById('analytics-expenditures').textContent).map(exp => ({...exp, amount: Number(exp.amount) || 0, month: exp.month || ''}));
+    let costCentres = JSON.parse(document.getElementById('analytics-cost-centres').textContent);
 
     // Debug: convert cost_centres objects to lookup format
     let ccMap = {};

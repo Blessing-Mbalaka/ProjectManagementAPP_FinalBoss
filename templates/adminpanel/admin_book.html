@@ -29,9 +29,9 @@
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
                             <input type="text" class="form-control" placeholder="Search books..." id="searchInput">
                         </div>
-                        <button class="btn btn-primary ms-3" id="addNewBookBtn">
+                        {% if can_create_publications %}<button class="btn btn-primary ms-3" id="addNewBookBtn">
                             <i class="bi bi-plus-circle"></i> Add Book
-                        </button>
+                        </button>{% endif %}
                     </div>
                 </div>
 
@@ -56,9 +56,9 @@
                         <div id="writing-column">
                             <!-- Cards will be added here dynamically -->
                         </div>
-                        <button class="kanban-add-card" data-column="writing">
+                        {% if can_create_publications %}<button class="kanban-add-card" data-column="writing">
                             <i class="bi bi-plus"></i> Add Book
-                        </button>
+                        </button>{% endif %}
                     </div>
 
                     <!-- Journal Submission Column -->
@@ -70,9 +70,9 @@
                         <div id="submission-column">
                             <!-- Cards will be added here dynamically -->
                         </div>
-                        <button class="kanban-add-card" data-column="submission">
+                        {% if can_create_publications %}<button class="kanban-add-card" data-column="submission">
                             <i class="bi bi-plus"></i> Add Book
-                        </button>
+                        </button>{% endif %}
                     </div>
 
                     <!-- Peer Review Column -->
@@ -84,9 +84,9 @@
                         <div id="review-column">
                             <!-- Cards will be added here dynamically -->
                         </div>
-                        <button class="kanban-add-card" data-column="review">
+                        {% if can_create_publications %}<button class="kanban-add-card" data-column="review">
                             <i class="bi bi-plus"></i> Add Book
-                        </button>
+                        </button>{% endif %}
                     </div>
 
                     <!-- Accepted for Publication Column -->
@@ -99,9 +99,9 @@
                         <div id="production-column">
                             <!-- Cards will be added here dynamically -->
                         </div>
-                        <button class="kanban-add-card" data-column="production">
+                        {% if can_create_publications %}<button class="kanban-add-card" data-column="production">
                             <i class="bi bi-plus"></i> Add Book
-                        </button>
+                        </button>{% endif %}
                     </div>
 
                     <!-- Published Column -->
@@ -113,9 +113,9 @@
                         <div id="published-column">
                             <!-- Cards will be added here dynamically -->
                         </div>
-                        <button class="kanban-add-card" data-column="published">
+                        {% if can_create_publications %}<button class="kanban-add-card" data-column="published">
                             <i class="bi bi-plus"></i> Add Book
-                        </button>
+                        </button>{% endif %}
                     </div>
                 </div>
 
@@ -534,7 +534,7 @@
                     });
 
                     // Add new book button
-                    addNewBookBtn.addEventListener('click', function () {
+                    addNewBookBtn?.addEventListener('click', function () {
                         addBookModal.show();
                     });
 

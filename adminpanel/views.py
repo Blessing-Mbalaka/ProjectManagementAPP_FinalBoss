@@ -6,6 +6,7 @@ from django.urls import reverse
 #Here  is the Default Django User_ROLE_VALIDATION.
 from django.contrib.auth.decorators import login_required, user_passes_test
 from users.roles import can_manage_projects, can_manage_publications, has_role
+from users.navigation import workspace_return_url, role_home_name, paper_workspace_name
 from projects.work_scope import manageable_projects_for
 
 from users.models import CustomUser
@@ -17,7 +18,7 @@ from .audit_service import (
     log_expenditure_creation, log_expenditure_edit, log_expenditure_deletion,
     log_payment_creation, log_payment_deletion
 )
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 import json
 import csv
@@ -400,7 +401,7 @@ FORECAST_VIEW_ROLES = ['admin', 'dean', 'centrehead']
 FORECAST_EDITOR_ROLES = ['admin', 'centrehead']
 FINANCE_COST_CENTRE_ROLES = ['admin', 'financialadmin']
 ADMIN_VIEW_ROLES = ['admin', 'dean', 'centrehead', 'overseer']
-COMMUNIQUE_ROLES = ['staff', 'manager', 'admin', 'dean', 'centrehead', 'overseer', 'financialadmin', 'student', 'supervisor']
+COMMUNIQUE_ROLES = ['it', 'staff', 'manager', 'admin', 'dean', 'centrehead', 'overseer', 'financialadmin', 'student', 'supervisor']
 CRM_ROLES = ['dean', 'centrehead', 'overseer']
 
 
@@ -504,15 +505,16 @@ def admin_dashboard(request):
     return render(request, 'adminpanel/overview.html')
 
 @login_required
+@ensure_csrf_cookie
 def communique(request, section=None):
     if request.user.role not in COMMUNIQUE_ROLES:
         messages.error(request, "You do not have access to the Communique page.")
-        return redirect('dashboard')
+        return redirect(role_home_name(request.user))
 
     allowed_sections = {None, 'availability', 'messages', 'templates'}
     if section not in allowed_sections:
         messages.error(request, "That Communique section does not exist.")
-        return redirect('communique')
+        return redirect(workspace_return_url(request, 'communique', family='communique'))
 
     template_uploads = SystemMedia.objects.filter(
         purpose='template',
@@ -524,6 +526,7 @@ def communique(request, section=None):
         'template_uploads': template_uploads,
         'can_upload_templates': request.user.role == 'admin',
         'communique_section': section,
+        'communique_back_url': reverse('communique') if section else reverse(role_home_name(request.user)),
     })
 
 
@@ -536,17 +539,17 @@ def upload_communique_template(request):
 
     if not template_name:
         messages.error(request, "Template name is required.")
-        return redirect('communique')
+        return redirect(workspace_return_url(request, reverse('communique_section', kwargs={'section': 'templates'}), family='templates'))
 
     if not template_file:
         messages.error(request, "Please choose a template file.")
-        return redirect('communique')
+        return redirect(workspace_return_url(request, reverse('communique_section', kwargs={'section': 'templates'}), family='templates'))
 
     allowed_extensions = {'.doc', '.docx', '.pdf'}
     extension = os.path.splitext(template_file.name.lower())[1]
     if extension not in allowed_extensions:
         messages.error(request, "Only Word documents and PDFs are supported.")
-        return redirect('communique')
+        return redirect(workspace_return_url(request, reverse('communique_section', kwargs={'section': 'templates'}), family='templates'))
 
     MediaService.create_media_record_with_backup(
         file_obj=template_file,
@@ -556,7 +559,7 @@ def upload_communique_template(request):
         backup_to_db=True,
     )
     messages.success(request, f'Template "{template_name}" uploaded successfully.')
-    return redirect('communique_section', section='templates')
+    return redirect(workspace_return_url(request, reverse('communique_section', kwargs={'section': 'templates'}), family='templates'))
 
 
 @login_required
@@ -577,7 +580,7 @@ def download_communique_template(request, media_id):
 
     if content is None:
         messages.error(request, "Template file is not available.")
-        return redirect('communique')
+        return redirect(workspace_return_url(request, 'communique', family='communique'))
 
     response = HttpResponse(content, content_type=media.mime_type or 'application/octet-stream')
     response['Content-Disposition'] = f'attachment; filename="{media.filename}"'
@@ -1107,7 +1110,7 @@ def assign_project(request):
             messages.warning(request, "The project was assigned, but its email could not be delivered.")
         if request.POST.get('return_to') == 'project_workspace':
             return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
-        return redirect('overview')
+        return redirect(workspace_return_url(request, role_home_name(request.user), family='projects'))
     
     # GET request - provide list of projects and users
     projects = manageable_projects_for(request.user).order_by('-created_at')
@@ -1588,12 +1591,12 @@ def finance(request, section=None):
         return redirect('finance_readonly')
     if not can_edit_finance(request.user):
         messages.error(request, "You do not have access to the finance dashboard.")
-        return redirect('overview')
+        return redirect(role_home_name(request.user))
 
     scoped_cost_centre_ids = get_accessible_cost_centre_ids(request.user)
     if scoped_cost_centre_ids == [] and (request.user.role == 'centrehead' or request.user.role == 'overseer'):
         messages.error(request, "Your account is not assigned to a research centre with cost centres.")
-        return redirect('communique')
+        return redirect(workspace_return_url(request, 'communique', family='communique'))
 
     payment_summary = defaultdict(lambda: {'count': 0, 'total': Decimal('0.00')})
     payments_by_cc = defaultdict(list)
@@ -1757,9 +1760,10 @@ def finance(request, section=None):
     })
 
 @login_required
-@user_passes_test(lambda u: u.role in ['admin', 'dean', 'financialadmin'])
 def finance_readonly(request, section=None):
     """Read-only finance dashboard for financial admin users"""
+    if request.user.role not in FINANCE_EDITOR_ROLES + READONLY_FINANCE_ROLES:
+        return HttpResponseForbidden('This finance view is not available for your role.')
     from django.db import connection
 
     scoped_cost_centre_ids = get_accessible_cost_centre_ids(request.user)
@@ -1943,7 +1947,7 @@ def get_finance_scope_queryset(user):
 def download_expense_import_template(request):
     if not can_edit_finance(request.user):
         messages.error(request, "You do not have permission to import expenses.")
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     sample_cost_centre = get_finance_scope_queryset(request.user).first()
     cost_centre_name = sample_cost_centre.name if sample_cost_centre else 'Exact Cost Centre Name'
@@ -2055,33 +2059,33 @@ def download_finance_summary_excel(request):
 @require_http_methods(["POST"])
 def upload_expense_excel(request):
     if not ensure_finance_editor(request):
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     upload = request.FILES.get('expense_file')
     if not upload:
         messages.error(request, "Please choose an Excel file to upload.")
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     if not upload.name.lower().endswith('.xlsx'):
         messages.error(request, "Please upload an .xlsx file using the template.")
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     try:
         rows = read_xlsx_rows(upload)
     except Exception as exc:
         messages.error(request, f"Could not read Excel file: {exc}")
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     if not rows:
         messages.error(request, "The uploaded Excel file is empty.")
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     headers = [normalize_header(header) for header in rows[0]]
     required_headers = {'expense_id', 'cost_centre', 'date_from', 'date_to', 'name', 'category', 'amount'}
     missing_headers = required_headers - set(headers)
     if missing_headers:
         messages.error(request, f"Excel missing required columns: {', '.join(sorted(missing_headers))}")
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     category_values = {choice[0] for choice in Expenditure.EXPENSE_CATEGORY_CHOICES}
     scoped_cost_centres = get_finance_scope_queryset(request.user)
@@ -2162,7 +2166,7 @@ def upload_expense_excel(request):
     if not created_count and not skipped_count and not errors:
         messages.info(request, "No expense rows were found in the upload.")
 
-    return redirect('finance')
+    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 @login_required
 @login_required
@@ -2170,7 +2174,7 @@ def add_cost_centre(request):
     """Add a new cost centre with optional initial payment and MOA amount"""
     if not can_manage_cost_centres(request.user):
         messages.error(request, "You do not have permission to add cost centres.")
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     if request.method == 'POST':
         code = request.POST.get('code', '').strip()
@@ -2189,12 +2193,12 @@ def add_cost_centre(request):
         
         if not name or not name.strip():
             messages.error(request, 'Cost Centre name is required')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         existing_client = CostCentre.objects.select_related('research_centre').filter(name__iexact=name.strip()).first()
         if existing_client:
             centre_name = existing_client.research_centre.name if existing_client.research_centre else 'Unassigned centre'
             messages.error(request, f'Client already associated with {centre_name}. No duplicate client/cost centre was created.')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         
         try:
             # Create cost centre with 0.00 initially
@@ -2205,7 +2209,7 @@ def add_cost_centre(request):
                 existing_by_code = CostCentre.objects.select_related('research_centre').filter(code=code).first()
                 centre_name = existing_by_code.research_centre.name if existing_by_code and existing_by_code.research_centre else 'Unassigned centre'
                 messages.error(request, f'Client already associated with {centre_name} under cost centre code "{code}".')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             cost_centre = CostCentre.objects.create(
                 code=code,
@@ -2231,7 +2235,7 @@ def add_cost_centre(request):
                     amount = Decimal(received)
                     if amount.as_tuple().exponent < -2:
                         messages.error(request, 'Amount must have at most 2 decimal places')
-                        return redirect('finance')
+                        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                     
                     if amount > Decimal('0.00'):
                         from adminpanel.models import CostCentrePayment
@@ -2253,24 +2257,24 @@ def add_cost_centre(request):
                             messages.success(request, f'Cost Centre "{name}" created (no initial payment)')
                 except (InvalidOperation, ValueError, TypeError):
                     messages.error(request, 'Invalid amount format')
-                    return redirect('finance')
+                    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             else:
                 if moa > Decimal('0.00'):
                     messages.success(request, f'Cost Centre "{name}" created successfully with MOA Amount: R {moa:.2f}')
                 else:
                     messages.success(request, f'Cost Centre "{name}" created successfully')
             
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         except Exception as e:
             messages.error(request, f'Error creating cost centre: {str(e)}')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     
-    return redirect('finance')
+    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     
 @login_required
 def add_expenditure(request):
     if not ensure_finance_editor(request):
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     if request.method == 'POST':
         cost_centre_id = request.POST.get('cost_centre_id')
@@ -2293,30 +2297,30 @@ def add_expenditure(request):
             # Validate decimal places (max 2)
             if amount.as_tuple().exponent < -2:
                 messages.error(request, 'Please enter a valid number with up to 2 decimal places')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 
         except InvalidOperation:
             messages.error(request, 'Invalid number format: please enter a valid number')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         except (ValueError, TypeError):
             messages.error(request, 'Invalid number format')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
         try:
             # Get cost centre
             cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
             if not ensure_finance_editor(request, cost_centre):
-                return redirect(get_finance_redirect(request.user))
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             if expense_id and Expenditure.objects.filter(expense_id=expense_id).exists():
                 messages.error(request, f'Expense ID "{expense_id}" already exists. Use a unique ID to prevent duplicates.')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             available_funds = get_cost_centre_available_funds(cost_centre)
             if amount > available_funds:
                 messages.error(
                     request,
                     f'Insufficient funds in {cost_centre.name}. Available balance is R {available_funds:.2f}; this payment/expenditure needs R {amount:.2f}. Please use another cost centre or add funds first.'
                 )
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             # Parse date range
             date_from = None
@@ -2357,11 +2361,11 @@ def add_expenditure(request):
             log_expenditure_creation(expenditure, request.user)
             
             messages.success(request, 'Expenditure added successfully')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 
         except Exception as e:
             messages.error(request, f'Error adding expenditure: {str(e)}')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 
 @login_required
@@ -2431,7 +2435,7 @@ def delete_cost_centre(request, pk):
     """Delete a cost centre using raw SQL"""
     if not can_manage_cost_centres(request.user):
         messages.error(request, "You do not have permission to delete cost centres.")
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     try:
         with connection.cursor() as cursor:
@@ -2443,12 +2447,12 @@ def delete_cost_centre(request, pk):
             
             if not row:
                 messages.error(request, 'Cost centre not found')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             cost_centre_id, cost_centre_name = row
             cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
             if not ensure_finance_editor(request, cost_centre):
-                return redirect(get_finance_redirect(request.user))
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             if request.method == 'POST':
                 # Log the deletion
@@ -2465,7 +2469,7 @@ def delete_cost_centre(request, pk):
                 """, [cost_centre_id])
                 
                 messages.success(request, 'Cost centre deleted successfully')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             # For GET request, return a simple confirmation message
             return render(request, 'adminpanel/confirm_delete.html', {
@@ -2473,19 +2477,19 @@ def delete_cost_centre(request, pk):
             })
     except Exception as e:
         messages.error(request, f'Error processing cost centre: {str(e)}')
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 @login_required
 def edit_cost_centre(request, pk):
     """Edit a cost centre - allows name and MOA amount editing"""
     if not can_manage_cost_centres(request.user):
         messages.error(request, "You do not have permission to edit cost centres.")
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     try:
         cost_centre = CostCentre.objects.get(id=pk)
         if not ensure_finance_editor(request, cost_centre):
-            return redirect(get_finance_redirect(request.user))
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         
         if request.method == 'POST':
             name = request.POST.get('name', cost_centre.name)
@@ -2502,7 +2506,7 @@ def edit_cost_centre(request, pk):
             
             if not name or name.strip() == '':
                 messages.error(request, 'Cost Centre name cannot be empty')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             try:
                 # Store previous values for audit log
@@ -2551,21 +2555,21 @@ def edit_cost_centre(request, pk):
             except Exception as e:
                 messages.error(request, f'Error saving Cost Centre: {str(e)}')
             
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     except CostCentre.DoesNotExist:
         messages.error(request, 'Cost Centre not found')
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     except Exception as e:
         messages.error(request, f'Error processing cost centre: {str(e)}')
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 @login_required
 def add_payment(request):
     """Add an incremental payment to a cost centre"""
     if not ensure_finance_editor(request):
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     if request.method == 'POST':
         cost_centre_id = request.POST.get('cost_centre_id')
@@ -2574,19 +2578,19 @@ def add_payment(request):
         
         if not cost_centre_id or not amount_str:
             messages.error(request, 'Cost Centre and Amount are required')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         
         try:
             cost_centre = CostCentre.objects.get(id=cost_centre_id)
             if not ensure_finance_editor(request, cost_centre):
-                return redirect(get_finance_redirect(request.user))
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             from adminpanel.models import CostCentrePayment
             
             # Validate and convert amount
             amount = Decimal(amount_str)
             if amount.as_tuple().exponent < -2:
                 messages.error(request, 'Amount must have at most 2 decimal places')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             # Create payment
             payment = CostCentrePayment.objects.create(
@@ -2606,22 +2610,22 @@ def add_payment(request):
         except Exception as e:
             messages.error(request, f'Error adding payment: {str(e)}')
         
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     
-    return redirect('finance')
+    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 @login_required
 def delete_payment(request, payment_id):
     """Delete a payment from cost centre"""
     if not ensure_finance_editor(request):
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     try:
         from adminpanel.models import CostCentrePayment
         payment = CostCentrePayment.objects.get(id=payment_id)
         cost_centre = payment.cost_centre
         if not ensure_finance_editor(request, cost_centre):
-            return redirect(get_finance_redirect(request.user))
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         payment_description = f"{cost_centre.name} - R {payment.amount}"
         
         payment.delete()
@@ -2640,13 +2644,13 @@ def delete_payment(request, payment_id):
     except Exception as e:
         messages.error(request, f'Error deleting payment: {str(e)}')
     
-    return redirect('finance')
+    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 @login_required
 def edit_expenditure(request, pk):
     """Edit an expenditure using raw SQL"""
     if not ensure_finance_editor(request):
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     try:
         with connection.cursor() as cursor:
@@ -2659,7 +2663,7 @@ def edit_expenditure(request, pk):
             
             if not row:
                 messages.error(request, 'Expenditure not found')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             exp_id, cost_centre_id, old_month, old_name, old_category, old_amount, old_opening_balance, old_oracle_balance, old_expense_id, salary_ciphertext = row
             if salary_ciphertext:
@@ -2671,7 +2675,7 @@ def edit_expenditure(request, pk):
             scoped_ids = get_accessible_cost_centre_ids(request.user)
             if scoped_ids is not None and cost_centre_id not in scoped_ids:
                 messages.error(request, "You can only edit expenditures for your assigned research centre.")
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             if request.method == 'POST':
                 month = request.POST.get('month', old_month)
@@ -2680,7 +2684,7 @@ def edit_expenditure(request, pk):
                 expense_id_value = request.POST.get('expense_id', '').strip() or None
                 if expense_id_value and Expenditure.objects.filter(expense_id=expense_id_value).exclude(id=exp_id).exists():
                     messages.error(request, f'Expense ID "{expense_id_value}" already exists.')
-                    return redirect('finance')
+                    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 
                 # Validate and convert amount with error handling
                 try:
@@ -2692,14 +2696,14 @@ def edit_expenditure(request, pk):
                     # Validate decimal places (max 2)
                     if amount.as_tuple().exponent < -2:
                         messages.error(request, 'Please enter a valid number with up to 2 decimal places')
-                        return redirect('finance')
+                        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                         
                 except InvalidOperation:
                     messages.error(request, 'Invalid amount: please enter a valid number')
-                    return redirect('finance')
+                    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 except (ValueError, TypeError):
                     messages.error(request, 'Invalid amount format')
-                    return redirect('finance')
+                    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 
                 # Validate and convert oracle_balance with error handling
                 try:
@@ -2708,14 +2712,14 @@ def edit_expenditure(request, pk):
                     # Validate decimal places (max 2)
                     if oracle_balance is not None and oracle_balance.as_tuple().exponent < -2:
                         messages.error(request, 'Please enter a valid Oracle balance with up to 2 decimal places')
-                        return redirect('finance')
+                        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                         
                 except InvalidOperation:
                     messages.error(request, 'Invalid Oracle balance: please enter a valid number')
-                    return redirect('finance')
+                    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 except (ValueError, TypeError):
                     messages.error(request, 'Invalid Oracle balance format')
-                    return redirect('finance')
+                    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 
                 try:
                     # Store previous values for audit log
@@ -2739,7 +2743,7 @@ def edit_expenditure(request, pk):
                             request,
                             f'Insufficient funds in {cost_centre.name}. Available balance is R {available_funds:.2f}; this updated expenditure needs R {amount:.2f}. Please use another cost centre or add funds first.'
                         )
-                        return redirect('finance')
+                        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                     
                     expenditure = Expenditure.objects.get(id=pk)
                     expenditure.month, expenditure.name, expenditure.category = month, name, category
@@ -2756,18 +2760,18 @@ def edit_expenditure(request, pk):
                 except Exception as e:
                     messages.error(request, f'Error saving Expenditure: {str(e)}')
                 
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     except Exception as e:
         messages.error(request, f'Error processing expenditure: {str(e)}')
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 @login_required
 def delete_expenditure(request, pk):
     """Delete an expenditure using raw SQL"""
     if not ensure_finance_editor(request):
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     try:
         with connection.cursor() as cursor:
@@ -2779,7 +2783,7 @@ def delete_expenditure(request, pk):
             row = cursor.fetchone()
             if not row:
                 messages.error(request, 'Expenditure not found')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             exp_id, cost_centre_id, exp_name, exp_category, exp_month = row
             if exp_category == "Salary" and not can_manage_salaries(request.user):
@@ -2787,7 +2791,7 @@ def delete_expenditure(request, pk):
             scoped_ids = get_accessible_cost_centre_ids(request.user)
             if scoped_ids is not None and cost_centre_id not in scoped_ids:
                 messages.error(request, "You can only delete expenditures for your assigned research centre.")
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             if request.method == 'POST':
                 # Log the deletion with expenditure details
@@ -2799,12 +2803,12 @@ def delete_expenditure(request, pk):
                 """, [pk])
                 
                 messages.success(request, 'Expenditure deleted successfully')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     except Exception as e:
         messages.error(request, f'Error deleting expenditure: {str(e)}')
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 
 # ===========================
@@ -2817,7 +2821,7 @@ def add_budget_forecast(request):
     """Add a new budget forecast"""
     if not can_manage_forecasts(request.user):
         messages.error(request, "You do not have permission to manage budget forecasts.")
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     if request.method == 'POST':
         pass  # Financial values are never printed to application logs.
@@ -2855,25 +2859,25 @@ def add_budget_forecast(request):
             
             if amount.as_tuple().exponent < -2:
                 messages.error(request, 'Please enter a valid number with up to 2 decimal places')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 
         except (InvalidOperation, ValueError, TypeError) as e:
             pass  # Financial values are never printed to application logs.
             messages.error(request, 'Invalid number format')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
         try:
             # Validate cost centre
             if not cost_centre_id:
                 pass  # Financial values are never printed to application logs.
                 messages.error(request, 'Please select a cost centre')
-                return redirect('finance')
+                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             # Try to fetch cost centre - handle decimal conversion errors
             try:
                 cost_centre = CostCentre.objects.get(id=cost_centre_id)
                 if not ensure_finance_editor(request, cost_centre):
-                    return redirect(get_finance_redirect(request.user))
+                    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 pass  # Financial values are never printed to application logs.
             except Exception as e:
                 pass  # Financial values are never printed to application logs.
@@ -2887,12 +2891,12 @@ def add_budget_forecast(request):
                         cost_centre = CostCentre(id=row[0], name=row[1])
                         cost_centre.research_centre_id = row[2]
                         if not ensure_finance_editor(request, cost_centre):
-                            return redirect(get_finance_redirect(request.user))
+                            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                         pass  # Financial values are never printed to application logs.
                     else:
                         pass  # Financial values are never printed to application logs.
                         messages.error(request, 'Cost centre not found')
-                        return redirect('finance')
+                        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             
             # Parse dates
             date_from = None
@@ -2926,7 +2930,7 @@ def add_budget_forecast(request):
             pass  # Financial values are never printed to application logs.
             pass  # Financial values are never printed to application logs.
             messages.success(request, 'Budget forecast added successfully')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
                 
         except Exception as e:
             import traceback
@@ -2934,9 +2938,9 @@ def add_budget_forecast(request):
             traceback.print_exc()
             pass  # Financial values are never printed to application logs.
             messages.error(request, f'Error adding forecast: {str(e)}')
-            return redirect('finance')
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     
-    return redirect('finance')
+    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 
 @login_required
@@ -3031,21 +3035,21 @@ def delete_budget_forecast(request, pk):
     """Delete a budget forecast"""
     if not can_manage_forecasts(request.user):
         messages.error(request, "You do not have permission to manage budget forecasts.")
-        return redirect(get_finance_redirect(request.user))
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
     try:
         BudgetForecast = apps.get_model('adminpanel', 'BudgetForecast')
         forecast = get_object_or_404(BudgetForecast, id=pk)
         if not ensure_finance_editor(request, forecast.cost_centre):
-            return redirect(get_finance_redirect(request.user))
+            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
         if forecast.category == 'Salary' and not can_manage_salaries(request.user):
             return HttpResponseForbidden('Only Admin and Financial Admin can delete salary forecasts.')
         forecast.delete()
         messages.success(request, 'Budget forecast deleted successfully')
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     except Exception as e:
         messages.error(request, f'Error deleting forecast: {str(e)}')
-        return redirect('finance')
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 
 @login_required
@@ -3358,7 +3362,7 @@ def admin_my_task_update(request, task_id):
     task.status = status
     task.comments = request.POST.get('comments', '').strip()
     task.save(update_fields=['status', 'comments', 'progress'])
-    return redirect('admin_my_projects')
+    return redirect(workspace_return_url(request, 'admin_my_projects', family='tasks', project=task.project))
 
 
 def get_crm_selected_centre(request):
@@ -3735,6 +3739,7 @@ def admin_journal(request):
         paper.available_statuses = paper.get_available_statuses()
     
     return render(request, 'adminpanel/admin_journal.html', {
+        'can_edit_publications': can_manage_publications(request.user),
         'internal_papers': internal_papers,
         'external_papers': external_papers,
         'internal_statuses': Paper.INTERNAL_STATUSES,
@@ -3768,7 +3773,7 @@ def move_paper_external(request, paper_id):
         )
         
         messages.success(request, f"Paper '{paper.title}' moved to external (submitted to {paper.target_journal}).")
-        return redirect('admin_journal')
+        return redirect(workspace_return_url(request, paper_workspace_name(request.user), family='papers'))
     
     # GET - show form
     return render(request, 'adminpanel/move_paper_external.html', {'paper': paper})
@@ -3800,7 +3805,7 @@ def return_paper_internal(request, paper_id):
         )
         
         messages.success(request, f"Paper '{paper.title}' returned to internal with feedback.")
-        return redirect('admin_journal')
+        return redirect(workspace_return_url(request, paper_workspace_name(request.user), family='papers'))
     
     # GET - show form
     return render(request, 'adminpanel/return_paper_internal.html', {'paper': paper})
@@ -3955,6 +3960,7 @@ def admin_book(request):
         })
     
     return render(request, 'adminpanel/admin_book.html', {
+        'can_create_publications': can_manage_publications(request.user),
         'books_json': books_data,
         'book_status_choices': Book.STATUS_CHOICES,
     })
@@ -4074,8 +4080,8 @@ def create_notification(request):
                 for e in errs:
                     messages.error(request, f"{field}: {e}")
         # send back to Overview (where the modal lives)
-        return redirect('overview')
-    return redirect('overview')
+        return redirect(workspace_return_url(request, role_home_name(request.user), family='home'))
+    return redirect(workspace_return_url(request, role_home_name(request.user), family='home'))
 @login_required
 @user_passes_test(lambda u: u.role == 'admin')
 @require_http_methods(["POST"])

@@ -8,6 +8,7 @@ from django.http import Http404
 from django.db.models import Q, Prefetch
 from projects.models import ChatMessage, StudentProfile
 from users.models import CustomUser
+from users.navigation import role_home_name
 
 
 def is_supervisor(user):
@@ -22,7 +23,7 @@ def supervisor_dashboard(request):
     Only accessible to users with role='supervisor'
     """
     if not is_supervisor(request.user):
-        return redirect('admin_dashboard')
+        return redirect(role_home_name(request.user))
     
     supervisor = request.user
     student_profiles = StudentProfile.objects.filter(
@@ -47,7 +48,7 @@ def supervisor_messages(request):
     Only accessible to users with role='supervisor'
     """
     if not is_supervisor(request.user):
-        return redirect('admin_dashboard')
+        return redirect(role_home_name(request.user))
     
     supervisor = request.user
     
@@ -80,7 +81,7 @@ def supervisor_student_detail(request, student_id):
     Only accessible to the supervisor assigned to this student
     """
     if not is_supervisor(request.user):
-        return redirect('admin_dashboard')
+        return redirect(role_home_name(request.user))
     
     try:
         student_user = CustomUser.objects.get(id=student_id)

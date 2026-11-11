@@ -208,7 +208,7 @@
                 <p><strong>User:</strong> {{ user.get_full_name|default:user.username }}</p>
                 <p><strong>Role:</strong> {{ user.get_role_display }}</p>
             </div>
-            <a id="backBtn" href="#" class="back-button">Back to Dashboard</a>
+            <a id="backBtn" href="{{ communique_back_url }}" class="back-button">Back to Dashboard</a>
         </div>
     </div>
 
@@ -279,7 +279,12 @@
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'communique' %}"><i class="bi bi-arrow-left"></i> Back to Communique Tiles</a>
             </div>
             <div class="status-badge">Send messages, share attachments, and collaborate</div>
+            {% if user.role == 'student' %}
+            <p>Your research conversations stay with your assigned supervisor.</p>
+            <a class="btn btn-primary" id="studentResearchChat" href="{% url 'student_dashboard' %}#chat-section">Open supervisor chat</a>
+            {% else %}
             {% include "adminpanel/partials/staff_messages_inbox.html" %}
+            {% endif %}
         </div>
     </div>
     {% endif %}
@@ -371,18 +376,8 @@
     const userRole = '{{ user.role }}';
     const communiqueSection = '{{ communique_section|default_if_none:"" }}';
     const backBtn = document.getElementById('backBtn');
-    const dashboardUrls = {
-        'admin': '{% url "overview" %}',
-        'dean': '{% url "overview" %}',
-        'centrehead': '{% url "overview" %}',
-        'manager': '{% url "manager_dashboard" %}',
-        'staff': '{% url "dashboard" %}',
-        'student': '{% url "student_dashboard" %}',
-        'financialadmin': '{% url "finance" %}',
-        'supervisor': '{% url "supervisor_dashboard_portal" %}'
-    };
     if (backBtn) {
-        backBtn.href = communiqueSection ? '{% url "communique" %}' : (dashboardUrls[userRole] || '{% url "overview" %}');
+        backBtn.href = '{{ communique_back_url|escapejs }}';
         backBtn.textContent = communiqueSection ? 'Back to Communique Tiles' : 'Back to Dashboard';
     }
     document.documentElement.style.scrollBehavior = 'smooth';

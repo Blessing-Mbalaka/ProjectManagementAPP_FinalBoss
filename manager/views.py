@@ -29,6 +29,9 @@ from adminpanel.notification_service import visible_notifications_for
 from projects.scope import scope_books_for_user, scope_chapters_for_user, scope_outputs_for_user, scope_projects_for_user
 from projects.work_scope import task_creation_projects_for, assigned_projects_for, can_update_task, manageable_projects_for, workable_tasks_for
 from users.roles import can_manage_client_engagements, can_manage_projects, can_manage_publications, has_role
+from users.navigation import workspace_return_url, workspace_base, role_home_name, task_board_name, paper_workspace_name
+from urllib.parse import parse_qs, urlsplit
+from django.urls import resolve
 from projects.assignment_notifications import notify_project_assignment
 from manager.publication_projects import sync_publication_project
 from projects.workbook_import.application import WorkbookImportError, apply_workbook_preview
@@ -62,7 +65,7 @@ def preview_project_workbook(request):
     upload = request.FILES.get('workbook')
     if upload is None:
         messages.error(request, 'Choose an .xlsx workbook to upload.')
-        return redirect('assign_projects')
+        return redirect(workspace_return_url(request, 'assign_projects', family='projects'))
     preview = validate_workbook(read_workbook(upload), actor=request.user)
     preview_token = sign_preview(preview, actor_id=request.user.id) if preview.is_valid else ''
     return render(request, 'manager/project_workbook_preview.html', {
@@ -93,7 +96,7 @@ def apply_project_workbook(request):
     )
     for warning in result.warnings:
         messages.warning(request, warning)
-    return redirect('assign_projects')
+    return redirect(workspace_return_url(request, 'assign_projects', family='projects'))
 
 
 def _client_label_for_cost_centre(cost_centre):
@@ -300,7 +303,7 @@ def manager_ganttchart(request):
         'gantt_tasks_json': json.dumps(gantt_tasks),
         'gantt_staff_users': staff_users,
         'gantt_base_template': 'manager/home.html',
-        'gantt_back_url': reverse('manager_dashboard'),
+        'gantt_back_url': reverse(role_home_name(request.user)),
         'gantt_back_label': 'Back to Dashboard',
         'gantt_page_title': 'My Project Timeline',
     })
@@ -391,10 +394,10 @@ def my_project_task_update(request, task_id):
     task.comments = request.POST.get('comments', '').strip()
     task.save(update_fields=['status', 'comments', 'progress'])
     messages.success(request, 'Task update saved.')
-    return redirect('my_projects')
+    return redirect(workspace_return_url(request, 'my_projects', family='tasks', project=task.project))
 
 @login_required
-def manager_kanban(request):
+def manager_kanban(request, task_form=None, task_project=None, return_url=None):
     if request.user.role == 'financialadmin' and not getattr(request, '_financial_board', False):
         return redirect('financial_kanban')
     status_labels = {
@@ -425,12 +428,12 @@ def manager_kanban(request):
         tasks = tasks.filter(assigned_to=request.user)
     if show_assignee_filter:
         assignee_users = User.objects.filter(is_active=True).filter(Q(role__in=['financialadmin', 'admin']) | Q(assigned_tasks__in=tasks)).distinct().order_by('first_name', 'username')
-        selected_assignee = request.GET.get('assignee', '')
+        selected_assignee = parse_qs(urlsplit(return_url).query).get('assignee', [''])[0] if return_url else request.GET.get('assignee', '')
         if selected_assignee:
             if not selected_assignee.isdecimal() or not assignee_users.filter(pk=selected_assignee).exists():
                 return HttpResponseBadRequest('Choose a valid assignee.')
             tasks = tasks.filter(assigned_to_id=selected_assignee)
-    
+
     #Group tasks by their status
     tasks_by_status = defaultdict(list)
     for task in tasks:
@@ -438,6 +441,14 @@ def manager_kanban(request):
 
     # Match the staff Kanban assignment behavior while retaining manager-owned projects.
     projects = _kanban_projects_for(request.user)
+    task_project = task_project or projects.first()
+    if task_form is None and task_project:
+        task_form = TaskForm(project=task_project)
+        if task_form.fields['assigned_to'].queryset.filter(pk=request.user.pk).exists():
+            task_form.initial['assigned_to'] = request.user.pk
+    if task_form:
+        for field in task_form.fields.values():
+            field.widget.attrs['class'] = 'form-select' if hasattr(field.widget, 'choices') else 'form-control'
 
 
     context = {
@@ -452,12 +463,12 @@ def manager_kanban(request):
         'kanban_average_progress': round(sum(task.progress for group in tasks_by_status.values() for task in group) / sum(len(group) for group in tasks_by_status.values()), 1) if tasks_by_status else 0,
         'task_types': TASK_TYPES,
         'projects': projects,
+        'kanban_task_form': task_form,
+        'kanban_task_project': task_project,
+        'open_task_modal': bool(task_form and task_form.is_bound),
+        'task_return_url': return_url or request.get_full_path(),
         'today': now().date(),
-        'kanban_base_template': (
-            'adminpanel/index.html'
-            if has_role(request.user, 'admin', 'centrehead', 'financialadmin')
-            else 'manager/home.html'
-        ),
+        'kanban_base_template': workspace_base(request.user),
         'kanban_title': (
             'My Financial Projects Kanban'
             if financial_board and not show_assignee_filter
@@ -465,7 +476,7 @@ def manager_kanban(request):
             if financial_board
             else 'My Editable Project Kanban'
             if has_role(request.user, 'centrehead')
-            else 'Project Manager Kanban'
+            else 'Project Manager Kanban' if request.user.role == 'manager' else 'My Project Kanban'
         ),
         'kanban_intro': (
             'Review all financial work, or select one assignee. New assignments start in To Do.'
@@ -506,11 +517,11 @@ def financial_kanban(request):
 
 
 @login_required
-def assign_projects_view(request):
+def assign_projects_view(request, selected_project_id=None, bound_assignment_form=None, bound_task_form=None):
     if not can_manage_projects(request.user):
         return HttpResponseForbidden('You are not authorized to manage projects.')
     User = get_user_model()  # define User
-    project_id = request.GET.get('project_id')
+    project_id = selected_project_id or request.GET.get('project_id')
 
     # Projects where the current user is creator or (acting) manager
     projects = manageable_projects_for(request.user)
@@ -518,7 +529,7 @@ def assign_projects_view(request):
     selected_project = None
     assignments = None
     assignment_form = None
-    project_team_users = User.objects.none()  
+    project_team_users = User.objects.none()
     task_form = None
     project_form = ProjectForm()
     if request.user.role == "overseer":
@@ -547,7 +558,7 @@ def assign_projects_view(request):
         # Prefetch to avoid N+1 when listing assignments
         assignments = selected_project.assignments.select_related("team_member__user")
 
-        assignment_form = AssignmentForm(project=selected_project, user=request.user)
+        assignment_form = bound_assignment_form if bound_assignment_form is not None else AssignmentForm(project=selected_project, user=request.user)
 
         # users on this project's team
         team_user_ids = Assignment.objects.filter(project=selected_project)\
@@ -555,7 +566,7 @@ def assign_projects_view(request):
         project_team_users = User.objects.filter(id__in=team_user_ids)
 
         # task form limited to this project's team + tasks
-        task_form = TaskForm(project=selected_project)
+        task_form = bound_task_form if bound_task_form is not None else TaskForm(project=selected_project)
 
     context = {
         "projects": projects,
@@ -576,9 +587,7 @@ def assign_projects_view(request):
         "workspace_back_url": (
             reverse('financial_projects')
             if request.user.role == 'financialadmin'
-            else reverse('overview')
-            if has_role(request.user, 'admin', 'centrehead')
-            else reverse('manager_dashboard')
+            else reverse(role_home_name(request.user))
         ),
     }
     return render(request, "manager/assign.html", context)
@@ -620,8 +629,8 @@ def create_project(request):
                         },
                     )
             messages.success(request, 'Project created successfully!')
-            return redirect('assign_projects') 
-    return redirect('assign_projects')
+            return redirect(workspace_return_url(request, 'assign_projects', family='projects'))
+    return redirect(workspace_return_url(request, 'assign_projects', family='projects'))
 
 
 
@@ -630,10 +639,10 @@ def assign_team_member(request, project_id):
     if not can_manage_projects(request.user):
         return HttpResponseForbidden('You are not authorized to allocate projects.')
     project = get_object_or_404(manageable_projects_for(request.user), id=project_id)
-    
+
     if request.method == 'POST':
         form = AssignmentForm(request.POST, project=project, user=request.user)
-       
+
         if form.is_valid():
             assignment = form.save(commit=False)
             assignment.project = project
@@ -647,31 +656,13 @@ def assign_team_member(request, project_id):
             messages.success(request, f"{assignment.team_member} assigned!")
             if not email_sent:
                 messages.warning(request, "The assignment was saved, but its email could not be delivered.")
-            return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
+            return redirect(workspace_return_url(request, f"{reverse('assign_projects')}?project_id={project.id}", family='projects', project=project))
         else:
             messages.error(request, 'Assignment failed. Please check the form.')
 
-            projects = scope_projects_for_user(Project.objects.filter(
-                models.Q(created_by=request.user) | models.Q(assigned_user=request.user)
-            ), request.user).distinct()
+            return assign_projects_view(request, selected_project_id=project.pk, bound_assignment_form=form)
 
-            assignments = project.assignments.all()
-            eligible_users = get_user_model().objects.exclude(role='student')
-            if getattr(request.user, 'research_centre_id', None):
-                eligible_users = eligible_users.filter(research_centre_id=request.user.research_centre_id)
-            project_form = ProjectForm()
-
-            context = {
-                'projects': projects,
-                'project': project,
-                'assignments': assignments,
-                'assignment_form': form,
-                'eligible_users': eligible_users,
-                'project_form': project_form,
-            }
-            return render(request, 'manager/assign.html', context)
-
-    return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
+    return redirect(workspace_return_url(request, f"{reverse('assign_projects')}?project_id={project.id}", family='projects', project=project))
 
 
 @login_required
@@ -686,17 +677,19 @@ def remove_assignment(request, assignment_id):
     if request.method == 'POST':
         assignment.delete()
         messages.success(request, 'Team member removed.')
-        return redirect(f"{reverse('assign_projects')}?project_id={assignment.project.id}")
-    
+        return redirect(workspace_return_url(request, f"{reverse('assign_projects')}?project_id={assignment.project.id}", family='projects', project=assignment.project))
+
 
 @login_required
 def add_task(request, project_id):
     staff_contributor = has_role(request.user, 'staff') and not can_manage_projects(request.user)
-    financial_contributor = request.user.role == 'financialadmin'
     if not can_manage_projects(request.user) and not staff_contributor:
         return HttpResponseForbidden('You are not authorized to create project tasks.')
     allowed_projects = task_creation_projects_for(request.user)
     project = get_object_or_404(allowed_projects.distinct(), id=project_id)
+    fallback = reverse('project_tasks', args=[project.pk]) if request.user.role in {'staff', 'financialadmin'} or not can_manage_projects(request.user) else f"{reverse('assign_projects')}?project_id={project.pk}"
+    return_url = workspace_return_url(request, fallback, family='tasks', project=project)
+    return_name = resolve(urlsplit(return_url).path).url_name
     if request.method == 'POST':
         form = TaskForm(request.POST, project=project)
         if form.is_valid():
@@ -705,44 +698,19 @@ def add_task(request, project_id):
             task.created_by = request.user
             task.save()
             messages.success(request, 'Task created successfully!')
-            if staff_contributor or financial_contributor:
-                return redirect('project_tasks', project_id=project.id)
-            return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
+            return redirect(return_url)
         else:
-            if staff_contributor or financial_contributor:
+            if return_name == 'project_tasks' or request.user.role in {'staff', 'financialadmin'} and return_name not in {'manager_kanban', 'financial_kanban'}:
                 from projects.views import project_tasks
                 return project_tasks(request, project.id, task_form=form)
+            if return_name in {'manager_kanban', 'financial_kanban'}:
+                request._financial_board = return_name == 'financial_kanban'
+                return manager_kanban(request, task_form=form, task_project=project, return_url=return_url)
             # Form has errors - render the page with error messages displayed
             messages.error(request, 'Please fix the errors in the task form.')
-            User = get_user_model()
-            projects = manageable_projects_for(request.user)
-            project_lead_users = User.objects.filter(is_active=True).exclude(role='student')
-            if not has_role(request.user, 'admin', 'dean'):
-                centre_id = getattr(request.user, 'research_centre_id', None)
-                project_lead_users = (
-                    project_lead_users.filter(research_centre_id=centre_id)
-                    if centre_id else project_lead_users.none()
-                )
-            assignments = project.assignments.select_related("team_member__user")
-            assignment_form = AssignmentForm(project=project, user=request.user)
-            project_form = ProjectForm()
-            
-            context = {
-                'projects': projects,
-                'project': project,
-                'assignments': assignments,
-                'assignment_form': assignment_form,
-                'task_form': form,  # Pass the form WITH errors
-                'project_form': project_form,
-                'project_lead_users': project_lead_users.order_by('first_name', 'last_name', 'username'),
-                'workspace_title': 'Centre Project Management' if has_role(request.user, 'centrehead') else 'Project Manager Assignment',
-                'workspace_back_url': reverse('overview') if has_role(request.user, 'admin', 'centrehead') else reverse('manager_dashboard'),
-            }
-            return render(request, 'manager/assign.html', context)
-    
-    if staff_contributor or financial_contributor:
-        return redirect('project_tasks', project_id=project.id)
-    return redirect('assign_projects')
+            return assign_projects_view(request, selected_project_id=project.pk, bound_task_form=form)
+
+    return redirect(return_url)
 
 
 # @login_required
@@ -753,7 +721,7 @@ def add_task(request, project_id):
 #             Q(id=project_id) & (Q(created_by=request.user) | Q(assigned_user=request.user))
 #         )
 #     )
-    
+
 #     if request.method == 'POST':
 #         title = request.POST.get('title')
 #         priority = request.POST.get('priority')
@@ -771,7 +739,7 @@ def add_task(request, project_id):
 #                                 .values_list('team_member__user_id', flat=True)
 #             if int(assigned_to_id) not in team_user_ids:
 #                 messages.error(request, 'Selected user is not a member of this project.')
-#                 return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
+#                 return redirect(workspace_return_url(request, f"{reverse('assign_projects')}?project_id={project.id}", family='projects', project=project))
 #             assigned_to = get_user_model().objects.get(id=assigned_to_id)
 
 #         parent_task = Task.objects.get(id=parent_task_id) if parent_task_id else None
@@ -794,15 +762,16 @@ def add_task(request, project_id):
     #         parent_task=parent_task
     #     )
     #     messages.success(request, 'Task created successfully!')
-    #     return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
+    #     return redirect(workspace_return_url(request, f"{reverse('assign_projects')}?project_id={project.id}", family='projects', project=project))
 
     # return redirect('assign_projects')
-  
+
 
 @login_required
 @require_POST
 def edit_task(request, task_id):
     task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
+    return_url = workspace_return_url(request, task_board_name(request.user), family='tasks', project=task.project)
     wants_json = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     title = (request.POST.get('title') or '').strip()
@@ -839,7 +808,7 @@ def edit_task(request, task_id):
             return JsonResponse({'success': False, 'error': ' '.join(errors)}, status=400)
         for error in errors:
             messages.error(request, error)
-        return redirect('manager_kanban')
+        return redirect(return_url)
 
     task.title = title
     task.status = status
@@ -866,7 +835,7 @@ def edit_task(request, task_id):
         })
 
     messages.success(request, 'Task saved successfully.')
-    return redirect('manager_kanban')
+    return redirect(return_url)
 
 @login_required
 @require_POST
@@ -893,11 +862,12 @@ def update_task_status(request, task_id):
 @login_required
 def manager_delete_task(request, task_id):
     task = get_object_or_404(workable_tasks_for(request.user), id=task_id)
-    
+    return_url = workspace_return_url(request, task_board_name(request.user), family='tasks', project=task.project)
+
     if request.method == 'POST':
         task.delete()
-    return redirect('manager_kanban')
-    
+    return redirect(return_url)
+
 @login_required
 def add_learning_resource(request):
     if request.method == 'POST' and request.user.role == 'manager':
@@ -918,7 +888,7 @@ def add_learning_resource(request):
             added_by=request.user
         )
         messages.success(request, 'Resource added successfully.')
-    return redirect('manager_elearning')
+    return redirect(workspace_return_url(request, 'manager_elearning', family='learning'))
 
 @login_required
 def elearning_page(request):
@@ -947,6 +917,7 @@ def elearning_page(request):
 
 
     return render(request, 'manager/manager_elearning.html', {
+        'workspace_base_template': workspace_base(request.user),
         'resources': resources,
         'selected_type': resource_type or 'All',
         'search_query': search_query,
@@ -980,6 +951,7 @@ def templates_page(request):
     }
 
     return render(request, 'manager/manager_templates.html', {
+        'workspace_base_template': workspace_base(request.user),
         'template_categories': categories,
         'search_query': search_query
     })
@@ -1010,7 +982,7 @@ def add_template(request):
                 description=f"Template: {title} ({category})",
                 related_object=template
             )
-    return redirect('manager_templates')
+    return redirect(workspace_return_url(request, 'manager_templates', family='templates'))
 
 @login_required
 def edit_template(request, pk):
@@ -1031,8 +1003,8 @@ def edit_template(request, pk):
                 related_object=template
             )
         template.save()
-        return redirect('manager_templates')
-    return render(request, 'manager/edit_template.html', {'template': template})
+        return redirect(workspace_return_url(request, 'manager_templates', family='templates'))
+    return render(request, 'manager/edit_template.html', {'template': template, 'workspace_base_template': workspace_base(request.user)})
 
 
 @login_required
@@ -1040,7 +1012,7 @@ def delete_template(request, pk):
     template = get_object_or_404(Template, pk=pk, uploaded_by=request.user)
     if request.method == 'POST':
         template.delete()
-    return redirect('manager_templates')
+    return redirect(workspace_return_url(request, 'manager_templates', family='templates'))
 
 @login_required
 def manager_journal(request):
@@ -1050,6 +1022,7 @@ def manager_journal(request):
     internal_papers = papers.filter(internal_external='internal')
     external_papers = papers.filter(internal_external='external')
     return render(request, 'manager/manager_journal.html', {
+        'workspace_base_template': workspace_base(request.user),
         'internal_papers': internal_papers,
         'external_papers': external_papers,
     })
@@ -1060,14 +1033,14 @@ def add_paper(request):
     if not can_manage_publications(request.user):
         return HttpResponseForbidden('You are not authorized to upload publications.')
     if request.method == 'POST':
-        print("POST DATA:", request.POST.dict())  
+        print("POST DATA:", request.POST.dict())
 
         status = request.POST.get('paperStatus')
         paper_type = request.POST.get('paperType')
-        
+
         if not status or not paper_type:
             messages.error(request, "Missing required fields.")
-            return redirect('manager_journal')
+            return redirect(workspace_return_url(request, paper_workspace_name(request.user), family='papers'))
 
         paper = Paper.objects.create(
             title=request.POST.get('paperTitle'),
@@ -1084,7 +1057,7 @@ def add_paper(request):
             created_by=request.user,
         )
         sync_publication_project(paper, actor=request.user)
-        
+
         # Create SystemMedia record for manuscript if provided
         if paper.manuscript:
             MediaService.create_media_record(
@@ -1096,9 +1069,9 @@ def add_paper(request):
             )
 
         messages.success(request, "Paper added successfully.")
-        return redirect('manager_journal')
+        return redirect(workspace_return_url(request, paper_workspace_name(request.user), family='papers'))
 
-    
+
 @login_required
 def upload_excel_papers(request):
     if not can_manage_publications(request.user):
@@ -1123,7 +1096,7 @@ def upload_excel_papers(request):
             )
 
         messages.success(request, "Papers uploaded successfully from Excel.")
-    return redirect('manager_journal')
+    return redirect(workspace_return_url(request, paper_workspace_name(request.user), family='papers'))
 
 @login_required
 def edit_paper(request, paper_id):
@@ -1143,8 +1116,8 @@ def edit_paper(request, paper_id):
             paper.manuscript = request.FILES['paperFile']
         paper.save()
         messages.success(request, "Paper updated successfully.")
-        return redirect('manager_journal')
-    return render(request, 'manager/edit_paper.html', {'paper': paper})
+        return redirect(workspace_return_url(request, paper_workspace_name(request.user), family='papers'))
+    return redirect(workspace_return_url(request, paper_workspace_name(request.user), family='papers'))
 
 @require_POST
 @login_required
@@ -1154,7 +1127,7 @@ def delete_paper(request, paper_id):
     paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
     paper.delete()
     messages.success(request, "Paper deleted.")
-    return redirect('manager_journal')
+    return redirect(workspace_return_url(request, paper_workspace_name(request.user), family='papers'))
 
 @require_POST
 @login_required
@@ -1164,35 +1137,35 @@ def edit_paper_ajax(request, paper_id):
         return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
     try:
         paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
-        
+
         # Capture old M2M values before form processing
         old_co_authors = set(paper.co_authors_users.values_list('id', flat=True))
         old_reviewers = set(paper.assigned_reviewers.values_list('id', flat=True))
-        
+
         # Use PaperForm for proper validation and handling of all field types
         form = PaperForm(request.POST, request.FILES, instance=paper)
-        
+
         if form.is_valid():
             # Set the changed_by user for signal processing
             paper._changed_by = request.user
-            
+
             # Capture new M2M values after form processes them
             new_co_authors = set(form.cleaned_data.get('co_authors_users', []).values_list('id', flat=True))
             new_reviewers = set(form.cleaned_data.get('assigned_reviewers', []).values_list('id', flat=True))
-            
+
             # Set M2M change flags
             if old_co_authors != new_co_authors:
                 paper._co_authors_changed = {
                     'old': list(paper.co_authors_users.all()),
                     'new': list(form.cleaned_data.get('co_authors_users', []))
                 }
-            
+
             if old_reviewers != new_reviewers:
                 paper._reviewers_changed = {
                     'old': list(paper.assigned_reviewers.all()),
                     'new': list(form.cleaned_data.get('assigned_reviewers', []))
                 }
-            
+
             # Form.save() automatically handles all field types including ForeignKey and M2M
             form.save()
             return JsonResponse({'success': True, 'message': 'Paper updated successfully'})
@@ -1214,6 +1187,7 @@ def edit_paper_ajax(request, paper_id):
 def manager_book(request):
     books = scope_books_for_user(Book.objects.all(), request.user).order_by('-created_at')
     return render(request, 'manager/manager_book.html', {
+        'workspace_base_template': workspace_base(request.user),
         'books': books,
         'unlinked_publication_count': books.filter(project__isnull=True).count(),
     })
@@ -1254,7 +1228,7 @@ def edit_book(request, book_id):
             data = json.loads(request.body)
             print(f"DEBUG: Received data for book {book_id}: {data}")
             print(f"DEBUG: Old status: {book.status}")
-            
+
             form = BookForm(data, instance=book)
             if form.is_valid():
                 updated_book = form.save()
@@ -1413,26 +1387,26 @@ def bulk_assign_chapters(request, book_id):
 def get_paper_comments(request, paper_id):
     """Get or add comments for a paper"""
     paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
-    
+
     if request.method == 'POST':
         # Add new comment
         try:
             data = json.loads(request.body)
             text = data.get('text', '').strip()
-            
+
             if not text:
                 return JsonResponse({'success': False, 'error': 'Comment cannot be empty'})
-            
+
             comment = PaperComment.objects.create(
                 paper=paper,
                 user=request.user,
                 text=text
             )
-            
+
             return JsonResponse({'success': True, 'comment_id': comment.id})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
-    
+
     elif request.method == 'GET':
         # Fetch comments
         try:
@@ -1441,13 +1415,13 @@ def get_paper_comments(request, paper_id):
                 paper=paper,
                 archived=False
             ).order_by('-created_at')
-            
+
             # Get archived comments
             archived_comments = PaperComment.objects.filter(
                 paper=paper,
                 archived=True
             ).order_by('-created_at')
-            
+
             def format_comments(comments):
                 return [{
                     'id': c.id,
@@ -1457,7 +1431,7 @@ def get_paper_comments(request, paper_id):
                     'created_date': c.created_at.strftime('%b %d, %Y'),  # Feb 03, 2026
                     'timestamp': c.created_at.isoformat()
                 } for c in comments]
-            
+
             return JsonResponse({
                 'success': True,
                 'comments': format_comments(active_comments),
@@ -1466,7 +1440,7 @@ def get_paper_comments(request, paper_id):
             })
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
-    
+
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 
@@ -1476,10 +1450,10 @@ def get_paper_form_html(request, paper_id):
     try:
         paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
         form = PaperForm(instance=paper)
-        
+
         from django.template.loader import render_to_string
         html = render_to_string('includes/paper_form.html', {'form': form})
-        
+
         return JsonResponse({
             'success': True,
             'form_html': html
@@ -1495,11 +1469,11 @@ def get_paper_data(request, paper_id):
     """Return paper data as JSON for populating the edit form"""
     try:
         paper = get_object_or_404(scope_outputs_for_user(Paper.objects.all(), request.user), id=paper_id)
-        
+
         # Serialize co_authors_users and assigned_reviewers IDs
         co_authors_ids = list(paper.co_authors_users.values_list('id', flat=True))
         reviewers_ids = list(paper.assigned_reviewers.values_list('id', flat=True))
-        
+
         data = {
             'id': paper.id,
             'title': paper.title,
@@ -1518,7 +1492,7 @@ def get_paper_data(request, paper_id):
             'decision_date': paper.decision_date.isoformat() if paper.decision_date else '',
             'feedback_text': paper.feedback_text or '',
         }
-        
+
         return JsonResponse({'success': True, 'data': data})
     except Exception as e:
         import traceback

@@ -1823,11 +1823,11 @@
     }
     
     // Tab button event listeners
-    document.getElementById('availability-tab').addEventListener('click', () => {
+    document.getElementById('availability-tab')?.addEventListener('click', () => {
         switchTab('availability');
     });
     
-    document.getElementById('messages-tab').addEventListener('click', () => {
+    document.getElementById('messages-tab')?.addEventListener('click', () => {
         switchTab('messages');
     });
 
