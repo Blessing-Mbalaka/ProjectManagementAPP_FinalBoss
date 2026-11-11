@@ -12,8 +12,8 @@
   <div class="card mb-4">
     <div class="card-header"><strong>Assigned projects</strong></div>
     <div class="table-responsive"><table class="table table-striped mb-0">
-      <thead><tr><th>Project</th><th>Status</th><th>Research centre</th><th>Due date</th></tr></thead>
-      <tbody>{% for project in projects %}<tr><td>{{ project.name }}</td><td>{{ project.get_status_display }}</td><td>{{ project.research_centre.name|default:'Not set' }}</td><td>{{ project.due_date|default:'Not set' }}</td></tr>{% endfor %}</tbody>
+      <thead><tr><th>Project</th><th>Type</th><th>Status</th><th>Research centre</th><th>Due date</th><th>Tasks</th></tr></thead>
+      <tbody>{% for project in projects %}<tr><td>{{ project.name }}</td><td>{{ project.get_project_type_display }}</td><td>{{ project.get_status_display }}</td><td>{{ project.research_centre.name|default:'Not set' }}</td><td>{{ project.due_date|default:'Not set' }}</td><td>{% if project.can_add_tasks or user.role == 'admin' %}<a href="{% url 'project_tasks' project.pk %}" class="btn btn-primary btn-sm">View and add tasks</a>{% else %}Assigned tasks below{% endif %}</td></tr>{% endfor %}</tbody>
     </table></div>
   </div>
   {% else %}<div class="alert alert-info">No projects are assigned to you.</div>{% endif %}

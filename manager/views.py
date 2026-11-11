@@ -363,6 +363,9 @@ def my_projects(request):
         | Q(assignments__team_member__user=request.user)
         | Q(tasks__assigned_to=request.user)
     ).distinct().select_related('research_centre', 'assigned_user', 'created_by')
+    creatable_ids = set(task_creation_projects_for(request.user).values_list('pk', flat=True))
+    for project in projects:
+        project.can_add_tasks = project.pk in creatable_ids
     tasks = workable_tasks_for(request.user).filter(project__in=projects).select_related('project')
     admin_layout = request.user.role in {'admin', 'financialadmin', 'centrehead', 'overseer'}
     return render(request, 'adminpanel/my_projects.html', {
@@ -689,13 +692,10 @@ def remove_assignment(request, assignment_id):
 @login_required
 def add_task(request, project_id):
     staff_contributor = has_role(request.user, 'staff') and not can_manage_projects(request.user)
+    financial_contributor = request.user.role == 'financialadmin'
     if not can_manage_projects(request.user) and not staff_contributor:
         return HttpResponseForbidden('You are not authorized to create project tasks.')
     allowed_projects = task_creation_projects_for(request.user)
-    if has_role(request.user, 'financialadmin') and not has_role(request.user, 'admin'):
-        allowed_projects = allowed_projects.filter(
-            Q(assigned_user=request.user) | Q(created_by=request.user)
-        )
     project = get_object_or_404(allowed_projects.distinct(), id=project_id)
     if request.method == 'POST':
         form = TaskForm(request.POST, project=project)
@@ -705,11 +705,11 @@ def add_task(request, project_id):
             task.created_by = request.user
             task.save()
             messages.success(request, 'Task created successfully!')
-            if staff_contributor:
+            if staff_contributor or financial_contributor:
                 return redirect('project_tasks', project_id=project.id)
             return redirect(f"{reverse('assign_projects')}?project_id={project.id}")
         else:
-            if staff_contributor:
+            if staff_contributor or financial_contributor:
                 from projects.views import project_tasks
                 return project_tasks(request, project.id, task_form=form)
             # Form has errors - render the page with error messages displayed
@@ -740,7 +740,7 @@ def add_task(request, project_id):
             }
             return render(request, 'manager/assign.html', context)
     
-    if staff_contributor:
+    if staff_contributor or financial_contributor:
         return redirect('project_tasks', project_id=project.id)
     return redirect('assign_projects')
 

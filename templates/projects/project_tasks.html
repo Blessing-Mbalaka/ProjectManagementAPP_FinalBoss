@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends project_tasks_base_template|default:'base.html' %}
 {% block title %}{{ project.name }} Tasks{% endblock %}
 {% block content %}
 <style>
@@ -19,7 +19,7 @@
 }
 </style>
 <div class="container mt-4">
-<a class="btn btn-outline-secondary mb-3" href="{% url 'staff_projects' %}">Back to projects</a>
+<a class="btn btn-outline-secondary mb-3" href="{{ project_tasks_back_url }}">Back to projects</a>
 <h2>{{ project.name }}</h2><p>Shared project tasks are visible to project stakeholders. Add delegated work using the same task form as the project manager.</p>
 {% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
 <div class="card mb-4"><div class="card-header"><h4>Add Task</h4></div><div class="card-body">

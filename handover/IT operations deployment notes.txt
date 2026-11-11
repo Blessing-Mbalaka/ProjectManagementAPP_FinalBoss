@@ -2,7 +2,7 @@ IT OPERATIONS AND PAYROLL DEPLOYMENT NOTES
 11 November 2026
 
 Status
-Security and recovery features were tested locally; their production deployment status has not been verified from this workstation. The later weekly check-in rollout applied only users.0008_loginpingdelivery to production and sent authorised account emails; see the separate check-in results. The full suite passes 316 tests. Native SQLite recovery was executed. PostgreSQL tool calls were tested without a live PostgreSQL server. Backup-email tests captured mail locally. The separately authorised production login check-ins were sent externally.
+Security and recovery features were tested locally; their production deployment status has not been verified from this workstation. The later weekly check-in rollout applied only users.0008_loginpingdelivery to production and sent authorised account emails; see the separate check-in results. The full suite passes 318 tests. Native SQLite recovery was executed. PostgreSQL tool calls were tested without a live PostgreSQL server. Backup-email tests captured mail locally. The separately authorised production login check-ins were sent externally.
 
 Before pushing this release to Render
 1. Preserve a recovery copy of the existing database and keep normal app traffic away while applying the payroll data migration. Existing pre-encryption archives and logs do not become encrypted retroactively.

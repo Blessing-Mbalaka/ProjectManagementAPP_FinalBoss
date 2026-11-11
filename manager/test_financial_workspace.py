@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from adminpanel.models import EngagementLog, FinancialProject, ResearchCentre
-from projects.models import Project, Task
+from projects.models import Project, Task, TeamMember
 
 
 @override_settings(STORAGES={'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'}, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}})
@@ -186,3 +186,46 @@ class FinancialWorkspaceTests(TestCase):
         page = self.client.get(reverse('financial_kanban'), {'assignee': self.other.pk})
         self.assertNotContains(page, peer_task.title)
         self.assertNotContains(page, 'id="financialAssignee"')
+
+    def test_pm_can_assign_every_project_type_to_finance_who_can_create_tasks_and_subtasks(self):
+        member = TeamMember.objects.create(user=self.finance, full_name='Finance team member')
+        for project_type, _label in Project.PROJECT_TYPES:
+            for allocation in ['lead', 'team']:
+                with self.subTest(project_type=project_type, allocation=allocation):
+                    name = f'PM allocated {project_type} {allocation}'
+                    self.client.force_login(self.manager)
+                    self.assertRedirects(self.client.post(reverse('create_project'), {'name': name, 'description': 'Assigned cross-role project', 'project_type': project_type, 'status': 'planning'}), reverse('assign_projects'))
+                    project = Project.objects.get(name=name)
+                    if allocation == 'lead':
+                        response = self.client.post(reverse('admin_assign_project'), {'project_id': project.pk, 'assigned_user': self.finance.pk, 'return_to': 'project_workspace'})
+                    else:
+                        response = self.client.post(reverse('assign_team_member', args=[project.pk]), {'team_member': member.pk, 'responsibility': 'Deliver assigned project tasks.'})
+                    self.assertEqual(response.status_code, 302)
+                    self.client.force_login(self.finance)
+                    self.assertContains(self.client.get(reverse('my_projects')), name)
+                    page = self.client.get(reverse('project_tasks', args=[project.pk]))
+                    self.assertTemplateUsed(page, 'adminpanel/index.html')
+                    self.assertEqual(page.context['task_form'].initial['assigned_to'], self.finance.pk)
+                    payload = {'title': f'Own task {name}', 'status': 'todo', 'task_type': 'Other', 'priority': 'Medium', 'assigned_to': self.finance.pk}
+                    self.assertRedirects(self.client.post(reverse('add_task', args=[project.pk]), payload), reverse('project_tasks', args=[project.pk]))
+                    task = Task.objects.get(project=project, title=payload['title'])
+                    self.assertEqual((task.created_by_id, task.assigned_to_id), (self.finance.pk, self.finance.pk))
+                    payload.update(title=f'Own subtask {name}', parent_task=task.pk)
+                    self.assertRedirects(self.client.post(reverse('add_task', args=[project.pk]), payload), reverse('project_tasks', args=[project.pk]))
+                    subtask = Task.objects.get(project=project, parent_task=task)
+                    self.assertContains(self.client.get(reverse('financial_kanban')), subtask.title)
+                    self.client.force_login(self.manager)
+                    self.assertContains(self.client.get(reverse('project_tasks', args=[project.pk])), subtask.title)
+                    self.client.force_login(self.other)
+                    self.assertNotContains(self.client.get(reverse('my_projects')), name)
+
+    def test_finance_cannot_create_tasks_in_unassigned_projects_or_choose_foreign_parent(self):
+        private = Project.objects.create(name='Unassigned private project', created_by=self.other, assigned_user=self.other, research_centre=self.centre)
+        parent = Task.objects.create(project=private, title='Other project parent', assigned_to=self.other)
+        payload = {'title': 'Rejected task', 'status': 'todo', 'task_type': 'Other', 'priority': 'Low', 'assigned_to': self.finance.pk}
+        self.assertEqual(self.client.post(reverse('add_task', args=[private.pk]), payload).status_code, 404)
+        response = self.client.post(reverse('add_task', args=[self.project.pk]), dict(payload, parent_task=parent.pk))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'adminpanel/index.html')
+        self.assertFalse(Task.objects.filter(title='Rejected task').exists())
+        self.assertNotContains(response, 'href="' + reverse('manager_dashboard') + '"')

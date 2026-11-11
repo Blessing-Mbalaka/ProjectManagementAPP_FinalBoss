@@ -24,7 +24,7 @@ from adminpanel.media_service import MediaService
 from adminpanel.notification_service import unread_count_for, visible_notifications_for
 from .scope import scope_projects_for_user
 from .work_scope import assigned_projects_for, workable_tasks_for, manageable_projects_for
-from users.roles import has_role
+from users.roles import can_manage_projects, has_role
 from .daily_work import complete_daily_work, reopen_daily_work
 
 
@@ -548,9 +548,13 @@ def project_tasks(request, project_id, task_form=None):
     from projects.work_scope import task_creation_projects_for
     project = get_object_or_404(task_creation_projects_for(request.user), pk=project_id)
     form = task_form if task_form is not None else TaskForm(project=project)
+    if task_form is None and request.user.role == 'financialadmin' and form.fields['assigned_to'].queryset.filter(pk=request.user.pk).exists():
+        form.initial['assigned_to'] = request.user.pk
     for field in form.fields.values():
         field.widget.attrs['class'] = 'form-select' if hasattr(field.widget, 'choices') else 'form-control'
     return render(request, 'projects/project_tasks.html', {
+        'project_tasks_base_template': 'adminpanel/index.html' if request.user.role in {'financialadmin', 'admin', 'centrehead', 'overseer'} else 'manager/home.html' if request.user.role == 'manager' else 'base.html',
+        'project_tasks_back_url': reverse('my_projects') if can_manage_projects(request.user) else reverse('staff_projects'),
         'project': project,
         'project_tasks': project.tasks.select_related('assigned_to', 'created_by').order_by('-created_at'),
         'task_form': form,

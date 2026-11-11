@@ -9,5 +9,11 @@
   "pmMyProjectsNavigation": "pass",
   "javascriptErrors": [],
   "existingBidAssignmentControl": "pass",
-  "reassignedWorkStartsTodoAtZero": "pass"
+  "reassignedWorkStartsTodoAtZero": "pass",
+  "pmAssignsBookProjectToFinancialTeamMember": "pass",
+  "financeMyProjectsShowsBookProject": "pass",
+  "financeCreatesOwnBookTaskAndSubtask": "pass",
+  "financeTaskPageKeepsFinancialLayout": "pass",
+  "pmSeesFinanceCreatedWork": "pass",
+  "financeKanbanIncludesAssignedBookTasks": "pass"
 }
