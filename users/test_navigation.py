@@ -138,6 +138,19 @@ class GlobalNavigationTests(TestCase):
         origin = reverse('communique_section', args=['templates'])
         self.assertRedirects(self.client.post(reverse('upload_communique_template'), {'template_name': 'No file', 'return_to': origin}), origin)
 
+    def test_it_operations_sidebar_is_only_visible_to_primary_it_role(self):
+        for role, user in self.profiles.items():
+            with self.subTest(role=role):
+                self.client.force_login(user)
+                page = self.client.get(reverse(role_home_name(user)), follow=True)
+                if role == 'it':
+                    self.assertContains(page, 'IT Operations')
+                    self.assertContains(page, 'href="' + reverse('it_backups') + '"')
+                else:
+                    self.assertNotContains(page, 'href="' + reverse('it_dashboard') + '"')
+                    self.assertNotContains(page, 'href="' + reverse('it_backups') + '"')
+                    self.assertNotContains(page, 'href="' + reverse('it_recovery') + '"')
+
     def test_unknown_shared_section_cannot_be_a_return_target(self):
         self.client.force_login(self.profiles['admin'])
         origin = reverse('communique_section', args=['missing-section'])

@@ -6,6 +6,17 @@ from project_manage import settings_test
 
 
 class TestDatabaseIsolationTests(SimpleTestCase):
+    def test_postgresql_checks_are_confined_to_local_test_names(self):
+        from project_manage import settings_postgres_test
+
+        database = settings_postgres_test.DATABASES['default']
+        self.assertEqual(database['ENGINE'], 'django.db.backends.postgresql')
+        self.assertEqual(database['HOST'], '127.0.0.1')
+        self.assertEqual(database['USER'], 'codex_audit')
+        self.assertIn(database['NAME'], {'project_management_pg_checks', 'test_project_management_pg_checks'})
+        self.assertEqual(database['TEST']['NAME'], 'test_project_management_pg_checks')
+        self.assertTrue(database['ATOMIC_REQUESTS'])
+
     def test_test_settings_use_workspace_test_db(self):
         database = settings_test.DATABASES["default"]
         database_path = Path(database["NAME"]).resolve()

@@ -102,9 +102,6 @@
                 <a class="nav-link{% if request.resolver_match.url_name == 'page_visit_audit' %} active{% endif %}" href="{% url 'page_visit_audit' %}"><i class="bi bi-activity"></i><span>User Page Activity</span></a>
                 </div></details></li>
                 {% else %}
-                {% if user.role == 'admin' or user.is_superuser %}
-                {% include 'adminpanel/partials/it_navigation.html' %}
-                {% endif %}
 
                 {% if user.role == 'admin' or user.role == 'dean' or user.role == 'centrehead' or user.role == 'overseer' %}
                 <li><a href="{% url 'overview' %}" class="nav-link"><i class="bi bi-house"></i><span>Home</span></a></li>
