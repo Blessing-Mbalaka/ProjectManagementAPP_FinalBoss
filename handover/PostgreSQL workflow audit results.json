@@ -1,0 +1,46 @@
+{
+  "date": "2026-11-12",
+  "focus_roles": [
+    "admin",
+    "financialadmin"
+  ],
+  "postgresql": {
+    "environment": {
+      "database": "project_management_pg_checks",
+      "host": "127.0.0.1/32",
+      "port": 55439,
+      "version": "PostgreSQL 18.4 on x86_64-windows, compiled by msvc-19.44.35227, 64-bit",
+      "production_contacted": false,
+      "fixtures": "Synthetic local audit records only"
+    },
+    "tests": 368,
+    "result": "PASS"
+  },
+  "sqlite_compatibility": {
+    "tests": 368,
+    "result": "PASS"
+  },
+  "commit_boundary_regressions": 4,
+  "browser": {
+    "database": "isolated local PostgreSQL 18.4",
+    "checks": [
+      "admin: IT Operations sidebar absent",
+      "Admin to Financial Admin assignment commits on PostgreSQL without a cost centre",
+      "finance: IT Operations sidebar absent",
+      "Financial Admin sees committed assignment in Kanban at 0% and My Projects after reload",
+      "it: IT Operations sidebar present"
+    ],
+    "script_errors": [],
+    "production_data_changed": false
+  },
+  "production_data_changed": false,
+  "production_accessed_for_this_audit": false,
+  "schema_migration_required": false,
+  "sidebar": "IT Operations shown only to primary IT role; backend authorisation unchanged",
+  "fixed_findings": [
+    "Cost-centre raw deletion bypassed related payments/forecasts and nullable financial-project/engagement links",
+    "Protected financial-owner account deletion raised an unhandled exception",
+    "Adding an expense overwrote cached spending with its closing balance",
+    "Deleting an expense did not recalculate cached spending"
+  ]
+}

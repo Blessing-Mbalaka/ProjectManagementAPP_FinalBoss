@@ -197,7 +197,7 @@ python manage.py makemigrations --check --dry-run --settings=project_manage.sett
 python manage.py test --settings=project_manage.settings_test --noinput
 ```
 
-The latest recorded suite passed **362 tests**. Test settings use isolated SQLite databases under `test_artifacts`; that directory and local credentials are excluded from source control. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
+The latest recorded suite passed **368 tests on PostgreSQL and 368 on SQLite**. SQLite tests use databases under `test_artifacts`; PostgreSQL tests use dedicated loopback-only databases. Local cluster files, browser fixtures and credentials stay under ignored `test_artifacts`. Read the [recorded test results](handover/Automated%20test%20results.txt) and handover for browser checks and their limits. PostgreSQL staging recovery and real backup-mailbox delivery must be verified before enabling production backup/restore operations.
 
 ## Render deployment
 
@@ -221,6 +221,12 @@ Workers and cron jobs are separate processes/services; the web start command doe
 | `staticfiles/` | Collected deployment assets; edit source assets under `static/`. |
 | `outputs/import_templates/` | Workbook templates and import guidance. |
 | `handover/` | User manual, operations notes and recorded verification results. |
+
+## PostgreSQL workflow checks
+
+Admin and Financial Admin regressions now run against an isolated local PostgreSQL server as well as SQLite. Use `--settings=project_manage.settings_postgres_test` for the PostgreSQL suite; it selects loopback and dedicated test database/role names independently of the production `DATABASE_URL`. Local PostgreSQL setup, the 368-test results on each backend, fixed commit-time deletion failures and screenshots are in the [PostgreSQL workflow audit](handover/PostgreSQL%20workflow%20audit.html).
+
+Populated cost-centre deletion honors related-record cascades and preserves client history, protected financial-owner deletion gives guidance, and expense additions/deletions maintain spending totals. IT Operations is shown only in the primary IT role's sidebar. These fixes require no model migration and did not change production data during testing.
 
 ## Role navigation evaluation
 

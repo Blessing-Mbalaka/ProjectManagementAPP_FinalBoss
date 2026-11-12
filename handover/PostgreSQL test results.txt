@@ -1,0 +1,280 @@
+Creating test database for alias 'default'...
+
+C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_FinalBoss\.venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: C:\tmp\test_static\
+  mw_instance = middleware(adapted_handler)
+....Forbidden: /adminpanel/activity/page-visits/
+...Not Found: /adminpanel/my-projects/task/4/update/
+....................Not Found: /manager/update-task-status/22/
+............Forbidden (CSRF cookie not set.): /adminpanel/it/backup/
+Forbidden (CSRF cookie not set.): /adminpanel/it/restore/
+..Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+Forbidden: /adminpanel/it/
+Forbidden: /adminpanel/it/backups/
+Forbidden: /adminpanel/it/recovery/
+Forbidden: /adminpanel/it/backup/
+Forbidden: /adminpanel/it/restore/
+Forbidden: /adminpanel/it/import/
+Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
+.Forbidden: /users/register/
+..Method Not Allowed (GET): /adminpanel/it/restore/
+Method Not Allowed (GET): /adminpanel/it/backup/
+......Forbidden: /adminpanel/api/messages/broadcast/new/
+......Forbidden (CSRF token missing.): /adminpanel/api/notifications/147/read/
+...Not Found: /adminpanel/api/notifications/165/read/
+..................Forbidden: /adminpanel/finance/update-expenditure/23/
+Forbidden: /adminpanel/finance/update-expenditure/23/
+....Forbidden: /adminpanel/edit-user/267/
+.Bad Request: /adminpanel/edit-user/270/
+..Forbidden: /users/register/
+....Forbidden: /adminpanel/activity/page-visits/
+........................................Bad Request: /manager/financial-kanban/
+...Not Found: /adminpanel/finance/projects/26/assign/
+Not Found: /adminpanel/finance/projects/26/assign/
+Not Found: /adminpanel/finance/projects/26/assign/
+Bad Request: /adminpanel/finance/projects/26/assign/
+.Bad Request: /adminpanel/finance/projects/add/
+...Bad Request: /adminpanel/finance/projects/add/
+.Bad Request: /adminpanel/finance/projects/add/
+.Not Found: /manager/add_task/75/
+....Forbidden: /adminpanel/finance/projects/37/assign/
+Forbidden: /adminpanel/finance/projects/add/
+..Bad Request: /adminpanel/finance/projects/add/
+.Bad Request: /adminpanel/finance/projects/add/
+.Not Found: /manager/my-projects/task/81/update/
+Bad Request: /manager/my-projects/task/80/update/
+...Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+Email skipped because recipient address is invalid: ''
+...Forbidden: /manager/my-projects/
+Forbidden: /adminpanel/engagements/
+......Bad Request: /manager/update-task-status/115/
+.Bad Request: /manager/edit-task/116/
+.Forbidden: /manager/edit-chapter/2/
+Forbidden: /manager/delete-chapter/2/
+.Not Found: /manager/books/4/comments/
+Not Found: /manager/books/4/comments/
+.Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+.Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Not Found: /manager/add-chapter/5/
+Method Not Allowed (GET): /manager/delete-chapter/9/
+.Bad Request: /manager/books/4/comments/
+Bad Request: /manager/books/4/comments/
+Bad Request: /manager/books/4/comments/
+Not Found: /manager/books/5/comments/
+Not Found: /manager/books/4/comments/
+.Bad Request: /manager/dashboard-tasks/
+..Forbidden (CSRF token missing.): /manager/dashboard-tasks/
+Forbidden (CSRF token missing.): /manager/add-chapter/4/
+Forbidden (CSRF token missing.): /manager/books/4/comments/
+.Not Found: /manager/dashboard-tasks/3/
+Bad Request: /manager/dashboard-tasks/
+Bad Request: /manager/dashboard-tasks/
+Bad Request: /manager/dashboard-tasks/
+Bad Request: /manager/dashboard-tasks/3/
+Method Not Allowed (GET): /manager/dashboard-tasks/3/
+..Forbidden: /manager/assign/workbook/apply/
+.Forbidden: /manager/assign/workbook/apply/
+..Forbidden: /manager/assign/workbook/template/
+Forbidden: /manager/assign/workbook/template/
+....................Email delivery failed for recipient fake-address@example.invalid
+Traceback (most recent call last):
+  File "C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_FinalBoss\users\email_service.py", line 30, in send_html_email_safely
+    message.send(fail_silently=False)
+  File "C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_FinalBoss\.venv\Lib\site-packages\django\core\mail\message.py", line 307, in send
+    return self.get_connection(fail_silently).send_messages([self])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Bjmba\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Bjmba\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Bjmba\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: SMTP unavailable
+....Forbidden: /projects/task/delete/121/
+............Forbidden: /manager/manager_journal/
+..Not Found: /manager/add-task/293/
+.Email skipped because recipient address is invalid: ''
+...Email skipped because recipient address is invalid: ''
+........Method Not Allowed (GET): /adminpanel/clock-in/
+.....Email skipped because recipient address is invalid: ''
+..Forbidden: /projects/staff/create-task/
+Forbidden: /projects/task/delete/142/
+.........Forbidden: /projects/staff/create-task/
+.............Not Found: /projects/project/574/tasks/
+Not Found: /manager/add_task/574/
+Not Found: /manager/add_task/574/
+.............................................Forbidden: /manager/add-paper/
+..............Forbidden: /manager/manager_journal/
+.Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance-readonly/
+...Method Not Allowed (GET): /projects/notification/read/323/
+Not Found: /projects/notification/read/324/
+.Forbidden: /adminpanel/api/messages/recipients/
+........Not Found: /manager/update-task-status/607/
+.Forbidden: /adminpanel/finance/
+Forbidden: /adminpanel/finance/
+Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance-readonly/
+Forbidden: /adminpanel/finance/projects/
+Forbidden: /adminpanel/finance/projects/
+Forbidden: /adminpanel/finance/applied-bids/
+Forbidden: /adminpanel/finance/applied-bids/
+Forbidden: /manager/financial-kanban/
+Forbidden: /manager/financial-kanban/
+Forbidden: /adminpanel/finance/export-summary/
+Forbidden: /adminpanel/finance/export-summary/
+Forbidden: /adminpanel/finance/add-cost-centre/
+Forbidden: /adminpanel/finance/add-cost-centre/
+Forbidden: /adminpanel/finance/add-expenditure/
+Forbidden: /adminpanel/finance/add-expenditure/
+Forbidden: /adminpanel/crm/reports/data/
+Forbidden: /adminpanel/crm/reports/data/
+Forbidden: /adminpanel/crm/financials/
+Forbidden: /adminpanel/crm/reports/
+Forbidden: /adminpanel/crm/alerts/
+..Not Found: /manager/update-task-status/610/
+........................................Not Found: /this-page-does-not-exist/
+..
+----------------------------------------------------------------------
+Ran 368 tests in 158.270s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 368 test(s).
+System check identified no issues (0 silenced).
+Completed: snapshot
+[PASS] Cost centre created with MOA amount
+[PASS] MOA Outstanding calculated correctly: 30000.00
+[PASS] MOA Outstanding correctly negative when over budget: -5000.00
+[PASS] MOA defaults to 0.00 when not provided
+[PASS] Total received calculated correctly from payments
+[PASS] Total remaining calculated correctly
+[PASS] Multiple payments summed correctly
+[PASS] Payment created successfully
+[PASS] Payment updates total_received
+[PASS] Cost centre added via view with MOA amount
+[PASS] Cost centre added without MOA amount
+[PASS] MOA amount edited successfully via view
+[PASS] Finance view includes MOA data
+[PASS] Phase 1: Cost centre created with MOA
+[PASS] Phase 2: Payments added, MOA calculations correct
+[PASS] Phase 3: MOA amount edited, outstanding recalculated
+[PASS] Phase 4: Finance view shows correct MOA data
+
+[SUCCESS] Complete workflow test PASSED [SUCCESS]
+Created: 3; Updated: 0; Failed: 0
+Created: 1; Updated: 0; Failed: 0
+Created: 0; Updated: 1; Failed: 0
+Dry run complete. Valid rows: 1. No records written.
+Created: 1; Updated: 0; Failed: 0
+Created: 0; Updated: 1; Failed: 0
+Projects row 2, lead_author_username: Author username "missing-author" was not found and will be skipped.
+Creates: 1; Updates: 0; Warnings: 1
+Projects created: 1; Projects updated: 0; Tasks created: 0; Tasks updated: 0.
+Projects row 2, lead_author_username: Author username "missing-author" was not found and will be skipped.
+Creates: 0; Updates: 1; Warnings: 1
+Projects created: 0; Projects updated: 1; Tasks created: 0; Tasks updated: 0.
+Projects row 2, project_manager_username: Username "missing-manager" was not found.
+Projects row 2, lead_author_username: Author username "missing-author" was not found and will be skipped.
+POST DATA: {'paperTitle': 'Role-aware paper admin', 'paperStatus': 'draft', 'paperType': 'internal', 'currentVersion': '1.0', 'leadAuthor': 'admin', 'coAuthors': '', 'targetJournal': 'Journal', 'paperAbstract': 'Navigation evaluation', 'return_to': '/adminpanel/admin_journal/'}
+POST DATA: {'paperTitle': 'Role-aware paper manager', 'paperStatus': 'draft', 'paperType': 'internal', 'currentVersion': '1.0', 'leadAuthor': 'manager', 'coAuthors': '', 'targetJournal': 'Journal', 'paperAbstract': 'Navigation evaluation', 'return_to': '/manager/manager_journal/'}
+[MESSAGE SENT] ID: 7, From: 853, To: 861, Has Attachment: False
+[MESSAGE SENT] ID: 8, From: 854, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 9, From: 855, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 10, From: 856, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 11, From: 857, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 12, From: 858, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 13, From: 859, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 14, From: 860, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 15, From: 861, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 16, From: 863, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 17, From: 857, To: 853, Has Attachment: False
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0
+Type:
+Search:
+Final count: 0

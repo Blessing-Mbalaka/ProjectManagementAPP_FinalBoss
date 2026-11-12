@@ -1,12 +1,10 @@
 Creating test database for alias 'default'...
 
-Destroying old test database for alias 'default'...
-
 C:\Users\Bjmba\Desktop\Python WebApps\project_management\ProjectManagementAPP_FinalBoss\.venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: C:\tmp\test_static\
   mw_instance = middleware(adapted_handler)
 ....Forbidden: /adminpanel/activity/page-visits/
-...Not Found: /adminpanel/my-projects/task/2/update/
-....................Not Found: /manager/update-task-status/1/
+...Not Found: /adminpanel/my-projects/task/4/update/
+....................Not Found: /manager/update-task-status/22/
 ............Forbidden (CSRF cookie not set.): /adminpanel/it/backup/
 Forbidden (CSRF cookie not set.): /adminpanel/it/restore/
 ..Forbidden: /adminpanel/it/
@@ -69,29 +67,29 @@ Forbidden: /adminpanel/it/backups/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/download/
 ..Method Not Allowed (GET): /adminpanel/it/restore/
 Method Not Allowed (GET): /adminpanel/it/backup/
 ......Forbidden: /adminpanel/api/messages/broadcast/new/
-......Forbidden (CSRF token missing.): /adminpanel/api/notifications/2/read/
-...Not Found: /adminpanel/api/notifications/2/read/
-..................Forbidden: /adminpanel/finance/update-expenditure/1/
-Forbidden: /adminpanel/finance/update-expenditure/1/
-....Forbidden: /adminpanel/edit-user/3/
-.Bad Request: /adminpanel/edit-user/3/
+......Forbidden (CSRF token missing.): /adminpanel/api/notifications/147/read/
+...Not Found: /adminpanel/api/notifications/165/read/
+..................Forbidden: /adminpanel/finance/update-expenditure/23/
+Forbidden: /adminpanel/finance/update-expenditure/23/
+....Forbidden: /adminpanel/edit-user/267/
+.Bad Request: /adminpanel/edit-user/270/
 ..Forbidden: /users/register/
 ....Forbidden: /adminpanel/activity/page-visits/
 ........................................Bad Request: /manager/financial-kanban/
-...Not Found: /adminpanel/finance/projects/1/assign/
-Not Found: /adminpanel/finance/projects/1/assign/
-Not Found: /adminpanel/finance/projects/1/assign/
-Bad Request: /adminpanel/finance/projects/1/assign/
+...Not Found: /adminpanel/finance/projects/26/assign/
+Not Found: /adminpanel/finance/projects/26/assign/
+Not Found: /adminpanel/finance/projects/26/assign/
+Bad Request: /adminpanel/finance/projects/26/assign/
 .Bad Request: /adminpanel/finance/projects/add/
 ...Bad Request: /adminpanel/finance/projects/add/
 .Bad Request: /adminpanel/finance/projects/add/
-.Not Found: /manager/add_task/2/
-....Forbidden: /adminpanel/finance/projects/1/assign/
+.Not Found: /manager/add_task/75/
+....Forbidden: /adminpanel/finance/projects/37/assign/
 Forbidden: /adminpanel/finance/projects/add/
 ..Bad Request: /adminpanel/finance/projects/add/
 .Bad Request: /adminpanel/finance/projects/add/
-.Not Found: /manager/my-projects/task/2/update/
-Bad Request: /manager/my-projects/task/1/update/
+.Not Found: /manager/my-projects/task/81/update/
+Bad Request: /manager/my-projects/task/80/update/
 ...Email skipped because recipient address is invalid: ''
 Email skipped because recipient address is invalid: ''
 Email skipped because recipient address is invalid: ''
@@ -104,42 +102,42 @@ Email skipped because recipient address is invalid: ''
 Email skipped because recipient address is invalid: ''
 ...Forbidden: /manager/my-projects/
 Forbidden: /adminpanel/engagements/
-......Bad Request: /manager/update-task-status/1/
-.Bad Request: /manager/edit-task/1/
-.Forbidden: /manager/edit-chapter/1/
-Forbidden: /manager/delete-chapter/1/
-.Not Found: /manager/books/1/comments/
-Not Found: /manager/books/1/comments/
-.Forbidden: /manager/add-chapter/1/
-Forbidden: /manager/add-chapter/1/
-Forbidden: /manager/add-chapter/1/
-Forbidden: /manager/add-chapter/1/
-Forbidden: /manager/add-chapter/1/
-Forbidden: /manager/add-chapter/1/
-.Bad Request: /manager/add-chapter/1/
-Bad Request: /manager/add-chapter/1/
-Bad Request: /manager/add-chapter/1/
-Bad Request: /manager/add-chapter/1/
-Bad Request: /manager/add-chapter/1/
-Bad Request: /manager/add-chapter/1/
-Bad Request: /manager/add-chapter/1/
-Not Found: /manager/add-chapter/2/
-Method Not Allowed (GET): /manager/delete-chapter/1/
-.Bad Request: /manager/books/1/comments/
-Bad Request: /manager/books/1/comments/
-Bad Request: /manager/books/1/comments/
-Not Found: /manager/books/2/comments/
-Not Found: /manager/books/1/comments/
+......Bad Request: /manager/update-task-status/115/
+.Bad Request: /manager/edit-task/116/
+.Forbidden: /manager/edit-chapter/2/
+Forbidden: /manager/delete-chapter/2/
+.Not Found: /manager/books/4/comments/
+Not Found: /manager/books/4/comments/
+.Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+Forbidden: /manager/add-chapter/4/
+.Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Bad Request: /manager/add-chapter/4/
+Not Found: /manager/add-chapter/5/
+Method Not Allowed (GET): /manager/delete-chapter/9/
+.Bad Request: /manager/books/4/comments/
+Bad Request: /manager/books/4/comments/
+Bad Request: /manager/books/4/comments/
+Not Found: /manager/books/5/comments/
+Not Found: /manager/books/4/comments/
 .Bad Request: /manager/dashboard-tasks/
 ..Forbidden (CSRF token missing.): /manager/dashboard-tasks/
-Forbidden (CSRF token missing.): /manager/add-chapter/1/
-Forbidden (CSRF token missing.): /manager/books/1/comments/
-.Not Found: /manager/dashboard-tasks/1/
+Forbidden (CSRF token missing.): /manager/add-chapter/4/
+Forbidden (CSRF token missing.): /manager/books/4/comments/
+.Not Found: /manager/dashboard-tasks/3/
 Bad Request: /manager/dashboard-tasks/
 Bad Request: /manager/dashboard-tasks/
 Bad Request: /manager/dashboard-tasks/
-Bad Request: /manager/dashboard-tasks/1/
-Method Not Allowed (GET): /manager/dashboard-tasks/1/
+Bad Request: /manager/dashboard-tasks/3/
+Method Not Allowed (GET): /manager/dashboard-tasks/3/
 ..Forbidden: /manager/assign/workbook/apply/
 .Forbidden: /manager/assign/workbook/apply/
 ..Forbidden: /manager/assign/workbook/template/
@@ -160,29 +158,29 @@ Traceback (most recent call last):
   File "C:\Users\Bjmba\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1198, in _execute_mock_call
     raise effect
 RuntimeError: SMTP unavailable
-....Forbidden: /projects/task/delete/1/
+....Forbidden: /projects/task/delete/121/
 ............Forbidden: /manager/manager_journal/
-..Not Found: /manager/add-task/2/
+..Not Found: /manager/add-task/293/
 .Email skipped because recipient address is invalid: ''
 ...Email skipped because recipient address is invalid: ''
 ........Method Not Allowed (GET): /adminpanel/clock-in/
 .....Email skipped because recipient address is invalid: ''
 ..Forbidden: /projects/staff/create-task/
-Forbidden: /projects/task/delete/1/
+Forbidden: /projects/task/delete/142/
 .........Forbidden: /projects/staff/create-task/
-.............Not Found: /projects/project/1/tasks/
-Not Found: /manager/add_task/1/
-Not Found: /manager/add_task/1/
+.............Not Found: /projects/project/574/tasks/
+Not Found: /manager/add_task/574/
+Not Found: /manager/add_task/574/
 .............................................Forbidden: /manager/add-paper/
-.............Forbidden: /manager/manager_journal/
+..............Forbidden: /manager/manager_journal/
 .Forbidden: /adminpanel/finance-readonly/
 Forbidden: /adminpanel/finance-readonly/
 Forbidden: /adminpanel/finance-readonly/
 Forbidden: /adminpanel/finance-readonly/
-...Method Not Allowed (GET): /projects/notification/read/2/
-Not Found: /projects/notification/read/3/
+...Method Not Allowed (GET): /projects/notification/read/323/
+Not Found: /projects/notification/read/324/
 .Forbidden: /adminpanel/api/messages/recipients/
-........Not Found: /manager/update-task-status/2/
+........Not Found: /manager/update-task-status/607/
 .Forbidden: /adminpanel/finance/
 Forbidden: /adminpanel/finance/
 Forbidden: /adminpanel/finance-readonly/
@@ -204,16 +202,16 @@ Forbidden: /adminpanel/crm/reports/data/
 Forbidden: /adminpanel/crm/financials/
 Forbidden: /adminpanel/crm/reports/
 Forbidden: /adminpanel/crm/alerts/
-..Not Found: /manager/update-task-status/1/
-...................................Not Found: /this-page-does-not-exist/
+..Not Found: /manager/update-task-status/610/
+........................................Not Found: /this-page-does-not-exist/
 ..
 ----------------------------------------------------------------------
-Ran 362 tests in 30.115s
+Ran 368 tests in 158.270s
 
 OK
 Destroying test database for alias 'default'...
 
-Found 362 test(s).
+Found 368 test(s).
 System check identified no issues (0 silenced).
 Completed: snapshot
 [PASS] Cost centre created with MOA amount
@@ -251,17 +249,17 @@ Projects row 2, project_manager_username: Username "missing-manager" was not fou
 Projects row 2, lead_author_username: Author username "missing-author" was not found and will be skipped.
 POST DATA: {'paperTitle': 'Role-aware paper admin', 'paperStatus': 'draft', 'paperType': 'internal', 'currentVersion': '1.0', 'leadAuthor': 'admin', 'coAuthors': '', 'targetJournal': 'Journal', 'paperAbstract': 'Navigation evaluation', 'return_to': '/adminpanel/admin_journal/'}
 POST DATA: {'paperTitle': 'Role-aware paper manager', 'paperStatus': 'draft', 'paperType': 'internal', 'currentVersion': '1.0', 'leadAuthor': 'manager', 'coAuthors': '', 'targetJournal': 'Journal', 'paperAbstract': 'Navigation evaluation', 'return_to': '/manager/manager_journal/'}
-[MESSAGE SENT] ID: 1, From: 1, To: 9, Has Attachment: False
-[MESSAGE SENT] ID: 2, From: 2, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 3, From: 3, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 4, From: 4, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 5, From: 5, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 6, From: 6, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 7, From: 7, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 8, From: 8, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 9, From: 9, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 10, From: 11, To: 1, Has Attachment: False
-[MESSAGE SENT] ID: 1, From: 5, To: 1, Has Attachment: False
+[MESSAGE SENT] ID: 7, From: 853, To: 861, Has Attachment: False
+[MESSAGE SENT] ID: 8, From: 854, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 9, From: 855, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 10, From: 856, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 11, From: 857, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 12, From: 858, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 13, From: 859, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 14, From: 860, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 15, From: 861, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 16, From: 863, To: 853, Has Attachment: False
+[MESSAGE SENT] ID: 17, From: 857, To: 853, Has Attachment: False
 Type:
 Search:
 Final count: 0
