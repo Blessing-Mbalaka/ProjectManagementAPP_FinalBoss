@@ -1,6 +1,7 @@
 from .salary_crypto import decrypt_fields, can_manage_salaries
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import IntegrityError, connection, transaction
+from django.db.models.deletion import ProtectedError
 from django.urls import reverse
 
 #Here  is the Default Django User_ROLE_VALIDATION.
@@ -1019,8 +1020,12 @@ def deactivate_user(request, user_id):
 def delete_user(request, user_id):
     user = get_object_or_404(CustomUser, pk=user_id)
     if user.role != 'admin':
-        user.delete()
-        messages.error(request, f"{user.username} deleted.")
+        try:
+            user.delete()
+        except ProtectedError:
+            messages.error(request, 'This account owns protected financial records. Reassign those records or deactivate the account instead.')
+        else:
+            messages.success(request, f"{user.username} deleted.")
     else:
         messages.error(request, "You cannot delete an admin.")
     return redirect('manage_users')
@@ -2275,6 +2280,7 @@ def add_cost_centre(request):
     return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
     
 @login_required
+@transaction.atomic
 def add_expenditure(request):
     if not ensure_finance_editor(request):
         return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
@@ -2311,7 +2317,7 @@ def add_expenditure(request):
 
         try:
             # Get cost centre
-            cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
+            cost_centre = get_object_or_404(CostCentre.objects.select_for_update(), id=cost_centre_id)
             if not ensure_finance_editor(request, cost_centre):
                 return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
             if expense_id and Expenditure.objects.filter(expense_id=expense_id).exists():
@@ -2337,7 +2343,7 @@ def add_expenditure(request):
                 date_to = parse_date(date_to_str)
             
             # Calculate balances from current total_spent
-            total_spent = safe_decimal(cost_centre.total_spent, Decimal('0'))
+            total_spent = safe_decimal(Expenditure.objects.filter(cost_centre=cost_centre).aggregate(total=Sum('amount'))['total'], Decimal('0'))
             opening_balance = total_spent
             closing_balance = opening_balance - amount
             
@@ -2356,9 +2362,7 @@ def add_expenditure(request):
                 date_to=date_to
             )
             
-            # Update cost centre total_spent
-            cost_centre.total_spent = closing_balance
-            cost_centre.save()
+            # Expenditure.save() recalculates total_spent from saved amounts.
             
             # Log the creation
             log_expenditure_creation(expenditure, request.user)
@@ -2435,52 +2439,27 @@ def get_expenditures(request, cost_centre_id):
 
 @login_required
 def delete_cost_centre(request, pk):
-    """Delete a cost centre using raw SQL"""
+    """Apply cascades and SET NULL links before committing a ledger deletion."""
     if not can_manage_cost_centres(request.user):
-        messages.error(request, "You do not have permission to delete cost centres.")
+        messages.error(request, 'You do not have permission to delete cost centres.')
         return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-
+    cost_centre = get_object_or_404(CostCentre, pk=pk)
+    if not ensure_finance_editor(request, cost_centre):
+        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
+    if request.method != 'POST':
+        return render(request, 'adminpanel/confirm_delete.html', {'cost_centre': cost_centre})
     try:
-        with connection.cursor() as cursor:
-            # Check if cost centre exists
-            cursor.execute("""
-                SELECT id, name FROM adminpanel_costcentre WHERE id = %s
-            """, [pk])
-            row = cursor.fetchone()
-            
-            if not row:
-                messages.error(request, 'Cost centre not found')
-                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-            
-            cost_centre_id, cost_centre_name = row
-            cost_centre = get_object_or_404(CostCentre, id=cost_centre_id)
-            if not ensure_finance_editor(request, cost_centre):
-                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-            
-            if request.method == 'POST':
-                # Log the deletion
-                log_cost_centre_deletion(cost_centre_id, cost_centre_name, request.user)
-                
-                # Delete associated expenditures first
-                cursor.execute("""
-                    DELETE FROM adminpanel_expenditure WHERE cost_centre_id = %s
-                """, [cost_centre_id])
-                
-                # Delete cost centre
-                cursor.execute("""
-                    DELETE FROM adminpanel_costcentre WHERE id = %s
-                """, [cost_centre_id])
-                
-                messages.success(request, 'Cost centre deleted successfully')
-                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-            
-            # For GET request, return a simple confirmation message
-            return render(request, 'adminpanel/confirm_delete.html', {
-                'cost_centre': {'id': cost_centre_id, 'name': cost_centre_name}
-            })
-    except Exception as e:
-        messages.error(request, f'Error processing cost centre: {str(e)}')
-        return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
+        with transaction.atomic():
+            cost_centre = get_object_or_404(CostCentre.objects.select_for_update(), pk=pk)
+            log_cost_centre_deletion(cost_centre.pk, cost_centre.name, request.user)
+            # ORM deletion handles payments/forecasts and detaches bids/notes;
+            # raw DELETE leaves deferred foreign keys invalid in PostgreSQL.
+            cost_centre.delete()
+        messages.success(request, 'Cost centre deleted successfully')
+    except Exception as exc:
+        messages.error(request, f'Error deleting cost centre: {exc}')
+    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
+
 
 @login_required
 def edit_cost_centre(request, pk):
@@ -2772,46 +2751,24 @@ def edit_expenditure(request, pk):
 
 @login_required
 def delete_expenditure(request, pk):
-    """Delete an expenditure using raw SQL"""
     if not ensure_finance_editor(request):
         return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-
-    try:
-        with connection.cursor() as cursor:
-            # Fetch expenditure details before deletion
-            cursor.execute("""
-                SELECT id, cost_centre_id, name, category, month FROM adminpanel_expenditure WHERE id = %s
-            """, [pk])
-            
-            row = cursor.fetchone()
-            if not row:
-                messages.error(request, 'Expenditure not found')
-                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-            
-            exp_id, cost_centre_id, exp_name, exp_category, exp_month = row
-            if exp_category == "Salary" and not can_manage_salaries(request.user):
-                return HttpResponseForbidden("Only Admin and Financial Admin can delete salary records.")
-            scoped_ids = get_accessible_cost_centre_ids(request.user)
-            if scoped_ids is not None and cost_centre_id not in scoped_ids:
-                messages.error(request, "You can only delete expenditures for your assigned research centre.")
-                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-            
-            if request.method == 'POST':
-                # Log the deletion with expenditure details
-                expenditure_name = f"{exp_name} ({exp_category}) - {exp_month}"
-                log_expenditure_deletion(exp_id, expenditure_name, request.user)
-                
-                cursor.execute("""
-                    DELETE FROM adminpanel_expenditure WHERE id = %s
-                """, [pk])
-                
-                messages.success(request, 'Expenditure deleted successfully')
-                return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-            
-            return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
-    except Exception as e:
-        messages.error(request, f'Error deleting expenditure: {str(e)}')
+    expenditure = get_object_or_404(Expenditure, pk=pk)
+    if not ensure_finance_editor(request, expenditure.cost_centre):
         return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
+    if expenditure.category == 'Salary' and not can_manage_salaries(request.user):
+        return HttpResponseForbidden('Only Admin and Financial Admin can delete salary records.')
+    if request.method == 'POST':
+        with transaction.atomic():
+            cost_centre = get_object_or_404(CostCentre.objects.select_for_update(), pk=expenditure.cost_centre_id)
+            expenditure = get_object_or_404(Expenditure, pk=pk, cost_centre=cost_centre)
+            label = f'{expenditure.name} ({expenditure.category}) - {expenditure.month}'
+            log_expenditure_deletion(expenditure.pk, label, request.user)
+            expenditure.delete()
+            total = Expenditure.objects.filter(cost_centre=cost_centre).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+            CostCentre.objects.filter(pk=cost_centre.pk).update(total_spent=total)
+        messages.success(request, 'Expenditure deleted successfully')
+    return redirect(workspace_return_url(request, get_finance_redirect(request.user), family='finance'))
 
 
 # ===========================
